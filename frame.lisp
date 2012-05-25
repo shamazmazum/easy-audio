@@ -81,5 +81,22 @@
 
       (setq chunk (read-byte stream))
       (setf (frame-channel-assignment frame) (ldb (byte 4 0) chunk))
-      (setf (frame-sample-size frame) (ldb (byte 3 4) chunk)))
+      (setf (frame-sample-size frame) (ldb (byte 3 4) chunk))
+      (if (/= 0 (ldb (byte 1 7) chunk)) (error "Error reading frame"))
+      ;; FIXME: How to read sample/frame number?
+      (setq chunk (read-byte stream)) ; Do something
+      (if (eql (frame-blocking-strategy frame) :fixed)
+	  nil nil) ; Do something
+      ;; /FIXME
+      (with-slots (sample-rate) frame
+		 (setf sample-rate
+		       (cond
+			((eql sample-rate :get-8-bit-from-end-khz)
+			 (* 1000 (read-byte stream)))
+			((eql sample-rate :get-16-bit-from-end-hz)
+			 (read-to-integer stream 2))
+			((eql sample-rate :get-16-bit-from-end-tenshz)
+			 (* 10 (read-to-integer stream 2)))
+			(t sample-rate))))
+      )
     frame))

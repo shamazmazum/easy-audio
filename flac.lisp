@@ -14,4 +14,6 @@
 				 collect metadata-block
 				 while (= 0 (slot-value metadata-block 'last-block-p)))))
 ;;		      metadata-blocks ; Store it to some object in future
-		    (frame-reader stream (first metadata-blocks)))))
+		    (values
+		     metadata-blocks
+		     (frame-reader stream (first metadata-blocks))))))

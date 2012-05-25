@@ -23,6 +23,7 @@
    (sample-rate :accessor frame-sample-rate)
    (channel-assignment :accessor frame-channel-assignment)
    (sample-size :accessor frame-sample-size)
+   (number :accessor frame-number)
    crc-8))
 
 (defparameter +block-name+ '(streaminfo padding application seektable vorbis-comment cuesheet picture)) ;; In case of using sbcl defconstant will give an error
