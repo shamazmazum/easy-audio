@@ -19,7 +19,12 @@
 (defgeneric metadata-body-reader (stream data))
 
 (defclass subframe ()
-  ((wasted-bps :accessor subframe-wasted-bps)))
+  ((wasted-bps :accessor subframe-wasted-bps :initarg :wasted-bps)))
+
+(defclass subframe-constant (subframe)
+  ((constant-value :accessor subframe-constant-value)))
+
+(defgeneric subframe-body-reader (stream subframe frame))
 
 (defclass frame ()
   ((streaminfo :accessor frame-streaminfo :initarg :streaminfo)
@@ -30,7 +35,8 @@
    (sample-size :accessor frame-sample-size)
    (number :accessor frame-number)
    (crc-8 :accessor frame-crc-8)
-   (subframes :accessor frame-subframes)))
+   (subframes :accessor frame-subframes)
+   (crc-16 :accessor frame-crc-16)))
 
 (defparameter +block-name+ '(streaminfo padding application seektable vorbis-comment cuesheet picture)) ;; In case of using sbcl defconstant will give an error
 (defconstant +frame-sync-code+ 16382) ; 11111111111110

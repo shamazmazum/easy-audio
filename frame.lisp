@@ -68,26 +68,35 @@
 		       :reserved))) ; 111
     (setf (slot-value frame 'sample-size) (nth val sample-sizes))))
 
-(defun subframe-reader (stream)
+(defmethod subframe-body-reader (stream (subframe subframe-constant) frame)
+  (setf (subframe-constant-value subframe)
+	(read-to-integer stream (/ (frame-sample-size frame) 8))))
+
+(defun subframe-reader (stream frame)
   (let ((chunk (read-byte stream)))
     (if (/= (ldb (byte 1 0) chunk) 0) (error "Error reading subframe"))
     (let* ((type-num (ldb (byte 6 1) chunk))
-	   (type
+	   (type-args
 	    (cond
-	     ((= type-num 0) 'subframe-constant)         ; 000000
-	     ((= type-num 1) 'subframe-verbatim)         ; 000001
+	     ((= type-num 0) '(subframe-constant))         ; 000000
+	     ((= type-num 1) '(subframe-verbatim))         ; 000001
 	     ((and
 	       (>= type-num 8)
 	       (<= type-num 12))
-	      (list 'subframe-fixed (- type-num 8)))     ; 001000-001100
+	      (list 'subframe-fixed :order (- type-num 8)))     ; 001000-001100
 	     ((and
 	       (>= type-num 32)
 	       (<= type-num 63))
-	      (list 'subframe-lpc (1+ (- type-num 32)))) ; 100000-111111
+	      (list 'subframe-lpc :order (1+ (- type-num 32)))) ; 100000-111111
 	     (t (error "Error subframe type"))))
+	   (wasted-bits (ldb (byte 1 7) chunk)))
 
-	   ))) t)
-;	   (subframe (make-instance type)))
+      ;; FIXME: read wasted bits correctly
+      (if (= wasted-bits 1) (error "Do not know what to do with wasted bits"))
+      (let ((subframe (apply #'make-instance
+			     (append type-args (list :wasted-bps wasted-bits)))))
+	(subframe-body-reader stream subframe frame)
+	subframe))))
 
 (defun frame-reader (stream streaminfo)
   (let ((frame (make-instance 'frame :streaminfo streaminfo)))
@@ -97,13 +106,13 @@
       (setf (frame-blocking-strategy frame) (ldb (byte 1 #.(- 16 14 1 1)) chunk))
 
       (setq chunk (read-byte stream))
-      (setf (frame-block-size frame) (ldb (byte 4 0) chunk))
-      (setf (frame-sample-rate frame) (ldb (byte 4 4) chunk))
+      (setf (frame-block-size frame) (ldb (byte 4 4) chunk))
+      (setf (frame-sample-rate frame) (ldb (byte 4 0) chunk))
 
       (setq chunk (read-byte stream))
-      (setf (frame-channel-assignment frame) (ldb (byte 4 0) chunk))
-      (setf (frame-sample-size frame) (ldb (byte 3 4) chunk))
-      (if (/= 0 (ldb (byte 1 7) chunk)) (error "Error reading frame"))
+      (setf (frame-channel-assignment frame) (ldb (byte 4 4) chunk))
+      (setf (frame-sample-size frame) (ldb (byte 3 1) chunk))
+      (if (/= 0 (ldb (byte 1 0) chunk)) (error "Error reading frame"))
       ;; FIXME: How to read sample/frame number?
       (setq chunk (read-byte stream)) ; Do something
       (if (eql (frame-blocking-strategy frame) :fixed)
@@ -133,5 +142,6 @@
       (setf (frame-subframes frame)
 	    ; FIXME: maybe we should use channel-assignment?
 	    (loop for sf below (1+ (slot-value streaminfo 'channels-1)) collect
-		  (subframe-reader stream))))
+		  (subframe-reader stream frame))))
+    (setf (frame-crc-16 frame) (read-to-integer stream 2))
     frame))
