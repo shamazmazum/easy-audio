@@ -3,8 +3,8 @@
 (defun metadata-header-reader (stream header)
   (with-slots (last-block-p type length) header
 	      (let ((byte (read-byte stream))
-		    (last-pos (byte 1 0))
-		    (type-pos (byte 7 1)))
+		    (last-pos (byte 1 7))
+		    (type-pos (byte 7 0)))
 		(setf last-block-p (ldb last-pos byte))
 		(setf type (ldb type-pos byte)))
 	      (setf length (read-to-integer stream 3)))
