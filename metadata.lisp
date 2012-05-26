@@ -15,16 +15,14 @@
     (metadata-header-reader stream data)
     
     (handler-case
-     (let ((reader (get-reader (slot-value data 'type))))
-       (funcall reader stream data))
-     (error () ; Надо обрабатывать более специфичную ошибку из get-reader
-	    (let ((array (make-array (slot-value data 'length) :element-type 'u8)))
-	      (read-sequence array stream)
-	      (setf (slot-value data 'rawdata) array)))) ; Необязательно к заполнению. Для отладки
+     (let ((mtype (get-metadata-type (slot-value data 'type))))
+       (change-class data mtype))
+     (error () ())) ; Надо обрабатывать более специфичную ошибку из get-reader
+
+    (metadata-body-reader stream data)
     data))
 
-(defun streaminfo-reader (stream data)
-  (if (not (typep data 'streaminfo)) (change-class data 'streaminfo))
+(defmethod metadata-body-reader (stream (data streaminfo))
   (with-slots (minblocksize maxblocksize) data
 		(setf minblocksize (read-to-integer stream 2))
 		(setf maxblocksize (read-to-integer stream 2)))
@@ -48,3 +46,8 @@
     (read-sequence md5 stream)
     (setf (slot-value data 'md5) md5))
   data)
+
+(defmethod metadata-body-reader (stream (data metadata-header))
+  (let ((chunk (make-array (slot-value data 'length) :element-type 'u8)))
+    (read-sequence chunk stream)
+    (setf (slot-value data 'rawdata) chunk))) ; For debugging

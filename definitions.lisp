@@ -16,6 +16,11 @@
    totalsamples
    md5))
 
+(defgeneric metadata-body-reader (stream data))
+
+(defclass subframe ()
+  ((wasted-bps :accessor subframe-wasted-bps)))
+
 (defclass frame ()
   ((streaminfo :accessor frame-streaminfo :initarg :streaminfo)
    (blocking-strategy :accessor frame-blocking-strategy)
@@ -24,18 +29,17 @@
    (channel-assignment :accessor frame-channel-assignment)
    (sample-size :accessor frame-sample-size)
    (number :accessor frame-number)
-   crc-8))
+   (crc-8 :accessor frame-crc-8)
+   (subframes :accessor frame-subframes)))
 
 (defparameter +block-name+ '(streaminfo padding application seektable vorbis-comment cuesheet picture)) ;; In case of using sbcl defconstant will give an error
 (defconstant +frame-sync-code+ 16382) ; 11111111111110
 
 ;; Other stuff
 
-(defun get-reader (code)
+(defun get-metadata-type (code)
   (if (= code 127) (error "Code 127 is invalid"))
-  (let ((sym-name (intern (concatenate 'string (symbol-name (nth code +block-name+)) "-READER")
-			  (find-package :cl-flac)))) ;; FIXME :: it would be better if +block-name+ is assoc list
-    (symbol-function sym-name)))
+  (nth code +block-name+))
 
 (defun bytes-to-integer-big-endian (list)
   (let* ((mul (expt 2 (* 8 (1- (length list)))))
