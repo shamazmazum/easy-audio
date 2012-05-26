@@ -6,5 +6,6 @@
 	       (:file "definitions" :depends-on ("package"))
 	       (:file "metadata" :depends-on ("package"))
 	       (:file "frame" :depends-on ("package"))
+	       (:file "decode" :depends-on ("package"))
 	       (:file "flac" :depends-on ("package")))
   :depends-on (:babel))

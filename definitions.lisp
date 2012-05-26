@@ -24,7 +24,14 @@
 (defclass subframe-constant (subframe)
   ((constant-value :accessor subframe-constant-value)))
 
+(defclass subframe-lpc (subframe)
+  ((warm-up :accessor subframe-warm-up)
+   (predictor-coeff :accessor subframe-lpc-predictor-coeff)
+   (coeff-shift :accessor subframe-lpc-coeff-shift)
+   (residual :accessor subframe-residual)))
+
 (defgeneric subframe-body-reader (stream subframe frame))
+(defgeneric subframe-decode (subframe frame))
 
 (defclass frame ()
   ((streaminfo :accessor frame-streaminfo :initarg :streaminfo)
