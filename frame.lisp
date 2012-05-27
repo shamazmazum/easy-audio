@@ -128,12 +128,11 @@
       (setf (frame-channel-assignment frame) (ldb (byte 4 4) chunk))
       (setf (frame-sample-size frame) (ldb (byte 3 1) chunk))
       (if (/= 0 (ldb (byte 1 0) chunk)) (error "Error reading frame"))
-      ;; FIXME: How to read sample/frame number?
-      (setq chunk (read-byte stream)) ; Do something
-      (setf (frame-number frame) chunk)
-      (if (eql (frame-blocking-strategy frame) :fixed)
-	  nil nil) ; Do something
-      ;; /FIXME
+
+      (setf (frame-number frame)
+	    (if (eql (frame-blocking-strategy frame) :fixed)
+		(read-utf8-u32 stream)
+	      (error "Variable block size not implemented yet")))
 
       (with-slots (block-size) frame
 		 (setf block-size
