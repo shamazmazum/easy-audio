@@ -2,6 +2,7 @@
 
 (deftype u8 () '(unsigned-byte 8))
 
+;; Metadata
 (defclass metadata-header ()
   (last-block-p type length rawdata))
 
@@ -18,6 +19,21 @@
 
 (defgeneric metadata-body-reader (stream data))
 
+;; Residual
+
+(defstruct rice-partition rice-parameter encoded-residual)
+
+(defclass residual ()
+  ((order :accessor residual-order)
+   (partitions :accessor residual-partitions)
+   (chunk :accessor residual-chunk)))
+
+(defclass residual-rice1 (residual) ())
+(defclass residual-rice2 (residual) ())
+
+(defgeneric residual-body-reader (stream residual frame subframe))
+
+;; Subframes
 (defclass subframe ()
   ((wasted-bps :accessor subframe-wasted-bps :initarg :wasted-bps)))
 
@@ -27,15 +43,22 @@
 (defclass subframe-verbatim (subframe)
   ((buffer :accessor subframe-verbatim-buffer)))
 
-(defclass subframe-lpc (subframe)
-  ((warm-up :accessor subframe-warm-up)
-   (predictor-coeff :accessor subframe-lpc-predictor-coeff)
-   (coeff-shift :accessor subframe-lpc-coeff-shift)
-   (residual :accessor subframe-residual)))
+;(defclass subframe-lpc (subframe)
+;  ((warm-up :accessor subframe-warm-up)
+;   (order :accessor :subframe-order :initarg :order)
+;   (predictor-coeff :accessor subframe-lpc-predictor-coeff)
+;   (coeff-shift :accessor subframe-lpc-coeff-shift)
+;   (residual :accessor subframe-residual)))
+
+;(defclass subframe-fixed (subframe)
+;  ((warm-up :accessor subframe-warm-up)
+;   (order :accessor :subframe-order :initarg :order)
+;   (residual :accessor subframe-residual)))
 
 (defgeneric subframe-body-reader (stream subframe frame))
 (defgeneric subframe-decode (subframe frame))
 
+;; Frame
 (defclass frame ()
   ((streaminfo :accessor frame-streaminfo :initarg :streaminfo)
    (blocking-strategy :accessor frame-blocking-strategy)

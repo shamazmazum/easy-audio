@@ -115,18 +115,16 @@
 
 (defun frame-reader (stream streaminfo)
   (let ((frame (make-instance 'frame :streaminfo streaminfo)))
-    (let ((chunk (read-to-integer stream 2)))
-      (if (/= +frame-sync-code+ (ldb (byte 14 #.(- 16 14)) chunk)) (error "Frame sync code is not 11111111111110"))
-      (if (/= 0 (ldb (byte 1 #.(- 16 14 1)) chunk)) (error "Error reading frame"))
-      (setf (frame-blocking-strategy frame) (ldb (byte 1 #.(- 16 14 1 1)) chunk))
+    (let ((chunk (read-to-integer stream 4)))
+      (if (/= +frame-sync-code+ (ldb (byte 14 #.(- 32 14)) chunk)) (error "Frame sync code is not 11111111111110"))
+      (if (/= 0 (ldb (byte 1 #.(- 32 14 1)) chunk)) (error "Error reading frame"))
+      (setf (frame-blocking-strategy frame) (ldb (byte 1 #.(- 32 14 1 1)) chunk))
 
-      (setq chunk (read-byte stream))
-      (setf (frame-block-size frame) (ldb (byte 4 4) chunk))
-      (setf (frame-sample-rate frame) (ldb (byte 4 0) chunk))
+      (setf (frame-block-size frame) (ldb (byte 4 #.(- 32 14 1 1 4)) chunk))
+      (setf (frame-sample-rate frame) (ldb (byte 4 #.(- 32 14 1 1 4 4)) chunk))
 
-      (setq chunk (read-byte stream))
-      (setf (frame-channel-assignment frame) (ldb (byte 4 4) chunk))
-      (setf (frame-sample-size frame) (ldb (byte 3 1) chunk))
+      (setf (frame-channel-assignment frame) (ldb (byte 4 #.(- 8 4)) chunk))
+      (setf (frame-sample-size frame) (ldb (byte 3 #.(- 8 4 3)) chunk))
       (if (/= 0 (ldb (byte 1 0) chunk)) (error "Error reading frame"))
 
       (setf (frame-number frame)
