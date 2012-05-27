@@ -24,6 +24,9 @@
 (defclass subframe-constant (subframe)
   ((constant-value :accessor subframe-constant-value)))
 
+(defclass subframe-verbatim (subframe)
+  ((buffer :accessor subframe-verbatim-buffer)))
+
 (defclass subframe-lpc (subframe)
   ((warm-up :accessor subframe-warm-up)
    (predictor-coeff :accessor subframe-lpc-predictor-coeff)
