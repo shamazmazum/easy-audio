@@ -1,0 +1,4 @@
+A sketch for flac decoder.
+
+Currently it can read flac metadata and parse streaminfo metadata block (use #'flac::open-flac).
+Also it can read frames with #'flac::frame-reader
