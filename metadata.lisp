@@ -2,12 +2,11 @@
 
 (defun metadata-header-reader (stream header)
   (with-slots (last-block-p type length) header
-	      (let ((byte (read-byte stream))
-		    (last-pos (byte 1 7))
-		    (type-pos (byte 7 0)))
-		(setf last-block-p (ldb last-pos byte))
-		(setf type (ldb type-pos byte)))
-	      (setf length (read-to-integer stream 3)))
+	      (let ((chunk (read-to-integer stream 4)))
+		
+		(setf last-block-p (ldb (byte 1 #.(- 32 1)) chunk))
+		(setf type (ldb (byte 7 #.(- 32 1 7)) chunk))
+		(setf length (ldb (byte 24 #.(- 32 1 7 24)) chunk))))
   header)
 
 (defun metadata-reader (stream)
@@ -23,24 +22,24 @@
     data))
 
 (defmethod metadata-body-reader (stream (data streaminfo))
-  (with-slots (minblocksize maxblocksize) data
-		(setf minblocksize (read-to-integer stream 2))
-		(setf maxblocksize (read-to-integer stream 2)))
+  (let ((chunk (read-to-integer stream 18)))
+    (with-slots (minblocksize maxblocksize) data
+		(setf minblocksize (ldb (byte 16 #.(- 144 16)) chunk))
+		(setf maxblocksize (ldb (byte 16 #.(- 144 16 16)) chunk)))
 
   (with-slots (minframesize maxframesize) data
-		(setf minframesize (read-to-integer stream 3))
-		(setf maxframesize (read-to-integer stream 3)))
+		(setf minframesize (ldb (byte 16 #.(- 144 16 16 24)) chunk))
+		(setf maxframesize (ldb (byte 16 #.(- 144 16 16 24 24)) chunk)))
 
   (with-slots (samplerate channels-1 bitspersample-1 totalsamples) data
-  (let ((chunk (read-to-integer stream 8))
-	(sr-pos (byte 20 #.(- 64 20)))
-	(ch-pos (byte 3 #.(- 64 20 3)))
-	(bps-pos (byte 5 #.(- 64 20 3 5)))
-	(tot-pos (byte 36 #.(- 64 20 3 5 36))))
-    (setf samplerate (ldb sr-pos chunk)
-	  channels-1 (ldb ch-pos chunk)
-	  bitspersample-1 (ldb bps-pos chunk)
-	  totalsamples (ldb tot-pos chunk))))
+	      (let ((sr-pos (byte 20 #.(- 64 20)))
+		    (ch-pos (byte 3 #.(- 64 20 3)))
+		    (bps-pos (byte 5 #.(- 64 20 3 5)))
+		    (tot-pos (byte 36 #.(- 64 20 3 5 36))))
+		(setf samplerate (ldb sr-pos chunk)
+		      channels-1 (ldb ch-pos chunk)
+		      bitspersample-1 (ldb bps-pos chunk)
+		      totalsamples (ldb tot-pos chunk)))))
   
   (let ((md5 (make-array 16 :element-type 'u8)))
     (read-sequence md5 stream)

@@ -57,14 +57,13 @@
   (if (= code 127) (error "Code 127 is invalid"))
   (nth code +block-name+))
 
-(defun bytes-to-integer-big-endian (list)
-  (let* ((mul (expt 2 (* 8 (1- (length list)))))
-	 (position-value (* mul (car list))))
-    (if (cdr list)
-	(+ position-value (bytes-to-integer-big-endian (cdr list)))
-      position-value)))
+(defun bytes-to-integer-big-endian (array)
+  (declare (type (simple-array u8) array))
+  (loop for i below (length array) sum
+	(let ((mul (expt 2 (* 8 (- (length array) 1 i)))))
+	 (* mul (aref array i)))))
 
 (defun read-to-integer (stream num &optional (func #'bytes-to-integer-big-endian))
-  (let ((lst (make-list num)))
-    (read-sequence lst stream)
-    (funcall func lst)))
+  (let ((buffer (make-array num :element-type 'u8)))
+    (read-sequence buffer stream)
+    (funcall func buffer)))
