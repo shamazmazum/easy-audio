@@ -89,7 +89,7 @@
 
 (defun subframe-reader (stream frame)
   (let ((chunk (read-byte stream)))
-    (if (/= (ldb (byte 1 0) chunk) 0) (error "Error reading subframe"))
+    (if (/= (ldb (byte 1 7) chunk) 0) (error "Error reading subframe"))
     (let* ((type-num (ldb (byte 6 1) chunk))
 	   (type-args
 	    (cond
@@ -104,7 +104,7 @@
 	       (<= type-num 63))
 	      (list 'subframe-lpc :order (1+ (- type-num 32)))) ; 100000-111111
 	     (t (error "Error subframe type"))))
-	   (wasted-bits (ldb (byte 1 7) chunk)))
+	   (wasted-bits (ldb (byte 1 0) chunk)))
 
       ;; FIXME: read wasted bits correctly
       (if (= wasted-bits 1) (error "Do not know what to do with wasted bits"))
@@ -130,6 +130,7 @@
       (if (/= 0 (ldb (byte 1 0) chunk)) (error "Error reading frame"))
       ;; FIXME: How to read sample/frame number?
       (setq chunk (read-byte stream)) ; Do something
+      (setf (frame-number frame) chunk)
       (if (eql (frame-blocking-strategy frame) :fixed)
 	  nil nil) ; Do something
       ;; /FIXME
