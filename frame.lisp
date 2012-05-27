@@ -69,8 +69,23 @@
     (setf (slot-value frame 'sample-size) (nth val sample-sizes))))
 
 (defmethod subframe-body-reader (stream (subframe subframe-constant) frame)
-  (setf (subframe-constant-value subframe)
-	(read-to-integer stream (/ (frame-sample-size frame) 8))))
+  (with-slots (sample-size) frame
+	      (if (/= 0 (mod sample-size 8))
+		  (error "~D bits sample size is not implemented"))
+	      (setf (subframe-constant-value subframe)
+		    (read-to-integer stream (/ sample-size 8)))))
+
+(defmethod subframe-body-reader (stream (subframe subframe-verbatim) frame)
+  (with-slots (sample-size block-size) frame
+	      (if (/= 0 (mod sample-size 8))
+		  (error "~D bits sample size is not implemented"))
+	      (let ((chunk (make-array (/ (* block-size sample-size) 8) :element-type 'u8))
+		    (buffer (make-array block-size
+					:element-type (list 'unsigned-byte sample-size))))
+
+		(read-sequence chunk stream)
+		(setf (subframe-verbatim-buffer subframe)
+		      (octets-to-n-bit-bytes chunk buffer sample-size)))))
 
 (defun subframe-reader (stream frame)
   (let ((chunk (read-byte stream)))

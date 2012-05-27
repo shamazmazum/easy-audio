@@ -67,3 +67,20 @@
   (let ((buffer (make-array num :element-type 'u8)))
     (read-sequence buffer stream)
     (funcall func buffer)))
+
+(defun octets-to-n-bit-bytes (array new-array n)
+  "n mod 8 must be 0
+   big endian
+   definitely a bottleneck"
+  (declare
+   (type (simple-array u8) array)
+   (type integer n))
+  (let ((scale (/ n 8)))
+    
+    (loop for i below (length new-array) do
+	  (let ((start (* i scale)))
+	    (setf (aref new-array i)
+		  (loop for j from start to (+ start scale -1) sum
+			(* (expt 2 (* 8 (+ start scale (- 0 1 j))))
+			   (aref array j))))))
+    new-array))
