@@ -68,29 +68,19 @@
 		       :reserved))) ; 111
     (setf (slot-value frame 'sample-size) (nth val sample-sizes))))
 
-(defmethod subframe-body-reader (stream (subframe subframe-constant) frame)
+(defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
   (with-slots (sample-size) frame
-	      (if (/= 0 (mod sample-size 8))
-		  (error "~D bits sample size is not implemented"))
 	      (setf (subframe-constant-value subframe)
-		    (read-to-integer stream (/ sample-size 8)))))
+		    (funcall bit-reader sample-size))))
 
-(defmethod subframe-body-reader (stream (subframe subframe-verbatim) frame)
+(defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
   (with-slots (sample-size block-size) frame
-	      (if (/= 0 (mod sample-size 8))
-		  (error "~D bits sample size is not implemented"))
-	      (let ((chunk (make-array (/ (* block-size sample-size) 8) :element-type 'u8))
-		    (buffer (make-array block-size
-					:element-type (list 'unsigned-byte sample-size))))
+	      (setf (subframe-verbatim-buffer subframe)
+		    (funcall bit-reader (* sample-size block-size)))))
 
-		(read-sequence chunk stream)
-		(setf (subframe-verbatim-buffer subframe)
-		      (octets-to-n-bit-bytes chunk buffer sample-size)))))
-
-(defun subframe-reader (stream frame)
-  (let ((chunk (read-byte stream)))
-    (if (/= (ldb (byte 1 7) chunk) 0) (error "Error reading subframe"))
-    (let* ((type-num (ldb (byte 6 1) chunk))
+(defun subframe-reader (bit-reader frame)
+  (if (/= (funcall bit-reader 1) 0) (error "Error reading subframe"))
+    (let* ((type-num (funcall bit-reader 6))
 	   (type-args
 	    (cond
 	     ((= type-num 0) '(subframe-constant))         ; 000000
@@ -104,14 +94,14 @@
 	       (<= type-num 63))
 	      (list 'subframe-lpc :order (1+ (- type-num 32)))) ; 100000-111111
 	     (t (error "Error subframe type"))))
-	   (wasted-bits (ldb (byte 1 0) chunk)))
+	   (wasted-bits (funcall bit-reader 1)))
 
       ;; FIXME: read wasted bits correctly
       (if (= wasted-bits 1) (error "Do not know what to do with wasted bits"))
       (let ((subframe (apply #'make-instance
 			     (append type-args (list :wasted-bps wasted-bits)))))
-	(subframe-body-reader stream subframe frame)
-	subframe))))
+	(subframe-body-reader bit-reader subframe frame)
+	subframe)))
 
 (defun frame-reader (stream streaminfo)
   (let ((frame (make-instance 'frame :streaminfo streaminfo)))
@@ -152,9 +142,10 @@
 			 (* 10 (read-to-integer stream 2)))
 			(t sample-rate))))
       (setf (frame-crc-8 frame) (read-byte stream))
-      (setf (frame-subframes frame)
-	    ; FIXME: maybe we should use channel-assignment?
-	    (loop for sf below (1+ (slot-value streaminfo 'channels-1)) collect
-		  (subframe-reader stream frame))))
+      (let ((bit-reader (make-bit-reader stream)))
+	(setf (frame-subframes frame)
+	      ;; FIXME: maybe we should use channel-assignment?
+	      (loop for sf below (1+ (slot-value streaminfo 'channels-1)) collect
+		    (subframe-reader bit-reader frame)))))
     (setf (frame-crc-16 frame) (read-to-integer stream 2))
     frame))

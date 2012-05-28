@@ -55,7 +55,7 @@
 ;   (order :accessor :subframe-order :initarg :order)
 ;   (residual :accessor subframe-residual)))
 
-(defgeneric subframe-body-reader (stream subframe frame))
+(defgeneric subframe-body-reader (bit-reader subframe frame))
 (defgeneric subframe-decode (subframe frame))
 
 ;; Frame
