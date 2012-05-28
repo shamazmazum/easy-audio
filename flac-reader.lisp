@@ -8,7 +8,7 @@
 
 (defun read-to-integer (stream num &optional (func #'bytes-to-integer-big-endian))
   (let ((buffer (make-array num :element-type 'u8)))
-    (read-sequence buffer stream)
+    (if (/= (read-sequence buffer stream) num) (error "Unexpected end of stream"))
     (funcall func buffer)))
 
 (defun octets-to-n-bit-bytes (array new-array n)
@@ -73,3 +73,51 @@
 	  (setq v (ash v 6))
 	  (setq v (logior v (logand x #x3F))))
     v))
+
+(defun read-n-bits (stream n)
+  "Reads n bits from stream ands returns these bits and remainder"
+  ;; Calculate bytes we need to read and size of a remainder
+  (multiple-value-bind (bytes rest) (ceiling (/ n 8))
+    (setq rest (abs (* rest 8)))
+    ;; Read data and store the remainder
+    (let ((buffer (read-to-integer stream bytes)))
+      ;; Return the data, the remainder, size of readed data
+      ;; and t, if there is the remainder, nil otherwise
+      (if (/= 0 rest)
+	  (values (ldb (byte n rest) buffer)
+		  (ldb (byte rest 0) buffer)
+		  rest
+		  t)
+	(values (ldb (byte n rest) buffer)
+		0
+		0
+		nil)))))
+
+
+;; The determined Real Programmer can write FORTRAN programs in any language. 
+(defun make-bit-reader (stream)
+  "For cases if block of data is not byte aligned.
+  Returns closure around stream - bit reader function.
+  Big endian"
+  (let (filled chunk size res)
+    (flet ((bit-reader% (n)
+			;; Currently there is no remainder
+			(if (not filled)
+			    (multiple-value-setq (res chunk size filled)
+			      (read-n-bits stream n))
+			  ;; There is a remainder
+			  (if (<= n size)
+			      ;; Remainder is not lesser than we need
+			      (let ((oldchunk chunk))
+				(if (= n size) (setq filled nil))
+				(setq size (- size n))
+				(setq chunk (ldb (byte size 0) oldchunk)
+				      res (ldb (byte n size) oldchunk)))
+			    ;; Remainder is lesser. Read from the stream
+			    (progn
+			      (setq res chunk)
+			      (let (lowres (oldsize size))
+				(multiple-value-setq (lowres chunk size filled)
+				  (read-n-bits stream (- n size)))
+				(+ lowres (ash res (- n oldsize)))))))))
+      #'bit-reader%)))
