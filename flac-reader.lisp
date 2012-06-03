@@ -11,22 +11,17 @@
     (if (/= (read-sequence buffer stream) num) (error "Unexpected end of stream"))
     (funcall func buffer)))
 
-(defun octets-to-n-bit-bytes (array new-array n)
-  "n mod 8 must be 0
+(defun integer-to-array (val array size)
+  "Converts value to array of integers of size bits each
    big endian
    definitely a bottleneck"
   (declare
    (type (simple-array u8) array)
-   (type integer n))
-  (let ((scale (/ n 8)))
-    
-    (loop for i below (length new-array) do
-	  (let ((start (* i scale)))
-	    (setf (aref new-array i)
-		  (loop for j from start to (+ start scale -1) sum
-			(* (expt 2 (* 8 (+ start scale (- 0 1 j))))
-			   (aref array j))))))
-    new-array))
+   (type integer val size))
+  (let ((len (length array)))
+    (loop for i below len do
+	  (setf (aref array i) (ldb (byte size (* size (- len 1 i))) val))))
+  array)
 
 (defun read-utf8-u32 (stream)
   "for reading frame number
@@ -121,3 +116,8 @@
 				  (read-n-bits stream (- n size)))
 				(+ lowres (ash res (- n oldsize)))))))))
       #'bit-reader%)))
+
+(defun unsigned-to-signed (byte len)
+  ;; Slow implementation
+  (let ((sign (ldb (byte 1 (1- len)) byte)))
+    (if (= sign 0) byte (- 0 1 (logand (lognot byte) (1- (ash 1 len)))))))

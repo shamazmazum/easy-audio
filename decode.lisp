@@ -12,8 +12,5 @@
 	      (let ((decoded-buf
 		     (make-array block-size
 				 :element-type (list 'unsigned-byte sample-size))))
-		(loop for i below block-size do
-		      (setf (aref decoded-buf i)
-			    (ldb (byte sample-size (- block-size (* (1+ i) sample-size)))
-				 (subframe-verbatim-buffer subframe))))
-		decoded-buf)))
+
+		(integer-to-array (subframe-verbatim-buffer subframe) decoded-buf sample-size))))
