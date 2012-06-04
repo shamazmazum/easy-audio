@@ -78,6 +78,46 @@
 		     (t (error "Invalid residual coding method"))))))
     (residual-body-reader bit-reader residual subframe frame)))
 
+;; Maybe there is no need in these methods. Rice partitions 1 and 2 are almost the same
+;; Currently they are just wrappers around one function
+(defmethod residual-body-reader (bit-reader (residual residual-rice1) subframe frame)
+  (residual-body-reader% bit-reader residual subframe frame
+			 :param-len 4
+			 :esc-code #b1111))
+
+(defmethod residual-body-reader (bit-reader (residual residual-rice2) subframe frame)
+  (residual-body-reader% bit-reader residual subframe frame
+			 :param-len 5
+			 :esc-code #b11111))
+
+(defun residual-body-reader% (bit-reader residual subframe frame &key param-len esc-code)
+  (let* ((order (funcall bit-reader 4))
+	 (total-part (expt 2 order)))
+    (setf (residual-order residual) order)
+    (loop for i below total-part do
+	  (let ((partition (make-rice-partition :number i))
+		(samples-num
+		 (cond
+		  ;; FIXME:: Check following lines
+		  ((zerop i) (- (/ (frame-block-size frame) total-part) (subframe-order subframe)))
+		  (t (/ (frame-block-size frame) total-part))))
+		(rice-parameter (funcall bit-reader param-len)))
+	    
+	    (setf (rice-partition-rice-parameter partition) rice-parameter)
+	    (cond
+	     ((< rice-parameter esc-code) (error "residual-body-reader: This is stub function. Do not know how to read residual yet"))
+	     (t
+	      ;; FIXME: read unencoded signed rice
+	      ;; Do we need to store bps?
+	      ;; Read bps:
+	      (setq rice-parameter (funcall bit-reader 5))
+	      (let ((residual-buf (make-array samples-num :element-type (list 'signed-byte rice-parameter)))
+		    (chunk (funcall bit-reader (* rice-parameter samples-num))))
+		(integer-to-array chunk residual-buf :signed t)
+		(setf (rice-partition-residual partition) residual-buf))))
+	    (push partition (subframe-residual subframe))))))
+
+;; Subframe reader
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
   (with-slots (sample-size) frame
 	      (setf (subframe-constant-value subframe)
