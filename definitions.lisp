@@ -17,6 +17,8 @@
    totalsamples
    md5))
 
+(defclass padding (metadata-header) ())
+
 (defgeneric metadata-body-reader (stream data))
 
 ;; Residual

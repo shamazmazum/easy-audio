@@ -21,6 +21,13 @@
     (metadata-body-reader stream data)
     data))
 
+(defmethod metadata-body-reader (stream (data padding))
+  ;; Read length bytes
+  (call-next-method)
+  ;; Sanity check
+  (if (find-if-not #'zerop (slot-value data 'rawdata))
+      (error "Padding bytes is not zero")))
+
 (defmethod metadata-body-reader (stream (data streaminfo))
   (let ((chunk (read-to-integer stream 18)))
     (with-slots (minblocksize maxblocksize) data
