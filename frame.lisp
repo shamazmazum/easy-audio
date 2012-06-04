@@ -113,7 +113,7 @@
 	      (setq rice-parameter (funcall bit-reader 5))
 	      (let ((residual-buf (make-array samples-num :element-type (list 'signed-byte rice-parameter)))
 		    (chunk (funcall bit-reader (* rice-parameter samples-num))))
-		(integer-to-array chunk residual-buf :signed t)
+		(integer-to-array chunk residual-buf :signed t) ; FIXME: read_raw_int32 in original library
 		(setf (rice-partition-residual partition) residual-buf))))
 	    (push partition (subframe-residual subframe))))))
 
