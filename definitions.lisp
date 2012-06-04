@@ -21,17 +21,16 @@
 
 ;; Residual
 
-(defstruct rice-partition rice-parameter encoded-residual)
+(defstruct rice-partition number rice-parameter residual)
 
 (defclass residual ()
   ((order :accessor residual-order)
-   (partitions :accessor residual-partitions)
-   (chunk :accessor residual-chunk)))
+   (partitions :initform nil :accessor residual-partitions)))
 
 (defclass residual-rice1 (residual) ())
 (defclass residual-rice2 (residual) ())
 
-(defgeneric residual-body-reader (stream residual frame subframe))
+(defgeneric residual-body-reader (bit-reader residual subframe frame))
 
 ;; Subframes
 (defclass subframe ()

@@ -68,6 +68,16 @@
 		       :reserved))) ; 111
     (setf (slot-value frame 'sample-size) (nth val sample-sizes))))
 
+;; Residual reader
+(defun residual-reader (bit-reader subframe frame)
+  (let* ((coding-method (funcall bit-reader 2))
+	 (residual (make-instance
+		    (cond
+		     ((= coding-method 0) 'residual-rice1) ; 00
+		     ((= coding-method 1) 'residual-rice2) ; 01
+		     (t (error "Invalid residual coding method"))))))
+    (residual-body-reader bit-reader residual subframe frame)))
+
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
   (with-slots (sample-size) frame
 	      (setf (subframe-constant-value subframe)
