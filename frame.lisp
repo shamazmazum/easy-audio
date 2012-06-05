@@ -118,6 +118,17 @@
 	    (push partition (subframe-residual subframe))))))
 
 ;; Subframe reader
+(defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
+  (let* ((bps (frame-sample-size frame))
+	 (samples (subframe-order subframe))
+	 (warm-up
+	  (make-array samples
+		     :element-type (list 'signed-byte bps)))
+	 (chunk (funcall bit-reader (* samples bps))))
+    (integer-to-array chunk warm-up bps :signed t))
+  (setf (subframe-residual subframe)
+	(residual-reader bit-reader subframe frame)))
+
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
   (with-slots (sample-size) frame
 	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC

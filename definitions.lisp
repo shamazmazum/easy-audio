@@ -46,15 +46,15 @@
 
 ;(defclass subframe-lpc (subframe)
 ;  ((warm-up :accessor subframe-warm-up)
-;   (order :accessor :subframe-order :initarg :order)
+;   (order :accessor subframe-order :initarg :order)
 ;   (predictor-coeff :accessor subframe-lpc-predictor-coeff)
 ;   (coeff-shift :accessor subframe-lpc-coeff-shift)
 ;   (residual :accessor subframe-residual)))
 
-;(defclass subframe-fixed (subframe)
-;  ((warm-up :accessor subframe-warm-up)
-;   (order :accessor :subframe-order :initarg :order)
-;   (residual :accessor subframe-residual)))
+(defclass subframe-fixed (subframe)
+  ((warm-up :accessor subframe-warm-up)
+   (order :accessor subframe-order :initarg :order)
+   (residual :accessor subframe-residual)))
 
 (defgeneric subframe-body-reader (bit-reader subframe frame))
 (defgeneric subframe-decode (subframe frame))
