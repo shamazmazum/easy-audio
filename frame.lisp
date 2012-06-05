@@ -113,20 +113,28 @@
 	      (setq rice-parameter (funcall bit-reader 5))
 	      (let ((residual-buf (make-array samples-num :element-type (list 'signed-byte rice-parameter)))
 		    (chunk (funcall bit-reader (* rice-parameter samples-num))))
-		(integer-to-array chunk residual-buf :signed t) ; FIXME: read_raw_int32 in original library
+		(integer-to-array chunk residual-buf rice-parameter :signed t) ; FIXME: read_raw_int32 in original library
 		(setf (rice-partition-residual partition) residual-buf))))
 	    (push partition (subframe-residual subframe))))))
 
 ;; Subframe reader
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
   (with-slots (sample-size) frame
-	      (setf (subframe-constant-value subframe)
-		    (funcall bit-reader sample-size))))
+	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
+		    (unsigned-to-signed
+		     (funcall bit-reader sample-size)
+		     sample-size))))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
   (with-slots (sample-size block-size) frame
-	      (setf (subframe-verbatim-buffer subframe)
-		    (funcall bit-reader (* sample-size block-size)))))
+	      (let ((buf
+		     (make-array block-size
+				 ;; FIXME: value is signed in original libFLAC
+				 :element-type (list 'signed-byte sample-size)))
+		    (chunk (funcall bit-reader (* sample-size block-size))))
+
+		(integer-to-array chunk buf sample-size :signed t)
+		(setf (subframe-verbatim-buffer subframe) buf))))
 
 (defun subframe-reader (bit-reader frame)
   (if (/= (funcall bit-reader 1) 0) (error "Error reading subframe"))

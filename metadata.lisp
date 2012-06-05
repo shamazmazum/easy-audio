@@ -22,6 +22,7 @@
     data))
 
 (defmethod metadata-body-reader (stream (data padding))
+  (declare (ignore stream))
   ;; Read length bytes
   (call-next-method)
   ;; Sanity check
