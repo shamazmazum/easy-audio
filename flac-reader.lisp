@@ -92,14 +92,13 @@
 		0
 		nil)))))
 
-
-;; The determined Real Programmer can write FORTRAN programs in any language. 
 (defun make-bit-reader (stream)
   "For cases if block of data is not byte aligned.
   Returns closure around stream - bit reader function.
   Big endian"
   (let (filled chunk size res)
     (flet ((bit-reader% (n)
+			"Returns readed bit and remainder to byte alignment"
 			;; Currently there is no remainder
 			(if (not filled)
 			    (multiple-value-setq (res chunk size filled)
@@ -118,7 +117,8 @@
 			      (let (lowres (oldsize size))
 				(multiple-value-setq (lowres chunk size filled)
 				  (read-n-bits stream (- n size)))
-				(+ lowres (ash res (- n oldsize)))))))))
+				(setq res (+ lowres (ash res (- n oldsize))))))))
+			(values res chunk)))
       #'bit-reader%)))
 
 (defun unsigned-to-signed (byte len)

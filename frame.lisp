@@ -216,11 +216,16 @@
 			((eql sample-rate :get-16-bit-from-end-tenshz)
 			 (* 10 (read-to-integer stream 2)))
 			(t sample-rate))))
-      (setf (frame-crc-8 frame) (read-byte stream))
-      (let ((bit-reader (make-bit-reader stream)))
-	(setf (frame-subframes frame)
-	      ;; FIXME: maybe we should use channel-assignment?
-	      (loop for sf below (1+ (slot-value streaminfo 'channels-1)) collect
-		    (subframe-reader bit-reader frame)))))
+      (setf (frame-crc-8 frame) (read-byte stream)))
+
+    (let ((bit-reader (make-bit-reader stream)))
+      (setf (frame-subframes frame)
+	    ;; FIXME: maybe we should use channel-assignment?
+	    (loop for sf below (1+ (slot-value streaminfo 'channels-1)) collect
+		  (subframe-reader bit-reader frame)))
+      ;; Check zero padding
+      (multiple-value-bind (bit remainder) (funcall bit-reader 0)
+	(declare (ignore bit))
+	(if (/= remainder 0) (error "Padding to byte-alignment is not zero"))))
     (setf (frame-crc-16 frame) (read-to-integer stream 2))
     frame))
