@@ -11,6 +11,7 @@
   (subframe-verbatim-buffer subframe))
 
 (defmethod subframe-decode ((subframe subframe-fixed) frame)
+  ;; Decodes subframe destructively modifiying it
   (declare (ignore frame))
   (with-slots (order out-buf) subframe
 	      (let ((order (subframe-order subframe))
