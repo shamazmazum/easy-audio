@@ -105,7 +105,11 @@
 	    
 	    (setf (rice-partition-rice-parameter partition) rice-parameter)
 	    (cond
-	     ((< rice-parameter esc-code) (error "residual-body-reader: This is stub function. Do not know how to read residual yet"))
+	     ((< rice-parameter esc-code)
+	      (let ((residual-buf (make-array samples-num)))
+		(loop for sample below samples-num do
+		      (setf (svref residual-buf sample) (read-rice-signed bit-reader rice-parameter)))
+		(setf (rice-partition-residual partition) residual-buf)))
 	     (t
 	      ;; FIXME: read unencoded signed rice
 	      ;; Do we need to store bps?
@@ -115,7 +119,8 @@
 		    (chunk (funcall bit-reader (* rice-parameter samples-num))))
 		(integer-to-array chunk residual-buf rice-parameter :signed t) ; FIXME: read_raw_int32 in original library
 		(setf (rice-partition-residual partition) residual-buf))))
-	    (push partition (subframe-residual subframe))))))
+	    (push partition (residual-partitions residual)))))
+  residual)
 
 ;; Subframe reader
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
@@ -125,7 +130,8 @@
 	  (make-array samples
 		     :element-type (list 'signed-byte bps)))
 	 (chunk (funcall bit-reader (* samples bps))))
-    (integer-to-array chunk warm-up bps :signed t))
+    (integer-to-array chunk warm-up bps :signed t)
+    (setf (subframe-warm-up subframe) warm-up))
   (setf (subframe-residual subframe)
 	(residual-reader bit-reader subframe frame)))
 

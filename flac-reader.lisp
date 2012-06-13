@@ -129,6 +129,17 @@
 (defun read-unary-coded-integer (bitreader &optional (one 0))
   "Read unary coded integer from bitreader
    By default 0 bit is considered as 1, 1 bit is terminator"
+  (declare (type (integer 0 1) one))
   (loop for bit = (funcall bitreader 1)
 	while (= bit one)
 	sum 1))
+
+(defun read-rice-signed (bitreader param)
+  (declare (type integer param))
+  (let* ((unary (read-unary-coded-integer bitreader))
+	 (binary (funcall bitreader param))
+	 (val (logior (ash unary param) binary)))
+    
+    (if (= (ldb (byte 1 0) val) 1)
+	(- 0 (ash val -1) 1)
+      (ash val -1))))
