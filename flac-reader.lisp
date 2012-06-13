@@ -16,7 +16,7 @@
    big endian
    definitely a bottleneck"
   (declare
-   (type (simple-array u8) array)
+   (type simple-array array)
    (type integer val size))
   (let ((len (length array)))
     (loop for i below len do
