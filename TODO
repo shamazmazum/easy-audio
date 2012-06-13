@@ -5,3 +5,5 @@ small-sized values).
 
 2. (?) Do not pass whole objects such as frame or subframe if you need only
  one value from them.
+
+3. Do not pass too many arguments to residual-reader

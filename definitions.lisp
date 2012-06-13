@@ -39,9 +39,8 @@
 ;   (residual :accessor subframe-residual)))
 
 (defclass subframe-fixed (subframe)
-  ((warm-up :accessor subframe-warm-up)
-   (order :accessor subframe-order :initarg :order)
-   (residual :accessor subframe-residual)))
+  ((out-buf :accessor subframe-out-buf)
+   (order :accessor subframe-order :initarg :order)))
 
 (defgeneric subframe-body-reader (bit-reader subframe frame))
 (defgeneric subframe-decode (subframe frame))

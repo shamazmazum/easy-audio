@@ -69,25 +69,24 @@
     (setf (slot-value frame 'sample-size) (nth val sample-sizes))))
 
 ;; Residual reader
-(defun residual-reader (bit-reader subframe frame)
+(defun residual-reader (bit-reader subframe frame out offset)
   (let ((coding-method (funcall bit-reader 2)))
     (cond
      ((= coding-method 0) ; 00
-      (residual-body-reader bit-reader subframe frame
+      (residual-body-reader bit-reader subframe frame out offset
 			    :param-len 4
 			    :esc-code #b1111))
      ((= coding-method 1) ; 01
-      (residual-body-reader bit-reader subframe frame
+      (residual-body-reader bit-reader subframe frame out offset
 			    :param-len 5
 			    :esc-code #b11111))
      (t (error "Invalid residual coding method")))))
 
-(defun residual-body-reader (bit-reader subframe frame &key param-len esc-code)
+(defun residual-body-reader (bit-reader subframe frame out offset &key param-len esc-code)
   (let* ((order (funcall bit-reader 4))
 	 (total-part (expt 2 order))
-	 (residual-buf (make-array (- (frame-block-size frame)
-				      (subframe-order subframe))))
-	 (sample-idx 0))
+	 (residual-buf out)
+	 (sample-idx offset))
 
     (loop for i below total-part do
 	  (let ((samples-num
@@ -120,15 +119,18 @@
 ;; Subframe reader
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
   (let* ((bps (frame-sample-size frame))
-	 (samples (subframe-order subframe))
+	 (warm-up-samples (subframe-order subframe))
+	 (out-buf (make-array (frame-block-size frame)
+			      :element-type (list 'signed-byte bps)))
 	 (warm-up
-	  (make-array samples
-		     :element-type (list 'signed-byte bps)))
-	 (chunk (funcall bit-reader (* samples bps))))
-    (integer-to-array chunk warm-up bps :signed t)
-    (setf (subframe-warm-up subframe) warm-up))
-  (setf (subframe-residual subframe)
-	(residual-reader bit-reader subframe frame)))
+	  (make-array warm-up-samples
+		      :displaced-to out-buf)))
+    
+    (integer-to-array (funcall bit-reader (* warm-up-samples bps))
+		      warm-up bps :signed t)  ; Will be replaced with faster reader later
+
+    (residual-reader bit-reader subframe frame out-buf (subframe-order subframe))
+    (setf (subframe-out-buf subframe) out-buf)))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
   (with-slots (sample-size) frame
