@@ -125,3 +125,10 @@
   ;; Slow implementation
   (let ((sign (ldb (byte 1 (1- len)) byte)))
     (if (= sign 0) byte (- 0 1 (logand (lognot byte) (1- (ash 1 len)))))))
+
+(defun read-unary-coded-integer (bitreader &optional (one 0))
+  "Read unary coded integer from bitreader
+   By default 0 bit is considered as 1, 1 bit is terminator"
+  (loop for bit = (funcall bitreader 1)
+	while (= bit one)
+	sum 1))
