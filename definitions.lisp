@@ -21,19 +21,6 @@
 
 (defgeneric metadata-body-reader (stream data))
 
-;; Residual
-
-(defstruct rice-partition number rice-parameter residual)
-
-(defclass residual ()
-  ((order :accessor residual-order)
-   (partitions :initform nil :accessor residual-partitions)))
-
-(defclass residual-rice1 (residual) ())
-(defclass residual-rice2 (residual) ())
-
-(defgeneric residual-body-reader (bit-reader residual subframe frame))
-
 ;; Subframes
 (defclass subframe ()
   ((wasted-bps :accessor subframe-wasted-bps :initarg :wasted-bps)))

@@ -70,57 +70,52 @@
 
 ;; Residual reader
 (defun residual-reader (bit-reader subframe frame)
-  (let* ((coding-method (funcall bit-reader 2))
-	 (residual (make-instance
-		    (cond
-		     ((= coding-method 0) 'residual-rice1) ; 00
-		     ((= coding-method 1) 'residual-rice2) ; 01
-		     (t (error "Invalid residual coding method"))))))
-    (residual-body-reader bit-reader residual subframe frame)))
+  (let ((coding-method (funcall bit-reader 2)))
+    (cond
+     ((= coding-method 0) ; 00
+      (residual-body-reader bit-reader subframe frame
+			    :param-len 4
+			    :esc-code #b1111))
+     ((= coding-method 1) ; 01
+      (residual-body-reader bit-reader subframe frame
+			    :param-len 5
+			    :esc-code #b11111))
+     (t (error "Invalid residual coding method")))))
 
-;; Maybe there is no need in these methods. Rice partitions 1 and 2 are almost the same
-;; Currently they are just wrappers around one function
-(defmethod residual-body-reader (bit-reader (residual residual-rice1) subframe frame)
-  (residual-body-reader% bit-reader residual subframe frame
-			 :param-len 4
-			 :esc-code #b1111))
-
-(defmethod residual-body-reader (bit-reader (residual residual-rice2) subframe frame)
-  (residual-body-reader% bit-reader residual subframe frame
-			 :param-len 5
-			 :esc-code #b11111))
-
-(defun residual-body-reader% (bit-reader residual subframe frame &key param-len esc-code)
+(defun residual-body-reader (bit-reader subframe frame &key param-len esc-code)
   (let* ((order (funcall bit-reader 4))
-	 (total-part (expt 2 order)))
-    (setf (residual-order residual) order)
+	 (total-part (expt 2 order))
+	 (residual-buf (make-array (- (frame-block-size frame)
+				      (subframe-order subframe))))
+	 (sample-idx 0))
+
     (loop for i below total-part do
-	  (let ((partition (make-rice-partition :number i))
-		(samples-num
+	  (let ((samples-num
 		 (cond
 		  ;; FIXME:: Check following lines
 		  ((zerop i) (- (/ (frame-block-size frame) total-part) (subframe-order subframe)))
 		  (t (/ (frame-block-size frame) total-part))))
-		(rice-parameter (funcall bit-reader param-len)))
+		 (rice-parameter (funcall bit-reader param-len)))
 	    
-	    (setf (rice-partition-rice-parameter partition) rice-parameter)
 	    (cond
-	     ((< rice-parameter esc-code)
-	      (let ((residual-buf (make-array samples-num)))
+	       ((< rice-parameter esc-code)
 		(loop for sample below samples-num do
-		      (setf (svref residual-buf sample) (read-rice-signed bit-reader rice-parameter)))
-		(setf (rice-partition-residual partition) residual-buf)))
-	     (t
-	      ;; FIXME: read unencoded signed rice
-	      ;; Do we need to store bps?
-	      ;; Read bps:
-	      (setq rice-parameter (funcall bit-reader 5))
-	      (let ((residual-buf (make-array samples-num :element-type (list 'signed-byte rice-parameter)))
-		    (chunk (funcall bit-reader (* rice-parameter samples-num))))
-		(integer-to-array chunk residual-buf rice-parameter :signed t) ; FIXME: read_raw_int32 in original library
-		(setf (rice-partition-residual partition) residual-buf))))
-	    (push partition (residual-partitions residual)))))
-  residual)
+		      (setf (aref residual-buf sample-idx)
+			    (read-rice-signed bit-reader rice-parameter))
+		      (incf sample-idx)))
+	       (t
+		;; FIXME: read unencoded signed rice
+		;; Do we need to store bps?
+		;; Read bps:
+		(let ((residual-partition
+		       (make-array samples-num
+				   :displaced-to residual-buf
+				   :displaced-index-offset sample-idx)))
+		  (setq rice-parameter (funcall bit-reader 5))
+		  (integer-to-array (funcall bit-reader (* rice-parameter samples-num))
+				    residual-partition rice-parameter :signed t)) ; Will be replaced with faster reader later
+		(incf sample-idx samples-num)))))
+    residual-buf))
 
 ;; Subframe reader
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
