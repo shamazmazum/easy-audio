@@ -108,6 +108,7 @@
 		;; Read bps:
 		(let ((residual-partition
 		       (make-array samples-num
+				   :element-type (list 'signed-byte (frame-sample-size frame))
 				   :displaced-to residual-buf
 				   :displaced-index-offset sample-idx)))
 		  (setq rice-parameter (funcall bit-reader 5))
@@ -124,6 +125,7 @@
 			      :element-type (list 'signed-byte bps)))
 	 (warm-up
 	  (make-array warm-up-samples
+		      :element-type (list 'signed-byte bps)
 		      :displaced-to out-buf)))
     
     (integer-to-array (funcall bit-reader (* warm-up-samples bps))

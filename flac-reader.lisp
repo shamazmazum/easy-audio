@@ -1,7 +1,6 @@
 (in-package :cl-flac)
 
 (defun bytes-to-integer-big-endian (array)
-  (declare (type (simple-array u8) array))
   (loop for i below (length array) sum
 	(let ((mul (expt 2 (* 8 (- (length array) 1 i)))))
 	 (* mul (aref array i)))))
@@ -15,9 +14,7 @@
   "Converts value to array of integers of size bits each
    big endian
    definitely a bottleneck"
-  (declare
-   (type simple-array array)
-   (type integer val size))
+  (declare (type integer val size))
   (let ((len (length array)))
     (loop for i below len do
 	  (setf (aref array i)
