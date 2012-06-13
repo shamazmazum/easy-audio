@@ -1,0 +1,7 @@
+1. Bitreader is very slow. Make universal bitreader to read both to single
+integer (i.e. for reading parameter) and to array (for reading samples) and
+use it and only it. Add possibility to read with reserve (for big blocks of 
+small-sized values).
+
+2. (?) Do not pass whole objects such as frame or subframe if you need only
+ one value from them.
