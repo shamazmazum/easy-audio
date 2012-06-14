@@ -69,24 +69,24 @@
     (setf (slot-value frame 'sample-size) (nth val sample-sizes))))
 
 ;; Residual reader
-(defun residual-reader (bit-reader subframe frame out offset)
+(defun residual-reader (bit-reader subframe frame out)
   (let ((coding-method (funcall bit-reader 2)))
     (cond
      ((= coding-method 0) ; 00
-      (residual-body-reader bit-reader subframe frame out offset
+      (residual-body-reader bit-reader subframe frame out
 			    :param-len 4
 			    :esc-code #b1111))
      ((= coding-method 1) ; 01
-      (residual-body-reader bit-reader subframe frame out offset
+      (residual-body-reader bit-reader subframe frame out
 			    :param-len 5
 			    :esc-code #b11111))
      (t (error "Invalid residual coding method")))))
 
-(defun residual-body-reader (bit-reader subframe frame out offset &key param-len esc-code)
+(defun residual-body-reader (bit-reader subframe frame out &key param-len esc-code)
   (let* ((order (funcall bit-reader 4))
 	 (total-part (expt 2 order))
 	 (residual-buf out)
-	 (sample-idx offset))
+	 (sample-idx (subframe-order subframe)))
 
     (loop for i below total-part do
 	  (let ((samples-num
@@ -106,14 +106,11 @@
 		;; FIXME: read unencoded signed rice
 		;; Do we need to store bps?
 		;; Read bps:
-		(let ((residual-partition
-		       (make-array samples-num
-				   :element-type (list 'signed-byte (frame-sample-size frame))
-				   :displaced-to residual-buf
-				   :displaced-index-offset sample-idx)))
-		  (setq rice-parameter (funcall bit-reader 5))
-		  (integer-to-array (funcall bit-reader (* rice-parameter samples-num))
-				    residual-partition rice-parameter :signed t)) ; Will be replaced with faster reader later
+		(setq rice-parameter (funcall bit-reader 5))
+		(integer-to-array (funcall bit-reader (* rice-parameter samples-num))
+				  residual-buf rice-parameter
+				  :signed t
+				  :offset sample-idx) ; Will be replaced with faster reader later
 		(incf sample-idx samples-num)))))
     residual-buf))
 
@@ -122,16 +119,12 @@
   (let* ((bps (frame-sample-size frame))
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (make-array (frame-block-size frame)
-			      :element-type (list 'signed-byte bps)))
-	 (warm-up
-	  (make-array warm-up-samples
-		      :element-type (list 'signed-byte bps)
-		      :displaced-to out-buf)))
+			      :element-type (list 'signed-byte bps))))
     
     (integer-to-array (funcall bit-reader (* warm-up-samples bps))
-		      warm-up bps :signed t)  ; Will be replaced with faster reader later
+		      out-buf bps :signed t :len warm-up-samples)  ; Will be replaced with faster reader later
 
-    (residual-reader bit-reader subframe frame out-buf (subframe-order subframe))
+    (residual-reader bit-reader subframe frame out-buf)
     (setf (subframe-out-buf subframe) out-buf)))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)

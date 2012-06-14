@@ -10,18 +10,20 @@
     (if (/= (read-sequence buffer stream) num) (error "Unexpected end of stream"))
     (funcall func buffer)))
 
-(defun integer-to-array (val array size &key signed)
+(defun integer-to-array (val array size &key
+			     signed
+			     (len (length array))
+			     (offset 0))
   "Converts value to array of integers of size bits each
    big endian
    definitely a bottleneck"
-  (declare (type integer val size))
-  (let ((len (length array)))
-    (loop for i below len do
-	  (setf (aref array i)
-		(if signed (unsigned-to-signed
-			    (ldb (byte size (* size (- len 1 i))) val)
-			    size)
-		  (ldb (byte size (* size (- len 1 i))) val)))))
+  (declare (type integer val size len offset))
+  (loop for i from offset below len do
+	(setf (aref array i)
+	      (if signed (unsigned-to-signed
+			  (ldb (byte size (* size (- len 1 i))) val)
+			  size)
+		(ldb (byte size (* size (- len 1 i))) val))))
   array)
 
 (defun read-utf8-u32 (stream)
