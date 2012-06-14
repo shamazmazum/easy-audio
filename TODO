@@ -7,3 +7,5 @@ small-sized values).
  one value from them.
 
 3. Do not pass too many arguments to residual-reader
+
+4. Do less array allocation/deallocation
