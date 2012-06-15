@@ -84,29 +84,26 @@
       (if (/= 0 rest)
 	  (values (ldb (byte n rest) buffer)
 		  (ldb (byte rest 0) buffer)
-		  rest
-		  t)
+		  rest)
 	(values (ldb (byte n rest) buffer)
 		0
-		0
-		nil)))))
+		0)))))
 
 (defun make-bit-reader (stream)
   "For cases if block of data is not byte aligned.
   Returns closure around stream - bit reader function.
   Big endian"
-  (let (filled chunk size res)
+  (let (chunk (size  0) res)
     (flet ((bit-reader% (n)
 			"Returns readed bit and remainder to byte alignment"
 			;; Currently there is no remainder
-			(if (not filled)
-			    (multiple-value-setq (res chunk size filled)
+			(if (zerop size)
+			    (multiple-value-setq (res chunk size)
 			      (read-n-bits stream n))
 			  ;; There is a remainder
 			  (if (<= n size)
 			      ;; Remainder is not lesser than we need
 			      (let ((oldchunk chunk))
-				(if (= n size) (setq filled nil))
 				(setq size (- size n))
 				(setq chunk (ldb (byte size 0) oldchunk)
 				      res (ldb (byte n size) oldchunk)))
@@ -114,7 +111,7 @@
 			    (progn
 			      (setq res chunk)
 			      (let (lowres (oldsize size))
-				(multiple-value-setq (lowres chunk size filled)
+				(multiple-value-setq (lowres chunk size)
 				  (read-n-bits stream (- n size)))
 				(setq res (+ lowres (ash res (- n oldsize))))))))
 			(values res chunk)))
