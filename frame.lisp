@@ -26,7 +26,7 @@
   (declare (type integer val))
   (if (= val 15) (error "Frame sample rate is invalid"))
   (let ((sample-rates (list
-		       (slot-value (frame-streaminfo frame) 'samplerate) ; 0000
+		       (streaminfo-samplerate (frame-streaminfo frame)) ; 0000
 		       88200   ; 0001
 		       176400  ; 0010
 		       192000  ; 0011
@@ -58,7 +58,7 @@
 (defmethod (setf frame-sample-size) (val (frame frame))
   (declare (type integer val))
   (let ((sample-sizes (list
-		       (1+ (slot-value (frame-streaminfo frame) 'bitspersample-1)) ; 000
+		       (1+ (streaminfo-bitspersample-1 (frame-streaminfo frame))) ; 000
 		       8            ; 001
 		       12           ; 010
 		       :reserved    ; 011
@@ -213,7 +213,7 @@
     (let ((bit-reader (make-bit-reader stream)))
       (setf (frame-subframes frame)
 	    ;; FIXME: maybe we should use channel-assignment?
-	    (loop for sf below (1+ (slot-value streaminfo 'channels-1)) collect
+	    (loop for sf below (1+ (streaminfo-channels-1 streaminfo)) collect
 		  (subframe-reader bit-reader frame)))
       ;; Check zero padding
       (multiple-value-bind (bit remainder) (funcall bit-reader 0)

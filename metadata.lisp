@@ -51,7 +51,7 @@
   
   (let ((md5 (make-array 16 :element-type 'u8)))
     (read-sequence md5 stream)
-    (setf (slot-value data 'md5) md5))
+    (setf (streaminfo-md5 data) md5))
   data)
 
 (defmethod metadata-body-reader (stream (data metadata-header))
