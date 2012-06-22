@@ -172,52 +172,51 @@
 
 (defun frame-reader (stream streaminfo)
   (let ((frame (make-instance 'frame :streaminfo streaminfo)))
-    (let ((chunk (read-to-integer stream 4)))
-      (if (/= +frame-sync-code+ (ldb (byte 14 #.(- 32 14)) chunk)) (error "Frame sync code is not 11111111111110"))
-      (if (/= 0 (ldb (byte 1 #.(- 32 14 1)) chunk)) (error "Error reading frame"))
-      (setf (frame-blocking-strategy frame) (ldb (byte 1 #.(- 32 14 1 1)) chunk))
+    (if (/= +frame-sync-code+ (tbs:read-bits 14 stream)) (error "Frame sync code is not 11111111111110"))
+    (if (/= 0 (tbs:read-bit stream)) (error "Error reading frame"))
+    (setf (frame-blocking-strategy frame) (tbs:read-bit stream))
+    
+    (setf (frame-block-size frame) (tbs:read-bits 4 stream))
+    (setf (frame-sample-rate frame) (tbs:read-bits 4 stream))
 
-      (setf (frame-block-size frame) (ldb (byte 4 #.(- 32 14 1 1 4)) chunk))
-      (setf (frame-sample-rate frame) (ldb (byte 4 #.(- 32 14 1 1 4 4)) chunk))
+    (setf (frame-channel-assignment frame) (tbs:read-bits 4 stream))
+    (setf (frame-sample-size frame) (tbs:read-bits 3 stream))
+    (if (/= 0 (tbs:read-bit stream)) (error "Error reading frame"))
 
-      (setf (frame-channel-assignment frame) (ldb (byte 4 #.(- 8 4)) chunk))
-      (setf (frame-sample-size frame) (ldb (byte 3 #.(- 8 4 3)) chunk))
-      (if (/= 0 (ldb (byte 1 0) chunk)) (error "Error reading frame"))
+    (setf (frame-number frame)
+	  (if (eql (frame-blocking-strategy frame) :fixed)
+	      (read-utf8-u32 stream)
+	    (error "Variable block size not implemented yet")))
+    
+    (with-slots (block-size) frame
+		(setf block-size
+		      (cond
+		       ((eql block-size :get-8-from-end)
+			(1+ (tbs:read-octet stream)))
+		       ((eql block-size :get-16-from-end)
+			(1+ (tbs:read-bits 16 stream)))
+		       (t block-size))))
 
-      (setf (frame-number frame)
-	    (if (eql (frame-blocking-strategy frame) :fixed)
-		(read-utf8-u32 stream)
-	      (error "Variable block size not implemented yet")))
+    (with-slots (sample-rate) frame
+		(setf sample-rate
+		      (cond
+		       ((eql sample-rate :get-8-bit-from-end-khz)
+			(* 1000 (tbs:read-octet stream)))
+		       ((eql sample-rate :get-16-bit-from-end-hz)
+			(tbs:read-bits 16 stream))
+		       ((eql sample-rate :get-16-bit-from-end-tenshz)
+			(* 10 (tbs:read-bits 16 stream)))
+		       (t sample-rate))))
+    (setf (frame-crc-8 frame) (tbs:read-octet stream))
 
-      (with-slots (block-size) frame
-		 (setf block-size
-		       (cond
-			((eql block-size :get-8-from-end)
-			 (1+ (read-byte stream)))
-			((eql block-size :get-16-from-end)
-			 (1+ (read-to-integer stream 2)))
-			(t block-size))))
-
-      (with-slots (sample-rate) frame
-		 (setf sample-rate
-		       (cond
-			((eql sample-rate :get-8-bit-from-end-khz)
-			 (* 1000 (read-byte stream)))
-			((eql sample-rate :get-16-bit-from-end-hz)
-			 (read-to-integer stream 2))
-			((eql sample-rate :get-16-bit-from-end-tenshz)
-			 (* 10 (read-to-integer stream 2)))
-			(t sample-rate))))
-      (setf (frame-crc-8 frame) (read-byte stream)))
-
-    (let ((bit-reader (make-bit-reader stream)))
-      (setf (frame-subframes frame)
-	    ;; FIXME: maybe we should use channel-assignment?
-	    (loop for sf below (1+ (streaminfo-channels-1 streaminfo)) collect
-		  (subframe-reader bit-reader frame)))
-      ;; Check zero padding
-      (multiple-value-bind (bit remainder) (funcall bit-reader 0)
-	(declare (ignore bit))
-	(if (/= remainder 0) (error "Padding to byte-alignment is not zero"))))
-    (setf (frame-crc-16 frame) (read-to-integer stream 2))
+;    (let ((bit-reader (make-bit-reader stream)))
+ ;     (setf (frame-subframes frame)
+;	    ;; FIXME: maybe we should use channel-assignment?
+;	    (loop for sf below (1+ (streaminfo-channels-1 streaminfo)) collect
+;		  (subframe-reader bit-reader frame)))
+ ;     ;; Check zero padding
+  ;    (multiple-value-bind (bit remainder) (funcall bit-reader 0)
+;	(declare (ignore bit))
+;	(if (/= remainder 0) (error "Padding to byte-alignment is not zero"))))
+ ;   (setf (frame-crc-16 frame) (read-to-integer stream 2))
     frame))
