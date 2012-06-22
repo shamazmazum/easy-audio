@@ -131,7 +131,7 @@
   (with-slots (sample-size) frame
 	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
 		    (unsigned-to-signed
-		     (funcall bit-reader sample-size)
+		     (tbs:read-bits sample-size bit-reader)
 		     sample-size))))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
@@ -145,9 +145,9 @@
 		(integer-to-array chunk buf sample-size :signed t)
 		(setf (subframe-verbatim-buffer subframe) buf))))
 
-(defun subframe-reader (bit-reader frame)
-  (if (/= (funcall bit-reader 1) 0) (error "Error reading subframe"))
-    (let* ((type-num (funcall bit-reader 6))
+(defun subframe-reader (stream frame)
+  (if (/= (tbs:read-bit stream) 0) (error "Error reading subframe"))
+    (let* ((type-num (tbs:read-bits 6 stream))
 	   (type-args
 	    (cond
 	     ((= type-num 0) '(subframe-constant))         ; 000000
@@ -161,13 +161,13 @@
 	       (<= type-num 63))
 	      (list 'subframe-lpc :order (1+ (- type-num 32)))) ; 100000-111111
 	     (t (error "Error subframe type"))))
-	   (wasted-bits (funcall bit-reader 1)))
+	   (wasted-bits (tbs:read-bit stream)))
 
       ;; FIXME: read wasted bits correctly
       (if (= wasted-bits 1) (error "Do not know what to do with wasted bits"))
       (let ((subframe (apply #'make-instance
 			     (append type-args (list :wasted-bps wasted-bits)))))
-	(subframe-body-reader bit-reader subframe frame)
+	(subframe-body-reader stream subframe frame)
 	subframe)))
 
 (defun frame-reader (stream streaminfo)
@@ -209,14 +209,12 @@
 		       (t sample-rate))))
     (setf (frame-crc-8 frame) (tbs:read-octet stream))
 
-;    (let ((bit-reader (make-bit-reader stream)))
- ;     (setf (frame-subframes frame)
-;	    ;; FIXME: maybe we should use channel-assignment?
-;	    (loop for sf below (1+ (streaminfo-channels-1 streaminfo)) collect
-;		  (subframe-reader bit-reader frame)))
- ;     ;; Check zero padding
-  ;    (multiple-value-bind (bit remainder) (funcall bit-reader 0)
-;	(declare (ignore bit))
-;	(if (/= remainder 0) (error "Padding to byte-alignment is not zero"))))
- ;   (setf (frame-crc-16 frame) (read-to-integer stream 2))
-    frame))
+    (setf (frame-subframes frame)
+	  ;; FIXME: maybe we should use channel-assignment?
+	  (loop for sf below (1+ (streaminfo-channels-1 streaminfo)) collect
+		(subframe-reader stream frame)))
+
+    ;; Check zero padding
+    (if (/= (tbs:read-to-byte-alignment stream) 0) (error "Padding to byte-alignment is not zero"))
+    (setf (frame-crc-16 frame) (tbs:read-bits 16 stream))
+  frame))
