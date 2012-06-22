@@ -9,4 +9,4 @@
 	       (:file "decode" :depends-on ("package"))
 	       (:file "flac-reader" :depends-on ("package"))
 	       (:file "flac" :depends-on ("package")))
-  :depends-on (:babel))
+  :depends-on (:babel :trivial-bit-streams))

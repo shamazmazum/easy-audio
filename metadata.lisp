@@ -2,11 +2,9 @@
 
 (defun metadata-header-reader (stream header)
   (with-slots (last-block-p type length) header
-	      (let ((chunk (read-to-integer stream 4)))
-		
-		(setf last-block-p (ldb (byte 1 #.(- 32 1)) chunk))
-		(setf type (ldb (byte 7 #.(- 32 1 7)) chunk))
-		(setf length (ldb (byte 24 #.(- 32 1 7 24)) chunk))))
+	      (setf last-block-p (tbs:read-bit stream)
+		    type (tbs:read-bits 7 stream)
+		    length (tbs:read-bits 24 stream)))
   header)
 
 (defun metadata-reader (stream)
@@ -30,31 +28,26 @@
       (error "Padding bytes is not zero")))
 
 (defmethod metadata-body-reader (stream (data streaminfo))
-  (let ((chunk (read-to-integer stream 18)))
-    (with-slots (minblocksize maxblocksize) data
-		(setf minblocksize (ldb (byte 16 #.(- 144 16)) chunk))
-		(setf maxblocksize (ldb (byte 16 #.(- 144 16 16)) chunk)))
-
+  (with-slots (minblocksize maxblocksize) data
+	      (setf minblocksize (tbs:read-bits 16 stream)
+		    maxblocksize (tbs:read-bits 16 stream)))
+	      
   (with-slots (minframesize maxframesize) data
-		(setf minframesize (ldb (byte 16 #.(- 144 16 16 24)) chunk))
-		(setf maxframesize (ldb (byte 16 #.(- 144 16 16 24 24)) chunk)))
+		(setf minframesize (tbs:read-bits 24 stream)
+		      maxframesize (tbs:read-bits 24 stream)))
 
   (with-slots (samplerate channels-1 bitspersample-1 totalsamples) data
-	      (let ((sr-pos (byte 20 #.(- 64 20)))
-		    (ch-pos (byte 3 #.(- 64 20 3)))
-		    (bps-pos (byte 5 #.(- 64 20 3 5)))
-		    (tot-pos (byte 36 #.(- 64 20 3 5 36))))
-		(setf samplerate (ldb sr-pos chunk)
-		      channels-1 (ldb ch-pos chunk)
-		      bitspersample-1 (ldb bps-pos chunk)
-		      totalsamples (ldb tot-pos chunk)))))
+	      (setf samplerate (tbs:read-bits 20 stream)
+		    channels-1 (tbs:read-bits 3 stream)
+		    bitspersample-1 (tbs:read-bits 5 stream)
+		    totalsamples (tbs:read-bits 36 stream)))
   
   (let ((md5 (make-array 16 :element-type 'u8)))
-    (read-sequence md5 stream)
+    (tbs:read-octet-vector md5 stream)
     (setf (streaminfo-md5 data) md5))
   data)
 
 (defmethod metadata-body-reader (stream (data metadata-header))
   (let ((chunk (make-array (slot-value data 'length) :element-type 'u8)))
-    (read-sequence chunk stream)
+    (tbs:read-octet-vector chunk stream)
     (setf (slot-value data 'rawdata) chunk))) ; For debugging
