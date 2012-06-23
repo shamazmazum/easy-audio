@@ -115,6 +115,32 @@
     residual-buf))
 
 ;; Subframe reader
+
+(defmethod subframe-body-reader (bit-reader (subframe subframe-lpc) frame)
+  (let* ((bps (frame-sample-size frame))
+	 (warm-up-samples (subframe-order subframe))
+	 (out-buf (make-array (frame-block-size frame)
+			      :element-type (list 'signed-byte bps)))
+	 (coeff-buf (make-array warm-up-samples)))
+    
+    (integer-to-array (tbs:read-bits (* warm-up-samples bps) bit-reader)
+		      out-buf bps :signed t :len warm-up-samples)
+    
+    (let ((precision (1+ (tbs:read-bits 4 bit-reader))))
+      (if (= #b10000 precision)
+	  (error "lpc coefficients precision cannot be 16")
+	(setf (subframe-lpc-precision subframe) precision))
+      
+      (setf (subframe-lpc-coeff-shift subframe)
+	    (unsigned-to-signed (tbs:read-bits 5 bit-reader) 5))
+
+      (setf (subframe-lpc-predictor-coeff subframe)
+	    (integer-to-array (tbs:read-bits (* warm-up-samples precision) bit-reader)
+			      coeff-buf precision :signed t)))
+
+    (residual-reader bit-reader subframe frame out-buf)
+    (setf (subframe-out-buf subframe) out-buf)))
+    
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
   (let* ((bps (frame-sample-size frame))
 	 (warm-up-samples (subframe-order subframe))

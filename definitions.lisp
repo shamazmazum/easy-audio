@@ -34,12 +34,12 @@
 (defclass subframe-verbatim (subframe)
   ((buffer :accessor subframe-verbatim-buffer)))
 
-;(defclass subframe-lpc (subframe)
-;  ((warm-up :accessor subframe-warm-up)
-;   (order :accessor subframe-order :initarg :order)
-;   (predictor-coeff :accessor subframe-lpc-predictor-coeff)
-;   (coeff-shift :accessor subframe-lpc-coeff-shift)
-;   (residual :accessor subframe-residual)))
+(defclass subframe-lpc (subframe)
+  ((out-buf :accessor subframe-out-buf) ;; Warm-up + residual
+   (order :accessor subframe-order :initarg :order)
+   (precision :accessor subframe-lpc-precision)
+   (predictor-coeff :accessor subframe-lpc-predictor-coeff)
+   (coeff-shift :accessor subframe-lpc-coeff-shift)))
 
 (defclass subframe-fixed (subframe)
   ((out-buf :accessor subframe-out-buf)
