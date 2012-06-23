@@ -88,6 +88,7 @@
 			    :esc-code #b11111))
      (t (error "Invalid residual coding method")))))
 
+;; Do not forget type declarations
 (defun residual-body-reader (bit-reader subframe frame out &key param-len esc-code)
   (let* ((order (tbs:read-bits 4 bit-reader))
 	 (total-part (expt 2 order))
@@ -195,8 +196,9 @@
 	     (t (error "Error subframe type"))))
 	   (wasted-bits (tbs:read-bit stream)))
 
-      ;; FIXME: read wasted bits correctly
-      (if (= wasted-bits 1) (error "Do not know what to do with wasted bits"))
+      (if (= wasted-bits 1)
+	  (setq wasted-bits (1+ (read-unary-coded-integer stream))))
+      
       (let ((subframe (apply #'make-instance
 			     (append type-args (list :wasted-bps wasted-bits)))))
 	(subframe-body-reader stream subframe frame)
