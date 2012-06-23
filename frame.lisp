@@ -1,6 +1,8 @@
 (in-package :cl-flac)
 
 (defmethod (setf frame-blocking-strategy) (val (frame frame))
+  (declare (type (integer 0 1) val)
+	   (optimize (speed 3) (space 0)))
   (setf (slot-value frame 'blocking-strategy)
 	(cond
 	 ((= val 0) :fixed)
@@ -8,18 +10,19 @@
 	 (t (error "Blocking strategy must be 0 or 1")))))
 
 (defmethod (setf frame-block-size) (val (frame frame))
-  (declare (type integer val))
+  (declare (type (unsigned-byte 4) val)
+	   (optimize (speed 3) (space 0)))
   (setf (slot-value frame 'block-size)
 	(cond
 	 ((= val 1) 192)               ; 0001
 	 ((and (> val 1)
 	       (<= val 5))             ; 0010-0101
-	  (* 576 (expt 2 (- val 2))))
+	  (ash 576 (- val 2)))
 	 ((= val 6) :get-8-from-end)   ; 0110
 	 ((= val 7) :get-16-from-end)  ; 0111
 	 ((and (> val 7)
 	       (<= val 15))            ; 1000-1111
-	  (* 256 (expt 2 (- val 8))))
+	  (ash 1 val))
 	 (t (error "Frame block size is invalid")))))
 
 (defmethod (setf frame-sample-rate) (val (frame frame))
@@ -69,8 +72,11 @@
     (setf (slot-value frame 'sample-size) (nth val sample-sizes))))
 
 ;; Residual reader
+(declaim (inline residual-reader))
 (defun residual-reader (bit-reader subframe frame out)
+  (declare (optimize (speed 3) (space 0)))
   (let ((coding-method (tbs:read-bits 2 bit-reader)))
+    (declare (type (unsigned-byte 2) coding-method))
     (cond
      ((= coding-method 0) ; 00
       (residual-body-reader bit-reader subframe frame out
