@@ -70,7 +70,7 @@
 
 ;; Residual reader
 (defun residual-reader (bit-reader subframe frame out)
-  (let ((coding-method (funcall bit-reader 2)))
+  (let ((coding-method (tbs:read-bits 2 bit-reader)))
     (cond
      ((= coding-method 0) ; 00
       (residual-body-reader bit-reader subframe frame out
@@ -83,7 +83,7 @@
      (t (error "Invalid residual coding method")))))
 
 (defun residual-body-reader (bit-reader subframe frame out &key param-len esc-code)
-  (let* ((order (funcall bit-reader 4))
+  (let* ((order (tbs:read-bits 4 bit-reader))
 	 (total-part (expt 2 order))
 	 (residual-buf out)
 	 (sample-idx (subframe-order subframe)))
@@ -94,7 +94,7 @@
 		  ;; FIXME:: Check following lines
 		  ((zerop i) (- (/ (frame-block-size frame) total-part) (subframe-order subframe)))
 		  (t (/ (frame-block-size frame) total-part))))
-		 (rice-parameter (funcall bit-reader param-len)))
+		 (rice-parameter (tbs:read-bits param-len bit-reader)))
 	    
 	    (cond
 	       ((< rice-parameter esc-code)
@@ -106,11 +106,11 @@
 		;; FIXME: read unencoded signed rice
 		;; Do we need to store bps?
 		;; Read bps:
-		(setq rice-parameter (funcall bit-reader 5))
-		(integer-to-array (funcall bit-reader (* rice-parameter samples-num))
+		(setq rice-parameter (tbs:read-bits 5 bit-reader))
+		(integer-to-array (tbs:read-bits (* rice-parameter samples-num) bit-reader)
 				  residual-buf rice-parameter
 				  :signed t
-				  :offset sample-idx) ; Will be replaced with faster reader later
+				  :offset sample-idx)
 		(incf sample-idx samples-num)))))
     residual-buf))
 
@@ -121,8 +121,8 @@
 	 (out-buf (make-array (frame-block-size frame)
 			      :element-type (list 'signed-byte bps))))
     
-    (integer-to-array (funcall bit-reader (* warm-up-samples bps))
-		      out-buf bps :signed t :len warm-up-samples)  ; Will be replaced with faster reader later
+    (integer-to-array (tbs:read-bits (* warm-up-samples bps) bit-reader)
+		      out-buf bps :signed t :len warm-up-samples)
 
     (residual-reader bit-reader subframe frame out-buf)
     (setf (subframe-out-buf subframe) out-buf)))
@@ -140,7 +140,7 @@
 		     (make-array block-size
 				 ;; FIXME: value is signed in original libFLAC
 				 :element-type (list 'signed-byte sample-size)))
-		    (chunk (funcall bit-reader (* sample-size block-size))))
+		    (chunk (tbs:read-bits (* sample-size block-size) bit-reader)))
 
 		(integer-to-array chunk buf sample-size :signed t)
 		(setf (subframe-verbatim-buffer subframe) buf))))
