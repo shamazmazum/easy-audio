@@ -21,8 +21,12 @@
 (defun read-utf8-u32 (stream)
   "for reading frame number
    copy from libFLAC"
+  (declare (optimize (speed 3) (space 0)))
   (let ((x (tbs:read-octet stream))
-	i v)
+	i
+	(v 0))
+    (declare (type (integer 0 255) x)
+	     (type (unsigned-byte 32) v))
     (cond
      (( = 0 (logand x #x80))
       (setq v x i 0))
@@ -52,14 +56,14 @@
        (/= 0 (logand x #xFC)))
       (setq v (logand x #x01) i 5))
      
-     (t (error "Error reading utf-8 coded 8-48bit value")))
+     (t (error "Error reading utf-8 coded value")))
 
     (loop for j from i downto 1 do
 	  (setq x (tbs:read-octet stream))
 	  (if (or
 	       (= 0 (logand x #x80))
 	       (/= 0 (logand x #x40)))
-	      (error "Error reading utf-8 coded 8-48bit value"))
+	      (error "Error reading utf-8 coded value"))
 	  (setq v (ash v 6))
 	  (setq v (logior v (logand x #x3F))))
     v))
