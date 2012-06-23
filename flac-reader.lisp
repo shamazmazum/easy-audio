@@ -64,8 +64,15 @@
 	  (setq v (logior v (logand x #x3F))))
     v))
 
+(declaim (inline unsigned-to-signed)
+	 (ftype (function ((unsigned-byte 32)
+			   (integer 0 32))
+			  (signed-byte 32))
+		unsigned-to-signed))
 (defun unsigned-to-signed (byte len)
-  ;; Slow implementation
+  (declare (type (integer 0 32) len)
+	   (type (unsigned-byte 32) byte)
+	   (optimize (speed 3)))
   (let ((sign (ldb (byte 1 (1- len)) byte)))
     (if (= sign 0) byte (- byte (ash 1 len)))))
 
