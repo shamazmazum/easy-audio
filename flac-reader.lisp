@@ -8,12 +8,14 @@
    big endian
    definitely a bottleneck"
   (declare (type integer val size len offset))
-  (loop for i from offset below len do
-	(setf (aref array i)
-	      (if signed (unsigned-to-signed
-			  (ldb (byte size (* size (- len 1 i))) val)
-			  size)
-		(ldb (byte size (* size (- len 1 i))) val))))
+  (let ((pos (* size (1- len))))
+    (loop for i from offset below len do
+	  (setf (aref array i)
+		(if signed (unsigned-to-signed
+			    (ldb (byte size pos) val)
+			    size)
+		  (ldb (byte size pos) val)))
+	  (decf pos size)))
   array)
 
 (defun read-utf8-u32 (stream)
@@ -65,7 +67,7 @@
 (defun unsigned-to-signed (byte len)
   ;; Slow implementation
   (let ((sign (ldb (byte 1 (1- len)) byte)))
-    (if (= sign 0) byte (- 0 1 (logand (lognot byte) (1- (ash 1 len)))))))
+    (if (= sign 0) byte (- byte (ash 1 len)))))
 
 (defun read-unary-coded-integer (bitreader &optional (one 0))
   "Read unary coded integer from bitreader
