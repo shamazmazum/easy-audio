@@ -128,7 +128,8 @@
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (make-array (frame-block-size frame)
 			      :element-type '(signed-byte 32)))
-	 (coeff-buf (make-array warm-up-samples)))
+	 (coeff-buf (make-array warm-up-samples
+				:element-type '(signed-byte 16))))
     
     (integer-to-array (tbs:read-bits (* warm-up-samples bps) bit-reader)
 		      out-buf bps :signed t :len warm-up-samples)
