@@ -127,7 +127,7 @@
   (let* ((bps (frame-sample-size frame))
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (make-array (frame-block-size frame)
-			      :element-type (list 'signed-byte bps)))
+			      :element-type '(signed-byte 32)))
 	 (coeff-buf (make-array warm-up-samples)))
     
     (integer-to-array (tbs:read-bits (* warm-up-samples bps) bit-reader)
@@ -152,7 +152,7 @@
   (let* ((bps (frame-sample-size frame))
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (make-array (frame-block-size frame)
-			      :element-type (list 'signed-byte bps))))
+			      :element-type '(signed-byte 32))))
     
     (integer-to-array (tbs:read-bits (* warm-up-samples bps) bit-reader)
 		      out-buf bps :signed t :len warm-up-samples)
@@ -172,7 +172,7 @@
 	      (let ((buf
 		     (make-array block-size
 				 ;; FIXME: value is signed in original libFLAC
-				 :element-type (list 'signed-byte sample-size)))
+				 :element-type '(signed-byte 32)))
 		    (chunk (tbs:read-bits (* sample-size block-size) bit-reader)))
 
 		(integer-to-array chunk buf sample-size :signed t)
