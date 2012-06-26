@@ -180,7 +180,7 @@
 				 ;; FIXME: value is signed in original libFLAC
 				 :element-type '(signed-byte 32))))
 		 
-		(read-bits-array bit-reader chunk buf sample-size :signed t)
+		(read-bits-array bit-reader buf sample-size :signed t)
 		(setf (subframe-verbatim-buffer subframe) buf))))
 
 (defun subframe-reader (stream frame)
