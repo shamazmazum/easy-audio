@@ -137,8 +137,8 @@
 	 (coeff-buf (make-array warm-up-samples
 				:element-type '(signed-byte 16))))
     
-    (integer-to-array (tbs:read-bits (* warm-up-samples bps) bit-reader)
-		      out-buf bps :signed t :len warm-up-samples)
+    (read-bits-array bit-reader
+		     out-buf bps :signed t :len warm-up-samples)
     
     (let ((precision (1+ (tbs:read-bits 4 bit-reader))))
       (if (= #b10000 precision)
@@ -149,8 +149,8 @@
 	    (unsigned-to-signed (tbs:read-bits 5 bit-reader) 5))
 
       (setf (subframe-lpc-predictor-coeff subframe)
-	    (integer-to-array (tbs:read-bits (* warm-up-samples precision) bit-reader)
-			      coeff-buf precision :signed t)))
+	    (read-bits-array bit-reader
+			     coeff-buf precision :signed t)))
 
     (residual-reader bit-reader subframe frame out-buf)
     (setf (subframe-out-buf subframe) out-buf)))
@@ -178,10 +178,9 @@
 	      (let ((buf
 		     (make-array block-size
 				 ;; FIXME: value is signed in original libFLAC
-				 :element-type '(signed-byte 32)))
-		    (chunk (tbs:read-bits (* sample-size block-size) bit-reader)))
-
-		(integer-to-array chunk buf sample-size :signed t)
+				 :element-type '(signed-byte 32))))
+		 
+		(read-bits-array bit-reader chunk buf sample-size :signed t)
 		(setf (subframe-verbatim-buffer subframe) buf))))
 
 (defun subframe-reader (stream frame)

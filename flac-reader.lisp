@@ -4,6 +4,7 @@
 			       signed
 			       (len (length array))
 			       (offset 0))
+  ;; Will be replaced later
   (declare (type fixnum len offset size)
 	   (type (simple-array (signed-byte 32)) array)
 	   (optimize (speed 3)))
@@ -11,24 +12,6 @@
 	(setf (aref array i)
 	      (if signed (unsigned-to-signed (tbs:read-bits size stream) size)
 		(tbs:read-bits size stream)))))
-
-(defun integer-to-array (val array size &key
-			     signed
-			     (len (length array))
-			     (offset 0))
-  "Converts value to array of integers of size bits each
-   big endian
-   definitely a bottleneck"
-  (declare (type integer val size len offset))
-  (let ((pos (* size (1- len))))
-    (loop for i from offset below len do
-	  (setf (aref array i)
-		(if signed (unsigned-to-signed
-			    (ldb (byte size pos) val)
-			    size)
-		  (ldb (byte size pos) val)))
-	  (decf pos size)))
-  array)
 
 (defun read-utf8-u32 (stream)
   "for reading frame number
