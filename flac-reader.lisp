@@ -1,5 +1,17 @@
 (in-package :cl-flac)
 
+(defun read-bits-array (stream array size &key
+			       signed
+			       (len (length array))
+			       (offset 0))
+  (declare (type fixnum len offset size)
+	   (type (simple-array (signed-byte 32)) array)
+	   (optimize (speed 3)))
+  (loop for i from offset below len do
+	(setf (aref array i)
+	      (if signed (unsigned-to-signed (tbs:read-bits size stream) size)
+		(tbs:read-bits size stream)))))
+
 (defun integer-to-array (val array size &key
 			     signed
 			     (len (length array))

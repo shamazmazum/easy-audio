@@ -88,25 +88,32 @@
 			    :esc-code #b11111))
      (t (error "Invalid residual coding method")))))
 
-;; Do not forget type declarations
 (defun residual-body-reader (bit-reader subframe frame out &key param-len esc-code)
-  (let* ((order (tbs:read-bits 4 bit-reader))
-	 (total-part (expt 2 order))
-	 (residual-buf out)
-	 (sample-idx (subframe-order subframe)))
+  (declare (type fixnum param-len esc-code)
+	   (type (simple-array (signed-byte 32)) out)
+	   (optimize (speed 3)))
 
-    (loop for i below total-part do
-	  (let ((samples-num
-		 (cond
-		  ;; FIXME:: Check following lines
-		  ((zerop i) (- (/ (frame-block-size frame) total-part) (subframe-order subframe)))
-		  (t (/ (frame-block-size frame) total-part))))
-		 (rice-parameter (tbs:read-bits param-len bit-reader)))
-	    
-	    (cond
+  (let ((part-order (tbs:read-bits 4 bit-reader)))
+    (declare (type (unsigned-byte 4) part-order))
+    
+    (let ((sample-idx (subframe-order subframe))
+	  (blocksize (frame-block-size frame))
+	  (predictor-order (subframe-order subframe)))
+      (declare (type fixnum sample-idx blocksize predictor-order))
+      
+      (loop for i below (ash 1 part-order) do
+	    (let ((samples-num
+		   (cond
+		    ;; FIXME:: Check following lines
+		    ((zerop i) (- (ash blocksize (- part-order)) predictor-order))
+		    (t (ash blocksize (- part-order)))))
+		  (rice-parameter (tbs:read-bits param-len bit-reader)))
+	      (declare (type fixnum rice-parameter))
+	      
+	      (cond
 	       ((< rice-parameter esc-code)
 		(loop for sample below samples-num do
-		      (setf (aref residual-buf sample-idx)
+		      (setf (aref out sample-idx)
 			    (read-rice-signed bit-reader rice-parameter))
 		      (incf sample-idx)))
 	       (t
@@ -114,12 +121,11 @@
 		;; Do we need to store bps?
 		;; Read bps:
 		(setq rice-parameter (tbs:read-bits 5 bit-reader))
-		(integer-to-array (tbs:read-bits (* rice-parameter samples-num) bit-reader)
-				  residual-buf rice-parameter
-				  :signed t
-				  :offset sample-idx)
+		(read-bits-array bit-reader out rice-parameter
+				 :signed t
+				 :offset sample-idx)
 		(incf sample-idx samples-num)))))
-    residual-buf))
+      out)))
 
 ;; Subframe reader
 
@@ -155,8 +161,7 @@
 	 (out-buf (make-array (frame-block-size frame)
 			      :element-type '(signed-byte 32))))
     
-    (integer-to-array (tbs:read-bits (* warm-up-samples bps) bit-reader)
-		      out-buf bps :signed t :len warm-up-samples)
+    (read-bits-array bit-reader out-buf bps :signed t :len warm-up-samples)
 
     (residual-reader bit-reader subframe frame out-buf)
     (setf (subframe-out-buf subframe) out-buf)))
