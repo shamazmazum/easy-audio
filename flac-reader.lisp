@@ -16,7 +16,7 @@
 (defun read-utf8-u32 (stream)
   "for reading frame number
    copy from libFLAC"
-  (declare (optimize (speed 3) (space 0)))
+  (declare (optimize (speed 3)))
   (let ((x (tbs:read-octet stream))
 	i
 	(v 0))
@@ -71,15 +71,19 @@
 (defun unsigned-to-signed (byte len)
   (declare (type (integer 0 32) len)
 	   (type (unsigned-byte 32) byte)
-	   (optimize (speed 3)))
+	   (optimize (speed 3) (safety 0)))
   (let ((sign (ldb (byte 1 (1- len)) byte)))
     (if (= sign 0) byte (- byte (ash 1 len)))))
 
+
+(declaim (ftype (function (t &optional (integer 0 1)) fixnum)
+		read-unary-coded-integer)
+	 (inline read-unary-coded-integer))
 (defun read-unary-coded-integer (bitreader &optional (one 0))
   "Read unary coded integer from bitreader
    By default 0 bit is considered as 1, 1 bit is terminator"
   (declare (type (integer 0 1) one)
-	   (optimize (speed 3) (space 0)))
+	   (optimize (speed 3) (safety 0)))
 ;  (loop for bit = (tbs:read-bit bitreader)
 ;	while (= bit one)
 ;	sum 1))
@@ -96,11 +100,12 @@
 
 (declaim (ftype (function (stream (integer 0 30))
 			  (signed-byte 32))
-		read-rice-signed))
+		read-rice-signed)
+	 (inline read-rice-signed))
 (defun read-rice-signed (bitreader param)
   (declare (type (integer 0 30) param)
 	   (type stream bitreader)
-	   (optimize (speed 3) (space 0)))
+	   (optimize (speed 3) (safety 0)))
   (let ((unary (read-unary-coded-integer bitreader))
 	(binary (tbs:read-bits param bitreader)))
 	(declare (type (unsigned-byte 32) unary binary))

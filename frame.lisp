@@ -156,9 +156,10 @@
     (setf (subframe-out-buf subframe) out-buf)))
     
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
+  (declare (optimize (speed 3)))
   (let* ((bps (frame-sample-size frame))
 	 (warm-up-samples (subframe-order subframe))
-	 (out-buf (make-array (frame-block-size frame)
+	 (out-buf (make-array (list (frame-block-size frame))
 			      :element-type '(signed-byte 32))))
     
     (read-bits-array bit-reader out-buf bps :signed t :len warm-up-samples)
@@ -167,6 +168,7 @@
     (setf (subframe-out-buf subframe) out-buf)))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
+  (declare (optimize (speed 3)))
   (with-slots (sample-size) frame
 	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
 		    (unsigned-to-signed
@@ -174,9 +176,10 @@
 		     sample-size))))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
+  (declare (optimize (speed 3)))
   (with-slots (sample-size block-size) frame
 	      (let ((buf
-		     (make-array block-size
+		     (make-array (list block-size)
 				 ;; FIXME: value is signed in original libFLAC
 				 :element-type '(signed-byte 32))))
 		 
@@ -184,6 +187,7 @@
 		(setf (subframe-verbatim-buffer subframe) buf))))
 
 (defun subframe-reader (stream frame)
+  (declare (optimize (speed 3)))
   (if (/= (tbs:read-bit stream) 0) (error "Error reading subframe"))
     (let* ((type-num (tbs:read-bits 6 stream))
 	   (type-args
