@@ -205,6 +205,7 @@
 	     (t (error "Error subframe type"))))
 	   (wasted-bits (tbs:read-bit stream)))
 
+      ;; FIXME: Do not know what to do with wasted bits
       (if (= wasted-bits 1)
 	  (setq wasted-bits (1+ (read-unary-coded-integer stream))))
       
