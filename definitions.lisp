@@ -26,40 +26,57 @@
 
 ;; Subframes
 (defclass subframe ()
-  ((wasted-bps :accessor subframe-wasted-bps :initarg :wasted-bps)))
+  ((wasted-bps :accessor subframe-wasted-bps
+	       :initarg :wasted-bps
+	       :type fixnum)))
 
 (defclass subframe-constant (subframe)
-  ((constant-value :accessor subframe-constant-value)))
+  ((constant-value :accessor subframe-constant-value
+		   :type (signed-byte 32))))
 
 (defclass subframe-verbatim (subframe)
-  ((buffer :accessor subframe-verbatim-buffer)))
+  ((buffer :accessor subframe-verbatim-buffer
+	   :type (simple-array (signed-byte 32)))))
 
 (defclass subframe-lpc (subframe)
-  ((out-buf :accessor subframe-out-buf) ;; Warm-up + residual
-   (order :accessor subframe-order :initarg :order)
-   (precision :accessor subframe-lpc-precision)
+  ((out-buf :accessor subframe-out-buf
+	    :type (simple-array (signed-byte 32))) ;; Warm-up + residual
+   (order :accessor subframe-order
+	  :initarg :order
+	  :type fixnum)
+   (precision :accessor subframe-lpc-precision
+	      :type fixnum)
    (predictor-coeff :accessor subframe-lpc-predictor-coeff)
    (coeff-shift :accessor subframe-lpc-coeff-shift)))
 
 (defclass subframe-fixed (subframe)
-  ((out-buf :accessor subframe-out-buf)
-   (order :accessor subframe-order :initarg :order)))
+  ((out-buf :accessor subframe-out-buf
+	    :type (simple-array (signed-byte 32)))
+   (order :accessor subframe-order
+	  :initarg :order
+	  :type fixnum)))
 
 (defgeneric subframe-body-reader (bit-reader subframe frame))
 (defgeneric subframe-decode (subframe frame))
 
 ;; Frame
 (defclass frame ()
-  ((streaminfo :accessor frame-streaminfo :initarg :streaminfo)
-   (blocking-strategy :accessor frame-blocking-strategy)
+  ((streaminfo :accessor frame-streaminfo
+	       :initarg :streaminfo)
+   (blocking-strategy :accessor frame-blocking-strategy
+		      :type symbol)
    (block-size :accessor frame-block-size)
    (sample-rate :accessor frame-sample-rate)
    (channel-assignment :accessor frame-channel-assignment)
-   (sample-size :accessor frame-sample-size)
+   (sample-size :accessor frame-sample-size
+		:type fixnum)
    (number :accessor frame-number)
-   (crc-8 :accessor frame-crc-8)
-   (subframes :accessor frame-subframes)
-   (crc-16 :accessor frame-crc-16)))
+   (crc-8 :accessor frame-crc-8
+	  :type u8)
+   (subframes :accessor frame-subframes
+	      :type list)
+   (crc-16 :accessor frame-crc-16
+	   :type fixnum)))
 
 (defparameter +block-name+ '(streaminfo padding application seektable vorbis-comment cuesheet picture)) ;; In case of using sbcl defconstant will give an error
 (defconstant +frame-sync-code+ 16382) ; 11111111111110
