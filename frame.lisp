@@ -26,7 +26,8 @@
 	 (t (error "Frame block size is invalid")))))
 
 (defmethod (setf frame-sample-rate) (val (frame frame))
-  (declare (type integer val))
+  (declare (type (unsigned-byte 4) val)
+	   (optimize (speed 3)))
   (if (= val 15) (error "Frame sample rate is invalid"))
   (let ((sample-rates (list
 		       (streaminfo-samplerate (frame-streaminfo frame)) ; 0000
@@ -49,17 +50,18 @@
 	(nth val sample-rates))))
 
 (defmethod (setf frame-channel-assignment) (val (frame frame))
-  (declare (type integer val))
+  (declare (type fixnum val)
+	   (optimize (speed 3)))
   (setf (slot-value frame 'channel-assignment)
 	(cond ((and (>= val 0)
-		    (<= val 7)) val)   ; 0000-0111
+		    (<= val 7)) (1+ val))   ; 0000-0111
 	      ((= val 8) :left/side)   ; 1000
 	      ((= val 9) :right/side)  ; 1001
 	      ((= val 10) :mid/side)   ; 1001
 	      (t (error "Invalid channel assignment")))))
 
 (defmethod (setf frame-sample-size) (val (frame frame))
-  (declare (type integer val))
+  (declare (type (unsigned-byte 3) val))
   (let ((sample-sizes (list
 		       (1+ (streaminfo-bitspersample-1 (frame-streaminfo frame))) ; 000
 		       8            ; 001
@@ -253,10 +255,14 @@
 		       (t sample-rate))))
     (setf (frame-crc-8 frame) (tbs:read-octet stream))
 
-    (setf (frame-subframes frame)
-	  ;; FIXME: maybe we should use channel-assignment?
-	  (loop for sf below (1+ (streaminfo-channels-1 streaminfo)) collect
-		(subframe-reader stream frame)))
+    (let ((subframes-num
+	   (typecase (frame-channel-assignment frame)
+	     (symbol 2)
+	     (t (frame-channel-assignment frame)))))
+      
+      (setf (frame-subframes frame)
+	    (loop for sf below subframes-num collect
+		(subframe-reader stream frame))))
 
     ;; Check zero padding
     (if (/= (tbs:read-to-byte-alignment stream) 0) (error "Padding to byte-alignment is not zero"))

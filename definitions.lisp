@@ -67,7 +67,9 @@
 		      :type symbol)
    (block-size :accessor frame-block-size)
    (sample-rate :accessor frame-sample-rate)
-   (channel-assignment :accessor frame-channel-assignment)
+   (channel-assignment :accessor frame-channel-assignment
+		       :documentation "Number of channels or one of
+                                       :mid/side, :left/side, :right/side")
    (sample-size :accessor frame-sample-size
 		:type fixnum)
    (number :accessor frame-number)
