@@ -29,4 +29,5 @@
 	   ;; Functions
 	   #:open-flac
 	   #:frame-reader
-	   #:subframe-decode)) ; Not needed to end user, actually
+	   #:subframe-decode
+	   #:frame-decode)) ; Not needed to end user, actually

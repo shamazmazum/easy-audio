@@ -72,3 +72,42 @@
 			  (aref out-buf (- i j 1))))
 		 (- shift))))
     out-buf))
+
+(defun frame-decode (frame)
+  (declare (optimize (speed 3)
+		     (safety 0)))
+  (let ((decoded-subframes
+	 (mapcar #'(lambda (subframe) (subframe-decode subframe frame))
+		 (frame-subframes frame)))
+  	(assignment (frame-channel-assignment frame)))
+
+    (if (typep assignment 'integer) (return-from frame-decode decoded-subframes))
+    (if (/= 2 (length decoded-subframes)) (error "Bad channel assignment/number of subframes"))
+
+    (destructuring-bind (left right) decoded-subframes
+      (declare (type (simple-array (signed-byte 32)) left right))
+      (cond
+       ((eq :left/side assignment)
+	;; Maybe just a loop?
+	(map-into right #'-
+		  left right))
+       
+       ((eq :right/side assignment)
+	(map-into left #'+
+		  left right))
+       
+       ((eq :mid/side assignment)
+	(let ((block-size (frame-block-size frame)))
+	  (declare (type fixnum block-size))
+	  (dotimes (i block-size)
+	    (declare (type fixnum i))
+	    (let* ((side (aref right i))
+		   (mid (logior
+			 (ash (aref left i) 1)
+			 (logand side 1))))
+	      
+	      (setf (aref left i)
+		    (ash (+ mid side) -1)
+		    (aref right i)
+		    (ash (- mid side) -1))))))
+       (t (error "Wrong channel assignment"))))))
