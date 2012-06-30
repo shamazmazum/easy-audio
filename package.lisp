@@ -7,8 +7,8 @@
 	   #:streaminfo-minframesize
 	   #:streaminfo-maxframesize
 	   #:streaminfo-samplerate
-	   #:streaminfo-channels-1
-	   #:streaminfo-bitspersample-1
+	   #:streaminfo-channels
+	   #:streaminfo-bitspersample
 	   #:streaminfo-totalsamples
 	   #:streaminfo-md5
 	   
