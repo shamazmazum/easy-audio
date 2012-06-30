@@ -63,7 +63,7 @@
 (defmethod (setf frame-sample-size) (val (frame frame))
   (declare (type (unsigned-byte 3) val))
   (let ((sample-sizes (list
-		       (1+ (streaminfo-bitspersample-1 (frame-streaminfo frame))) ; 000
+		       (streaminfo-bitspersample (frame-streaminfo frame)) ; 000
 		       8            ; 001
 		       12           ; 010
 		       :reserved    ; 011

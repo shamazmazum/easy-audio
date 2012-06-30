@@ -36,10 +36,10 @@
 		(setf minframesize (tbs:read-bits 24 stream)
 		      maxframesize (tbs:read-bits 24 stream)))
 
-  (with-slots (samplerate channels-1 bitspersample-1 totalsamples) data
+  (with-slots (samplerate channels bitspersample totalsamples) data
 	      (setf samplerate (tbs:read-bits 20 stream)
-		    channels-1 (tbs:read-bits 3 stream)
-		    bitspersample-1 (tbs:read-bits 5 stream)
+		    channels (1+ (tbs:read-bits 3 stream))
+		    bitspersample (1+ (tbs:read-bits 5 stream))
 		    totalsamples (tbs:read-bits 36 stream)))
   
   (let ((md5 (make-array 16 :element-type 'u8)))

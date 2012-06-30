@@ -15,8 +15,8 @@
    (minframesize :accessor streaminfo-minframesize)
    (maxframesize :accessor streaminfo-maxframesize)
    (samplerate :accessor streaminfo-samplerate)
-   (channels-1 :accessor streaminfo-channels-1)
-   (bitspersample-1 :accessor streaminfo-bitspersample-1)
+   (channels :accessor streaminfo-channels)
+   (bitspersample :accessor streaminfo-bitspersample)
    (totalsamples :accessor streaminfo-totalsamples)
    (md5 :accessor streaminfo-md5)))
 
