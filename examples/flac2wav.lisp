@@ -6,12 +6,14 @@
 (defparameter +wave+ (babel:string-to-octets "WAVE"))
 (defconstant +header-size+ (* 8 44))
 
-(declaim (inline integer-to-array))
-(defun integer-to-array (val array &optional (size 8))
+(defun integer-to-array (val array)
+  (declare (optimize (speed 3))
+	   (type (unsigned-byte 32) val)
+	   (type (simple-array (unsigned-byte 8)) array))
   (loop for i below (length array)
-	for pos from 0 by size do
+	for pos from 0 by 8 do
 	(setf (aref array i)
-	      (ldb (byte size pos) val)))
+	      (ldb (byte 8 pos) val)))
   array)
 
 (defun mixchannels (out buffers)
@@ -26,17 +28,32 @@
 
 ;; Works only for 8 or 16 bps
 (defun flac2wav (flac-name wav-name)
+  "Decodes flac to wav. Works only for 8 or 16 bps,
+   fixed block size and if total samples in stream is known"
   (multiple-value-bind (blocks stream)
       (flac:open-flac flac-name)
-    (let ((streaminfo (first blocks))
-	  (buf2 (make-array 2 :element-type '(unsigned-byte 8)))
-	  (buf4 (make-array 4 :element-type '(unsigned-byte 8))))
+    (let* ((streaminfo (first blocks))
+	   (buf2 (make-array 2 :element-type '(unsigned-byte 8)))
+	   (buf4 (make-array 4 :element-type '(unsigned-byte 8)))
+
+	   (minblocksize (streaminfo-minblocksize streaminfo))
+	   (maxblocksize (streaminfo-maxblocksize streaminfo))
+	   (totalsamples (streaminfo-totalsamples streaminfo))
+	   (blocksize minblocksize)
+
+	   (bps (streaminfo-bitspersample streaminfo))
+	   (channels (streaminfo-channels streaminfo))
+	   (samplerate (streaminfo-samplerate streaminfo)))
       
-      (if (= 0 (streaminfo-totalsamples streaminfo))
+      (if (= 0 totalsamples)
 	  (error "Number of total samples is unknown"))
-      (if (/= (streaminfo-minblocksize streaminfo)
-	      (streaminfo-maxblocksize streaminfo))
+      (if (/= minblocksize maxblocksize)
 	  (error "Block size must be fixed"))
+
+      (if (not (or (= 8 bps)
+		   (= 16 bps)))
+	  (error "Bps must be 16 or 8"))
+      
       (with-open-file (out-stream wav-name
 				  :direction :output
 				  :if-exists :supersede
@@ -44,13 +61,10 @@
 				  :element-type '(unsigned-byte 8))
 		      ;; Fill headers
 		      (write-sequence +wav-chunk-id+ out-stream)
-		      (multiple-value-bind (size remainder)
-			  (floor
-			   (* (streaminfo-bitspersample streaminfo)
-			      (streaminfo-channels streaminfo)
-			      (streaminfo-totalsamples streaminfo)) 8)
+		      (let ((size
+			     (ash
+			      (* bps channels totalsamples) -3)))
 			
-			(if (/= remainder 0) (error "Bits per samples is not power of two"))
 			(write-sequence (integer-to-array (+ 36 size) buf4) out-stream)
 			(write-sequence +wave+ out-stream)
 			
@@ -61,29 +75,23 @@
 			(write-byte 0 out-stream)
 
 			(write-sequence (integer-to-array
-					 (streaminfo-channels streaminfo)
-					 buf2) out-stream)
+					 channels buf2) out-stream)
 			
 			(write-sequence (integer-to-array
-					 (streaminfo-samplerate streaminfo)
+					 samplerate buf4) out-stream)
+
+			(write-sequence (integer-to-array
+					 (ash
+					  (* samplerate channels bps) -3)
 					 buf4) out-stream)
 
 			(write-sequence (integer-to-array
 					 (ash
-					  (* (streaminfo-samplerate streaminfo)
-					     (streaminfo-channels streaminfo)
-					     (streaminfo-bitspersample streaminfo)) -3)
-					 buf4) out-stream)
-
-			(write-sequence (integer-to-array
-					 (ash
-					  (* (streaminfo-channels streaminfo)
-					     (streaminfo-bitspersample streaminfo)) -3)
+					  (* channels bps) -3)
 					 buf2) out-stream)
 
 			(write-sequence (integer-to-array
-					 (streaminfo-bitspersample streaminfo)
-					 buf2) out-stream)
+					 bps buf2) out-stream)
 
 			;; Subchunk 2
 			(write-sequence +wav-subchunk2-id+ out-stream)
@@ -93,16 +101,15 @@
       (with-open-file (out-stream wav-name
 				  :direction :output
 				  :if-exists :append
-				  :element-type (list 'signed-byte (streaminfo-bitspersample streaminfo)))
+				  :element-type (list 'signed-byte bps))
 		      (file-position out-stream
-				     (/ (ash 44 3) (streaminfo-bitspersample streaminfo)))
+				     (/ (ash 44 3) bps))
 
-		      (let ((buf (make-array (* (streaminfo-minblocksize streaminfo)
-						(streaminfo-channels streaminfo))
+		      (let ((buf (make-array (* blocksize channels)
 					     :element-type '(signed-byte 32))))
 
-			(loop for i below (streaminfo-totalsamples streaminfo)
-			      by (streaminfo-minblocksize streaminfo) do
+			(loop for i below totalsamples
+			      by blocksize do
 			      (write-sequence (mixchannels buf (frame-decode (frame-reader stream streaminfo)))
 					      out-stream)))))
     (close stream)))
