@@ -259,14 +259,31 @@
 		       (t sample-rate))))
     (setf (frame-crc-8 frame) (tbs:read-octet stream))
 
-    (let ((subframes-num
-	   (typecase (frame-channel-assignment frame)
-	     (symbol 2)
-	     (t (frame-channel-assignment frame)))))
-      
+    (let ((assignment (frame-channel-assignment frame)))
       (setf (frame-subframes frame)
-	    (loop for sf below subframes-num collect
-		(subframe-reader stream frame (frame-sample-size frame)))))
+	    (typecase assignment
+	      (fixnum
+	       (loop for sf below (frame-channel-assignment frame) collect
+		     (subframe-reader stream frame (frame-sample-size frame))))
+	      (symbol
+	       ;; Do bps correction
+	       (loop for sf below 2 collect
+		     (subframe-reader
+		      stream frame
+		      (cond
+		       ((and (eq assignment :left/side)
+			     (= sf 1))
+			(1+ (frame-sample-size frame)))
+
+		       ((and (eq assignment :right/side)
+			     (= sf 0))
+			(1+ (frame-sample-size frame)))
+
+		       ((and (eq assignment :mid/side)
+			     (= sf 1))
+			(1+ (frame-sample-size frame)))
+		       (t (frame-sample-size frame))))))
+	    (t (error "Wrong channel assignment")))))
 
     ;; Check zero padding
     (if (/= (tbs:read-to-byte-alignment stream) 0) (error "Padding to byte-alignment is not zero"))

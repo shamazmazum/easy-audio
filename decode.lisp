@@ -76,6 +76,7 @@
 (defun frame-decode (frame)
   (declare (optimize (speed 3)
 		     (safety 0)))
+
   (let ((decoded-subframes
 	 (mapcar #'(lambda (subframe) (subframe-decode subframe frame))
 		 (frame-subframes frame)))
@@ -100,7 +101,6 @@
 	(let ((block-size (frame-block-size frame)))
 	  (declare (type fixnum block-size))
 	  (dotimes (i block-size)
-	    (declare (type fixnum i))
 	    (let* ((side (aref right i))
 		   (mid (logior
 			 (ash (aref left i) 1)
@@ -110,4 +110,5 @@
 		    (ash (+ mid side) -1)
 		    (aref right i)
 		    (ash (- mid side) -1))))))
-       (t (error "Wrong channel assignment"))))))
+       (t (error "Wrong channel assignment"))))
+    decoded-subframes))
