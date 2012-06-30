@@ -28,6 +28,9 @@
 (defclass subframe ()
   ((wasted-bps :accessor subframe-wasted-bps
 	       :initarg :wasted-bps
+	       :type fixnum)
+   (actual-bps :accessor subframe-actual-bps
+	       :initarg :actual-bps
 	       :type fixnum)))
 
 (defclass subframe-constant (subframe)

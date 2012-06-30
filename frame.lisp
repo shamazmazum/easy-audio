@@ -132,7 +132,7 @@
 ;; Subframe reader
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-lpc) frame)
-  (let* ((bps (frame-sample-size frame))
+  (let* ((bps (subframe-actual-bps subframe))
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (make-array (frame-block-size frame)
 			      :element-type '(signed-byte 32)))
@@ -159,7 +159,7 @@
     
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
   (declare (optimize (speed 3)))
-  (let* ((bps (frame-sample-size frame))
+  (let* ((bps (subframe-actual-bps subframe))
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (make-array (list (frame-block-size frame))
 			      :element-type '(signed-byte 32))))
@@ -171,24 +171,25 @@
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
   (declare (optimize (speed 3)))
-  (with-slots (sample-size) frame
+  (with-slots (actual-bps) subframe
 	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
 		    (unsigned-to-signed
-		     (tbs:read-bits sample-size bit-reader)
-		     sample-size))))
+		     (tbs:read-bits actual-bps bit-reader)
+		     actual-bps))))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
   (declare (optimize (speed 3)))
-  (with-slots (sample-size block-size) frame
-	      (let ((buf
-		     (make-array (list block-size)
-				 ;; FIXME: value is signed in original libFLAC
-				 :element-type '(signed-byte 32))))
+  (let* ((bps (subframe-actual-bps subframe))
+	 (block-size (frame-block-size frame))
+	 (buf
+	  (make-array (list block-size)
+		      ;; FIXME: value is signed in original libFLAC
+		      :element-type '(signed-byte 32))))
 		 
-		(read-bits-array bit-reader buf sample-size :signed t)
-		(setf (subframe-verbatim-buffer subframe) buf))))
+    (read-bits-array bit-reader buf bps :signed t)
+    (setf (subframe-verbatim-buffer subframe) buf)))
 
-(defun subframe-reader (stream frame)
+(defun subframe-reader (stream frame actual-bps)
   (declare (optimize (speed 3)))
   (if (/= (tbs:read-bit stream) 0) (error "Error reading subframe"))
     (let* ((type-num (tbs:read-bits 6 stream))
@@ -214,7 +215,8 @@
 	    (setq wasted-bits (1+ (read-unary-coded-integer stream)))))
       
       (let ((subframe (apply #'make-instance
-			     (append type-args (list :wasted-bps wasted-bits)))))
+			     (append type-args (list :wasted-bps wasted-bits
+						     :actual-bps actual-bps)))))
 	(subframe-body-reader stream subframe frame)
 	subframe)))
 
@@ -264,7 +266,7 @@
       
       (setf (frame-subframes frame)
 	    (loop for sf below subframes-num collect
-		(subframe-reader stream frame))))
+		(subframe-reader stream frame (frame-sample-size frame)))))
 
     ;; Check zero padding
     (if (/= (tbs:read-to-byte-alignment stream) 0) (error "Padding to byte-alignment is not zero"))
