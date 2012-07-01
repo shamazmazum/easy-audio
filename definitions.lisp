@@ -31,31 +31,30 @@
 	       :type fixnum)
    (actual-bps :accessor subframe-actual-bps
 	       :initarg :actual-bps
-	       :type fixnum)))
+	       :type fixnum)
+   (out-buf :accessor subframe-out-buf
+	    :initarg :out-buf
+	    :type (simple-array (signed-byte 32)))))
 
 (defclass subframe-constant (subframe)
   ((constant-value :accessor subframe-constant-value
 		   :type (signed-byte 32))))
 
-(defclass subframe-verbatim (subframe)
-  ((buffer :accessor subframe-verbatim-buffer
-	   :type (simple-array (signed-byte 32)))))
+(defclass subframe-verbatim (subframe) ())
 
 (defclass subframe-lpc (subframe)
-  ((out-buf :accessor subframe-out-buf
-	    :type (simple-array (signed-byte 32))) ;; Warm-up + residual
-   (order :accessor subframe-order
+  ((order :accessor subframe-order
 	  :initarg :order
 	  :type fixnum)
    (precision :accessor subframe-lpc-precision
 	      :type fixnum)
-   (predictor-coeff :accessor subframe-lpc-predictor-coeff)
-   (coeff-shift :accessor subframe-lpc-coeff-shift)))
+   (predictor-coeff :accessor subframe-lpc-predictor-coeff
+		    :type (simple-array (signed-byte 32)))
+   (coeff-shift :accessor subframe-lpc-coeff-shift
+		:type (signed-byte 32))))
 
 (defclass subframe-fixed (subframe)
-  ((out-buf :accessor subframe-out-buf
-	    :type (simple-array (signed-byte 32)))
-   (order :accessor subframe-order
+  ((order :accessor subframe-order
 	  :initarg :order
 	  :type fixnum)))
 

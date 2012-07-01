@@ -1,6 +1,7 @@
 (in-package :cl-flac)
 
 (defmethod subframe-decode ((subframe subframe-constant) frame)
+  ;; Fill out-buf, or, maybe, create new one
   (make-array (frame-block-size frame)
 	      ;; FIXME: sample is signed in original libFLAC
 	      :element-type '(signed-byte 32)
@@ -8,12 +9,11 @@
 
 (defmethod subframe-decode ((subframe subframe-verbatim) frame)
   (declare (ignore frame))
-  (subframe-verbatim-buffer subframe))
+  (subframe-out-buf subframe))
 
 (defmethod subframe-decode ((subframe subframe-fixed) frame)
   ;; Decodes subframe destructively modifiying it
   (declare (optimize (speed 3)
-		     (space 0)
 		     (safety 0))
 	   (ignore frame))
   (let* ((out-buf (subframe-out-buf subframe))
@@ -57,7 +57,8 @@
     out-buf))
 
 (defmethod subframe-decode ((subframe subframe-lpc) frame)
-  (declare (ignore frame))
+  (declare (ignore frame)
+	   (optimize (safety 0)))
   (let* ((out-buf (subframe-out-buf subframe))
 	 (len (length out-buf))
 	 (shift (subframe-lpc-coeff-shift subframe))

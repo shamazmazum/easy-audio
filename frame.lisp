@@ -136,8 +136,7 @@
   (declare (optimize (speed 3)))
   (let* ((bps (subframe-actual-bps subframe))
 	 (warm-up-samples (subframe-order subframe))
-	 (out-buf (make-array (list (frame-block-size frame))
-			      :element-type '(signed-byte 32)))
+	 (out-buf (subframe-out-buf subframe))
 	 (coeff-buf (make-array (list warm-up-samples)
 				:element-type '(signed-byte 32))))
     
@@ -156,20 +155,17 @@
 	    (read-bits-array bit-reader
 			     coeff-buf precision :signed t)))
 
-    (residual-reader bit-reader subframe frame out-buf)
-    (setf (subframe-out-buf subframe) out-buf)))
+    (residual-reader bit-reader subframe frame out-buf)))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
   (declare (optimize (speed 3)))
-  (let* ((bps (subframe-actual-bps subframe))
-	 (warm-up-samples (subframe-order subframe))
-	 (out-buf (make-array (list (frame-block-size frame))
-			      :element-type '(signed-byte 32))))
+  (let ((bps (subframe-actual-bps subframe))
+	(warm-up-samples (subframe-order subframe))
+	(out-buf (subframe-out-buf subframe)))
     
     (read-bits-array bit-reader out-buf bps :signed t :len warm-up-samples)
 
-    (residual-reader bit-reader subframe frame out-buf)
-    (setf (subframe-out-buf subframe) out-buf)))
+    (residual-reader bit-reader subframe frame out-buf)))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
   (declare (optimize (speed 3)))
@@ -181,15 +177,11 @@
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
   (declare (optimize (speed 3)))
-  (let* ((bps (subframe-actual-bps subframe))
-	 (block-size (frame-block-size frame))
-	 (buf
-	  (make-array (list block-size)
-		      ;; FIXME: value is signed in original libFLAC
-		      :element-type '(signed-byte 32))))
-		 
-    (setf (subframe-verbatim-buffer subframe)
-	  (read-bits-array bit-reader buf bps :signed t))))
+  (let ((bps (subframe-actual-bps subframe)))
+
+    (with-slots (out-buf) subframe
+		(setf out-buf
+		      (read-bits-array bit-reader out-buf bps :signed t)))))
 
 (defun subframe-reader (stream frame actual-bps)
   (declare (optimize (speed 3)))
@@ -218,7 +210,10 @@
       
       (let ((subframe (apply #'make-instance
 			     (append type-args (list :wasted-bps wasted-bits
-						     :actual-bps actual-bps)))))
+						     :actual-bps actual-bps
+						     :out-buf (make-array
+							       (list (frame-block-size frame))
+							       :element-type '(signed-byte 32)))))))
 	(subframe-body-reader stream subframe frame)
 	subframe)))
 
