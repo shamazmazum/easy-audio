@@ -2,7 +2,7 @@
 
 (defmethod (setf frame-blocking-strategy) (val (frame frame))
   (declare (type (integer 0 1) val)
-	   (optimize (speed 3) (space 0)))
+	   (optimize (speed 3)))
   (setf (slot-value frame 'blocking-strategy)
 	(cond
 	 ((= val 0) :fixed)
@@ -11,7 +11,7 @@
 
 (defmethod (setf frame-block-size) (val (frame frame))
   (declare (type (unsigned-byte 4) val)
-	   (optimize (speed 3) (space 0)))
+	   (optimize (speed 3)))
   (setf (slot-value frame 'block-size)
 	(cond
 	 ((= val 1) 192)               ; 0001
@@ -61,7 +61,8 @@
 	      (t (error "Invalid channel assignment")))))
 
 (defmethod (setf frame-sample-size) (val (frame frame))
-  (declare (type (unsigned-byte 3) val))
+  (declare (type (unsigned-byte 3) val)
+	   (optimize (speed 3)))
   (let ((sample-sizes (list
 		       (streaminfo-bitspersample (frame-streaminfo frame)) ; 000
 		       8            ; 001
@@ -132,11 +133,12 @@
 ;; Subframe reader
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-lpc) frame)
+  (declare (optimize (speed 3)))
   (let* ((bps (subframe-actual-bps subframe))
 	 (warm-up-samples (subframe-order subframe))
-	 (out-buf (make-array (frame-block-size frame)
+	 (out-buf (make-array (list (frame-block-size frame))
 			      :element-type '(signed-byte 32)))
-	 (coeff-buf (make-array warm-up-samples
+	 (coeff-buf (make-array (list warm-up-samples)
 				:element-type '(signed-byte 16))))
     
     (read-bits-array bit-reader
