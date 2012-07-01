@@ -112,7 +112,7 @@
 	(declare (type (unsigned-byte 32) unary binary))
 	
     (let ((val (logior (ash unary param) binary)))
-    
-    (if (= (ldb (byte 1 0) val) 1)
-	(- 0 (ash val -1) 1)
-      (ash val -1)))))
+      
+      (if (= (ldb (byte 1 0) val) 1)
+	  (- 0 (ash val -1) 1)
+	(ash val -1)))))
