@@ -11,7 +11,8 @@
   (loop for i from offset below len do
 	(setf (aref array i)
 	      (if signed (unsigned-to-signed (tbs:read-bits size stream) size)
-		(tbs:read-bits size stream)))))
+		(tbs:read-bits size stream))))
+  array)
 
 (defun read-utf8-u32 (stream)
   "for reading frame number

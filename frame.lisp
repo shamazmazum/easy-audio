@@ -139,7 +139,7 @@
 	 (out-buf (make-array (list (frame-block-size frame))
 			      :element-type '(signed-byte 32)))
 	 (coeff-buf (make-array (list warm-up-samples)
-				:element-type '(signed-byte 16))))
+				:element-type '(signed-byte 32))))
     
     (read-bits-array bit-reader
 		     out-buf bps :signed t :len warm-up-samples)
@@ -158,7 +158,7 @@
 
     (residual-reader bit-reader subframe frame out-buf)
     (setf (subframe-out-buf subframe) out-buf)))
-    
+
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
   (declare (optimize (speed 3)))
   (let* ((bps (subframe-actual-bps subframe))
@@ -188,8 +188,8 @@
 		      ;; FIXME: value is signed in original libFLAC
 		      :element-type '(signed-byte 32))))
 		 
-    (read-bits-array bit-reader buf bps :signed t)
-    (setf (subframe-verbatim-buffer subframe) buf)))
+    (setf (subframe-verbatim-buffer subframe)
+	  (read-bits-array bit-reader buf bps :signed t))))
 
 (defun subframe-reader (stream frame actual-bps)
   (declare (optimize (speed 3)))
