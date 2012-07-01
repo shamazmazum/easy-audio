@@ -96,39 +96,38 @@
 	   (type (simple-array (signed-byte 32)) out)
 	   (optimize (speed 3)))
 
-  (let ((part-order (tbs:read-bits 4 bit-reader)))
-    (declare (type (unsigned-byte 4) part-order))
+  (let* ((part-order (the (unsigned-byte 4)
+		       (tbs:read-bits 4 bit-reader)))
+	 (sample-idx (subframe-order subframe))
+	 (blocksize (frame-block-size frame))
+	 (predictor-order (subframe-order subframe)))
+    (declare (type fixnum sample-idx blocksize predictor-order))
     
-    (let ((sample-idx (subframe-order subframe))
-	  (blocksize (frame-block-size frame))
-	  (predictor-order (subframe-order subframe)))
-      (declare (type fixnum sample-idx blocksize predictor-order))
-      
-      (loop for i below (ash 1 part-order) do
-	    (let ((samples-num
-		   (cond
-		    ;; FIXME:: Check following lines
-		    ((zerop i) (- (ash blocksize (- part-order)) predictor-order))
-		    (t (ash blocksize (- part-order)))))
-		  (rice-parameter (tbs:read-bits param-len bit-reader)))
-	      (declare (type fixnum rice-parameter))
-	      
-	      (cond
-	       ((< rice-parameter esc-code)
-		(loop for sample below samples-num do
-		      (setf (aref out sample-idx)
-			    (read-rice-signed bit-reader rice-parameter))
-		      (incf sample-idx)))
-	       (t
-		;; FIXME: read unencoded signed rice
-		;; Do we need to store bps?
-		;; Read bps:
-		(setq rice-parameter (tbs:read-bits 5 bit-reader))
-		(read-bits-array bit-reader out rice-parameter
-				 :signed t
-				 :offset sample-idx)
-		(incf sample-idx samples-num)))))
-      out)))
+    (loop for i below (ash 1 part-order) do
+	  (let ((samples-num
+		 (cond
+		  ;; FIXME:: Check following lines
+		  ((zerop i) (- (ash blocksize (- part-order)) predictor-order))
+		  (t (ash blocksize (- part-order)))))
+		(rice-parameter (tbs:read-bits param-len bit-reader)))
+	    (declare (type fixnum rice-parameter))
+	    
+	    (cond
+	     ((< rice-parameter esc-code)
+	      (loop for sample below samples-num do
+		    (setf (aref out sample-idx)
+			  (read-rice-signed bit-reader rice-parameter))
+		    (incf sample-idx)))
+	     (t
+	      ;; FIXME: read unencoded signed rice
+	      ;; Do we need to store bps?
+	      ;; Read bps:
+	      (setq rice-parameter (tbs:read-bits 5 bit-reader))
+	      (read-bits-array bit-reader out rice-parameter
+			       :signed t
+			       :offset sample-idx)
+	      (incf sample-idx samples-num)))))
+    out))
 
 ;; Subframe reader
 

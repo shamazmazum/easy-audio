@@ -17,14 +17,22 @@
   array)
 
 (defun mixchannels (out buffers)
+  (declare (type list buffers)
+	   (type (simple-array (signed-byte 32)) out)
+	   (optimize (speed 3) (safety 0)))
   (let ((offset (length buffers))
-	(size (length (nth 0 buffers))))
-    (loop for i below size
-	  for idx from 0 by offset do 
-	  (loop for j below offset do
-		(setf (aref out (+ idx j))
-		      (aref (nth j buffers) i)))))
-  out)
+	(size (length (the (simple-array (signed-byte 32))
+			(nth 0 buffers))))
+	(idx 0))
+    (declare (type fixnum offset size idx))
+    (dotimes (i size)
+      (dotimes (j offset)
+	(declare (type fixnum i j))
+	(setf (aref out (+ idx j))
+	      (aref (the (simple-array (signed-byte 32))
+		      (nth j buffers)) i)))
+      (incf idx offset))
+    out))
 
 ;; Works only for 8 or 16 bps
 (defun flac2wav (flac-name wav-name)
