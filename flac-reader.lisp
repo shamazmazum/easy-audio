@@ -10,15 +10,15 @@
 	   (optimize (speed 3)))
   (loop for i from offset below len do
 	(setf (aref array i)
-	      (if signed (unsigned-to-signed (tbs:read-bits size stream) size)
-		(tbs:read-bits size stream))))
+	      (if signed (unsigned-to-signed (read-bits size stream) size)
+		(read-bits size stream))))
   array)
 
 (defun read-utf8-u32 (stream)
   "for reading frame number
    copy from libFLAC"
   (declare (optimize (speed 3)))
-  (let ((x (tbs:read-octet stream))
+  (let ((x (read-octet stream))
 	i
 	(v 0))
     (declare (type (integer 0 255) x)
@@ -55,7 +55,7 @@
      (t (error "Error reading utf-8 coded value")))
 
     (loop for j from i downto 1 do
-	  (setq x (tbs:read-octet stream))
+	  (setq x (read-octet stream))
 	  (if (or
 	       (= 0 (logand x #x80))
 	       (/= 0 (logand x #x40)))
@@ -93,24 +93,23 @@
     (declare (type (integer 0 1) bit)
 	     (type (unsigned-byte 32) sum))
   (tagbody reader-loop
-	     (setq bit (tbs:read-bit bitreader))
+	     (setq bit (read-bit bitreader))
 	     (when (= one bit)
 	       (incf sum)
 	       (go reader-loop)))
   sum))
 
-(declaim (ftype (function (stream (integer 0 30))
+(declaim (ftype (function (t (integer 0 30))
 			  (signed-byte 32))
 		read-rice-signed)
 	 (inline read-rice-signed))
 (defun read-rice-signed (bitreader param)
   (declare (type (integer 0 30) param)
-	   (type stream bitreader)
 	   (optimize (speed 3) (safety 0)))
   (let* ((unary (the (unsigned-byte 32)
 		 (read-unary-coded-integer bitreader)))
 	(binary (the (unsigned-byte 32)
-		  (tbs:read-bits param bitreader)))
+		  (read-bits param bitreader)))
 	(val (logior (ash unary param) binary)))
       
     (if (= (ldb (byte 1 0) val) 1)

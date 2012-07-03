@@ -120,4 +120,4 @@
 			      by blocksize do
 			      (write-sequence (mixchannels buf (frame-decode (frame-reader stream streaminfo)))
 					      out-stream)))))
-    (close stream)))
+    (close (reader-stream stream))))

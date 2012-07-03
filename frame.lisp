@@ -78,7 +78,7 @@
 (declaim (inline residual-reader))
 (defun residual-reader (bit-reader subframe frame out)
   (declare (optimize (speed 3) (space 0)))
-  (let ((coding-method (tbs:read-bits 2 bit-reader)))
+  (let ((coding-method (read-bits 2 bit-reader)))
     (declare (type (unsigned-byte 2) coding-method))
     (cond
      ((= coding-method 0) ; 00
@@ -97,7 +97,7 @@
 	   (optimize (speed 3)))
 
   (let* ((part-order (the (unsigned-byte 4)
-		       (tbs:read-bits 4 bit-reader)))
+		       (read-bits 4 bit-reader)))
 	 (sample-idx (subframe-order subframe))
 	 (blocksize (frame-block-size frame))
 	 (predictor-order (subframe-order subframe)))
@@ -109,7 +109,7 @@
 		  ;; FIXME:: Check following lines
 		  ((zerop i) (- (ash blocksize (- part-order)) predictor-order))
 		  (t (ash blocksize (- part-order)))))
-		(rice-parameter (tbs:read-bits param-len bit-reader)))
+		(rice-parameter (read-bits param-len bit-reader)))
 	    (declare (type fixnum rice-parameter))
 	    
 	    (cond
@@ -122,7 +122,7 @@
 	      ;; FIXME: read unencoded signed rice
 	      ;; Do we need to store bps?
 	      ;; Read bps:
-	      (setq rice-parameter (tbs:read-bits 5 bit-reader))
+	      (setq rice-parameter (read-bits 5 bit-reader))
 	      (read-bits-array bit-reader out rice-parameter
 			       :signed t
 			       :offset sample-idx)
@@ -142,13 +142,13 @@
     (read-bits-array bit-reader
 		     out-buf bps :signed t :len warm-up-samples)
     
-    (let ((precision (1+ (tbs:read-bits 4 bit-reader))))
+    (let ((precision (1+ (read-bits 4 bit-reader))))
       (if (= #b10000 precision)
 	  (error "lpc coefficients precision cannot be 16")
 	(setf (subframe-lpc-precision subframe) precision))
       
       (setf (subframe-lpc-coeff-shift subframe)
-	    (unsigned-to-signed (tbs:read-bits 5 bit-reader) 5))
+	    (unsigned-to-signed (read-bits 5 bit-reader) 5))
 
       (setf (subframe-lpc-predictor-coeff subframe)
 	    (read-bits-array bit-reader
@@ -171,7 +171,7 @@
   (with-slots (actual-bps) subframe
 	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
 		    (unsigned-to-signed
-		     (tbs:read-bits actual-bps bit-reader)
+		     (read-bits actual-bps bit-reader)
 		     actual-bps))))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
@@ -184,8 +184,8 @@
 
 (defun subframe-reader (stream frame actual-bps)
   (declare (optimize (speed 3)))
-  (if (/= (tbs:read-bit stream) 0) (error "Error reading subframe"))
-    (let* ((type-num (tbs:read-bits 6 stream))
+  (if (/= (read-bit stream) 0) (error "Error reading subframe"))
+    (let* ((type-num (read-bits 6 stream))
 	   (type-args
 	    (cond
 	     ((= type-num 0) '(subframe-constant))         ; 000000
@@ -199,7 +199,7 @@
 	       (<= type-num 63))
 	      (list 'subframe-lpc :order (1+ (- type-num 32)))) ; 100000-111111
 	     (t (error "Error subframe type"))))
-	   (wasted-bits (tbs:read-bit stream)))
+	   (wasted-bits (read-bit stream)))
 
       ;; FIXME: Do not know what to do with wasted bits
       (if (= wasted-bits 1)
@@ -218,16 +218,16 @@
 
 (defun frame-reader (stream streaminfo)
   (let ((frame (make-instance 'frame :streaminfo streaminfo)))
-    (if (/= +frame-sync-code+ (tbs:read-bits 14 stream)) (error "Frame sync code is not 11111111111110"))
-    (if (/= 0 (tbs:read-bit stream)) (error "Error reading frame"))
-    (setf (frame-blocking-strategy frame) (tbs:read-bit stream))
+    (if (/= +frame-sync-code+ (read-bits 14 stream)) (error "Frame sync code is not 11111111111110"))
+    (if (/= 0 (read-bit stream)) (error "Error reading frame"))
+    (setf (frame-blocking-strategy frame) (read-bit stream))
     
-    (setf (frame-block-size frame) (tbs:read-bits 4 stream))
-    (setf (frame-sample-rate frame) (tbs:read-bits 4 stream))
+    (setf (frame-block-size frame) (read-bits 4 stream))
+    (setf (frame-sample-rate frame) (read-bits 4 stream))
 
-    (setf (frame-channel-assignment frame) (tbs:read-bits 4 stream))
-    (setf (frame-sample-size frame) (tbs:read-bits 3 stream))
-    (if (/= 0 (tbs:read-bit stream)) (error "Error reading frame"))
+    (setf (frame-channel-assignment frame) (read-bits 4 stream))
+    (setf (frame-sample-size frame) (read-bits 3 stream))
+    (if (/= 0 (read-bit stream)) (error "Error reading frame"))
 
     (setf (frame-number frame)
 	  (if (eql (frame-blocking-strategy frame) :fixed)
@@ -238,22 +238,22 @@
 		(setf block-size
 		      (cond
 		       ((eql block-size :get-8-from-end)
-			(1+ (tbs:read-octet stream)))
+			(1+ (read-octet stream)))
 		       ((eql block-size :get-16-from-end)
-			(1+ (tbs:read-bits 16 stream)))
+			(1+ (read-bits 16 stream)))
 		       (t block-size))))
 
     (with-slots (sample-rate) frame
 		(setf sample-rate
 		      (cond
 		       ((eql sample-rate :get-8-bit-from-end-khz)
-			(* 1000 (tbs:read-octet stream)))
+			(* 1000 (read-octet stream)))
 		       ((eql sample-rate :get-16-bit-from-end-hz)
-			(tbs:read-bits 16 stream))
+			(read-bits 16 stream))
 		       ((eql sample-rate :get-16-bit-from-end-tenshz)
-			(* 10 (tbs:read-bits 16 stream)))
+			(* 10 (read-bits 16 stream)))
 		       (t sample-rate))))
-    (setf (frame-crc-8 frame) (tbs:read-octet stream))
+    (setf (frame-crc-8 frame) (read-octet stream))
 
     (let ((assignment (frame-channel-assignment frame)))
       (setf (frame-subframes frame)
@@ -282,6 +282,6 @@
 	    (t (error "Wrong channel assignment")))))
 
     ;; Check zero padding
-    (if (/= (tbs:read-to-byte-alignment stream) 0) (error "Padding to byte-alignment is not zero"))
-    (setf (frame-crc-16 frame) (tbs:read-bits 16 stream))
+    (if (/= (read-to-byte-alignment stream) 0) (error "Padding to byte-alignment is not zero"))
+    (setf (frame-crc-16 frame) (read-bits 16 stream))
   frame))

@@ -9,19 +9,12 @@
       (if (not (string= "fLaC" (babel:octets-to-string flac-header-array))) (error "Stream is not flac stream")))
 
 
-    (flet ((closure-cb ()
-		       (close stream)))
-      (let* ((bitreader-stream
-	     (make-instance 'tbs:bit-input-stream
-			    :callback (tbs:make-stream-input-callback stream)
-			    :closure-callback #'closure-cb
-			    :little-endian nil
-			    :read-to-left nil))
-	     (metadata-blocks
-	      (loop for metadata-block = (metadata-reader bitreader-stream)
-		    collect metadata-block
-		    while (= 0 (slot-value metadata-block 'last-block-p)))))
+    (let* ((bitreader (make-reader :stream stream))
+	   (metadata-blocks
+	    (loop for metadata-block = (metadata-reader bitreader)
+		  collect metadata-block
+		  while (= 0 (slot-value metadata-block 'last-block-p)))))
       
-	(values
-	 metadata-blocks
-	 bitreader-stream)))))
+      (values
+       metadata-blocks
+       bitreader))))

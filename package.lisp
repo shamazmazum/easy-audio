@@ -29,5 +29,9 @@
 	   ;; Functions
 	   #:open-flac
 	   #:frame-reader
-	   #:subframe-decode
-	   #:frame-decode)) ; Not needed to end user, actually
+	   #:subframe-decode ; Not needed to end user, actually
+	   #:frame-decode
+
+	   ;; Accessor to stream
+	   ;; It's good to add some macro here, maybe
+	   #:reader-stream)) 
