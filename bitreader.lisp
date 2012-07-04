@@ -66,7 +66,7 @@
 		  (if (= end 0) (error 'reader-end-of-stream
 				       :reader reader))))
 
-(declaim (inline can-read))
+(declaim (inline can-not-read))
 (defun can-not-read (reader)
   (declare (type reader reader))
 
@@ -98,14 +98,15 @@
 		    (dotimes (i iterations)
 		      (if (can-not-read reader) (fill-buffer reader))
 		      (let ((bits-to-add (min bits (- 8 ibit))))
-			(declare (type positive-fixnum bits-to-add))
+			(declare (type bit-counter bits-to-add))
 			(setq result
 			      (logior result
-				      (ash
-				       (ldb (byte bits-to-add (- 8 ibit bits-to-add))
-					    (aref (reader-buffer reader)
-						  (reader-ibyte reader)))
-				       (- bits bits-to-add)))
+				      (the non-negative-fixnum
+					(ash
+					 (ldb (byte bits-to-add (- 8 ibit bits-to-add))
+					      (aref (reader-buffer reader)
+						    (reader-ibyte reader)))
+					 (the (unsigned-byte 32) (- bits bits-to-add)))))
 			      bits (- bits bits-to-add))
 			(move-forward reader bits-to-add)))
 		    result)))
