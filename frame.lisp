@@ -1,5 +1,7 @@
 (in-package :cl-flac)
 
+(declaim (optimize (safety 0)))
+
 (defmethod (setf frame-blocking-strategy) (val (frame frame))
   (declare (type (integer 0 1) val)
 	   (optimize (speed 3)))

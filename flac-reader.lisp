@@ -1,5 +1,7 @@
 (in-package :cl-flac)
 
+(declaim (optimize (safety 0)))
+
 (defun read-bits-array (stream array size &key
 			       signed
 			       (len (length array))

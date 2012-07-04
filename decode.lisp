@@ -1,5 +1,7 @@
 (in-package :cl-flac)
 
+(declaim (optimize (safety 0)))
+
 (defmethod subframe-decode ((subframe subframe-constant) frame)
   ;; Fill out-buf, or, maybe, create new one
   (make-array (frame-block-size frame)
