@@ -154,3 +154,6 @@
 			   (aref (reader-buffer reader) ibyte))
 		    (setf ibit 0)
 		    (incf ibyte))))
+
+(defun close-reader (reader)
+  (close (reader-stream reader)))

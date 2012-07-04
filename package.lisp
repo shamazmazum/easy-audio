@@ -32,6 +32,4 @@
 	   #:subframe-decode ; Not needed to end user, actually
 	   #:frame-decode
 
-	   ;; Accessor to stream
-	   ;; It's good to add some macro here, maybe
-	   #:reader-stream)) 
+	   #:close-reader))
