@@ -58,20 +58,30 @@
 
 (defmethod subframe-decode ((subframe subframe-lpc) frame)
   (declare (ignore frame)
-	   (optimize (safety 0)))
-  (let* ((out-buf (subframe-out-buf subframe))
+	   (optimize (speed 3) (safety 0)))
+  (let* ((out-buf (the (simple-array (signed-byte 32))
+		    (subframe-out-buf subframe)))
 	 (len (length out-buf))
 	 (shift (subframe-lpc-coeff-shift subframe))
 	 (order (subframe-order subframe))
 	 (coeff (subframe-lpc-predictor-coeff subframe)))
+    (declare (type (simple-array (signed-byte 32)) out-buf coeff)
+	     (type fixnum len order)
+	     (type (signed-byte 32) shift))
 
-    (loop for i from order below len do
-	  (incf (aref out-buf i)
-		(ash
-		 (loop for j below order sum
+    (do ((i order (1+ i)))
+	((= i len))
+      (declare (type fixnum i))
+      (incf (aref out-buf i)
+	    (the fixnum
+	      (ash
+	       (do ((j 0 (1+ j)) (sum 0))
+		   ((= j order) sum)
+		 (declare (type fixnum j sum))
+		 (incf sum
 		       (* (aref coeff j)
-			  (aref out-buf (- i j 1))))
-		 (- shift))))
+			  (aref out-buf (- i j 1)))))
+	       (- shift)))))
     out-buf))
 
 (defun frame-decode (frame)
