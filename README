@@ -4,3 +4,9 @@ Currently it can read flac metadata and parse streaminfo metadata block (use #'f
 Also it can read frames with #'flac:frame-reader and decode them with #'flac:frame-decode
 
 Frame and streaminfo data can be found in corresponding classes
+
+There is simple flac 2 wav converter in cl-flac-examples. Example of use:
+(asdf:load-system :cl-flac-examples)
+(flac-examples:flac2wav "file.flac" "file.wav")
+
+It is about 5 times slower than original flac decoder written on C.
