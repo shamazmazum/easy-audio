@@ -1,13 +1,15 @@
 (in-package :cl-flac)
 
-(declaim (optimize (safety 0)))
+(declaim (optimize (safety 0) (speed 3)))
 
 (defmethod subframe-decode ((subframe subframe-constant) frame)
-  ;; Fill out-buf, or, maybe, create new one
-  (make-array (frame-block-size frame)
-	      ;; FIXME: sample is signed in original libFLAC
-	      :element-type '(signed-byte 32)
-	      :initial-element (subframe-constant-value subframe)))
+  (let ((out-buf (subframe-out-buf subframe))
+	(constant (subframe-constant-value subframe)))
+    (declare (type (signed-byte 32) constant)
+	     (type (simple-array (signed-byte 32)) out-buf))
+    (dotimes (i (length out-buf))
+      (setf (aref out-buf i) constant))
+    out-buf))
 
 (defmethod subframe-decode ((subframe subframe-verbatim) frame)
   (declare (ignore frame))

@@ -73,7 +73,7 @@
 		       :documentation "Number of channels or one of
                                        :mid/side, :left/side, :right/side")
    (sample-size :accessor frame-sample-size
-		:type fixnum)
+		:type (integer 4 33))
    (number :accessor frame-number)
    (crc-8 :accessor frame-crc-8
 	  :type u8)

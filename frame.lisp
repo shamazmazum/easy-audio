@@ -1,10 +1,9 @@
 (in-package :cl-flac)
 
-(declaim (optimize (safety 0)))
+(declaim (optimize (safety 0) (speed 3)))
 
 (defmethod (setf frame-blocking-strategy) (val (frame frame))
-  (declare (type (integer 0 1) val)
-	   (optimize (speed 3)))
+  (declare (type (integer 0 1) val))
   (setf (slot-value frame 'blocking-strategy)
 	(cond
 	 ((= val 0) :fixed)
@@ -12,8 +11,7 @@
 	 (t (error "Blocking strategy must be 0 or 1")))))
 
 (defmethod (setf frame-block-size) (val (frame frame))
-  (declare (type (unsigned-byte 4) val)
-	   (optimize (speed 3)))
+  (declare (type (unsigned-byte 4) val))
   (setf (slot-value frame 'block-size)
 	(cond
 	 ((= val 1) 192)               ; 0001
@@ -28,8 +26,7 @@
 	 (t (error "Frame block size is invalid")))))
 
 (defmethod (setf frame-sample-rate) (val (frame frame))
-  (declare (type (unsigned-byte 4) val)
-	   (optimize (speed 3)))
+  (declare (type (unsigned-byte 4) val))
   (if (= val 15) (error "Frame sample rate is invalid"))
   (let ((sample-rates (list
 		       (streaminfo-samplerate (frame-streaminfo frame)) ; 0000
@@ -52,8 +49,7 @@
 	(nth val sample-rates))))
 
 (defmethod (setf frame-channel-assignment) (val (frame frame))
-  (declare (type fixnum val)
-	   (optimize (speed 3)))
+  (declare (type fixnum val))
   (setf (slot-value frame 'channel-assignment)
 	(cond ((and (>= val 0)
 		    (<= val 7)) (1+ val))   ; 0000-0111
@@ -63,8 +59,7 @@
 	      (t (error "Invalid channel assignment")))))
 
 (defmethod (setf frame-sample-size) (val (frame frame))
-  (declare (type (unsigned-byte 3) val)
-	   (optimize (speed 3)))
+  (declare (type (unsigned-byte 3) val))
   (let ((sample-sizes (list
 		       (streaminfo-bitspersample (frame-streaminfo frame)) ; 000
 		       8            ; 001
@@ -79,7 +74,6 @@
 ;; Residual reader
 (declaim (inline residual-reader))
 (defun residual-reader (bit-reader subframe frame out)
-  (declare (optimize (speed 3) (space 0)))
   (let ((coding-method (read-bits 2 bit-reader)))
     (declare (type (unsigned-byte 2) coding-method))
     (cond
@@ -95,8 +89,7 @@
 
 (defun residual-body-reader (bit-reader subframe frame out &key param-len esc-code)
   (declare (type fixnum param-len esc-code)
-	   (type (simple-array (signed-byte 32)) out)
-	   (optimize (speed 3)))
+	   (type (simple-array (signed-byte 32)) out))
 
   (let* ((part-order (the (unsigned-byte 4)
 		       (read-bits 4 bit-reader)))
@@ -134,7 +127,6 @@
 ;; Subframe reader
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-lpc) frame)
-  (declare (optimize (speed 3)))
   (let* ((bps (subframe-actual-bps subframe))
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (subframe-out-buf subframe))
@@ -159,7 +151,6 @@
     (residual-reader bit-reader subframe frame out-buf)))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
-  (declare (optimize (speed 3)))
   (let ((bps (subframe-actual-bps subframe))
 	(warm-up-samples (subframe-order subframe))
 	(out-buf (subframe-out-buf subframe)))
@@ -169,7 +160,6 @@
     (residual-reader bit-reader subframe frame out-buf)))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
-  (declare (optimize (speed 3)))
   (with-slots (actual-bps) subframe
 	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
 		    (unsigned-to-signed
@@ -177,7 +167,6 @@
 		     actual-bps))))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
-  (declare (optimize (speed 3)))
   (let ((bps (subframe-actual-bps subframe)))
 
     (with-slots (out-buf) subframe
@@ -185,7 +174,6 @@
 		      (read-bits-array bit-reader out-buf bps :signed t)))))
 
 (defun subframe-reader (stream frame actual-bps)
-  (declare (optimize (speed 3)))
   (if (/= (read-bit stream) 0) (error "Error reading subframe"))
     (let* ((type-num (read-bits 6 stream))
 	   (type-args
@@ -247,40 +235,44 @@
 
     (with-slots (sample-rate) frame
 		(setf sample-rate
-		      (cond
-		       ((eql sample-rate :get-8-bit-from-end-khz)
-			(* 1000 (read-octet stream)))
-		       ((eql sample-rate :get-16-bit-from-end-hz)
-			(read-bits 16 stream))
-		       ((eql sample-rate :get-16-bit-from-end-tenshz)
-			(* 10 (read-bits 16 stream)))
-		       (t sample-rate))))
+		      (the fixnum
+			(cond
+			 ((eql sample-rate :get-8-bit-from-end-khz)
+			  (* 1000 (read-octet stream)))
+			 ((eql sample-rate :get-16-bit-from-end-hz)
+			  (read-bits 16 stream))
+			 ((eql sample-rate :get-16-bit-from-end-tenshz)
+			  (* 10 (read-bits 16 stream)))
+			 (t sample-rate)))))
     (setf (frame-crc-8 frame) (read-octet stream))
 
     (let ((assignment (frame-channel-assignment frame)))
       (setf (frame-subframes frame)
 	    (typecase assignment
 	      (fixnum
-	       (loop for sf below (frame-channel-assignment frame) collect
+	       (loop for sf below
+		     (the fixnum (frame-channel-assignment frame)) collect
 		     (subframe-reader stream frame (frame-sample-size frame))))
 	      (symbol
 	       ;; Do bps correction
-	       (loop for sf below 2 collect
-		     (subframe-reader
-		      stream frame
-		      (cond
-		       ((and (eq assignment :left/side)
-			     (= sf 1))
-			(1+ (frame-sample-size frame)))
+	       (let ((sample-size (frame-sample-size frame)))
+		 (declare (type (integer 4 33) sample-size))
+		 (loop for sf below 2 collect
+		       (subframe-reader
+			stream frame
+			(cond
+			 ((and (eq assignment :left/side)
+			       (= sf 1))
+			  (1+ sample-size))
 
-		       ((and (eq assignment :right/side)
-			     (= sf 0))
-			(1+ (frame-sample-size frame)))
+			 ((and (eq assignment :right/side)
+			       (= sf 0))
+			  (1+ sample-size))
 
-		       ((and (eq assignment :mid/side)
-			     (= sf 1))
-			(1+ (frame-sample-size frame)))
-		       (t (frame-sample-size frame))))))
+			 ((and (eq assignment :mid/side)
+			       (= sf 1))
+			  (1+ sample-size))
+			 (t sample-size))))))
 	    (t (error "Wrong channel assignment")))))
 
     ;; Check zero padding

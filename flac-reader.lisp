@@ -1,6 +1,6 @@
 (in-package :cl-flac)
 
-(declaim (optimize (safety 0)))
+(declaim (optimize (safety 0) (speed 3)))
 
 (defun read-bits-array (stream array size &key
 			       signed
@@ -8,8 +8,7 @@
 			       (offset 0))
   ;; Will be replaced later
   (declare (type fixnum len offset size)
-	   (type (simple-array (signed-byte 32)) array)
-	   (optimize (speed 3)))
+	   (type (simple-array (signed-byte 32)) array))
   (loop for i from offset below len do
 	(setf (aref array i)
 	      (if signed (unsigned-to-signed (read-bits size stream) size)
@@ -19,7 +18,6 @@
 (defun read-utf8-u32 (stream)
   "for reading frame number
    copy from libFLAC"
-  (declare (optimize (speed 3)))
   (let ((x (read-octet stream))
 	i
 	(v 0))
@@ -73,8 +71,7 @@
 		unsigned-to-signed))
 (defun unsigned-to-signed (byte len)
   (declare (type (integer 0 32) len)
-	   (type (unsigned-byte 32) byte)
-	   (optimize (speed 3) (safety 0)))
+	   (type (unsigned-byte 32) byte))
   (let ((sign (ldb (byte 1 (1- len)) byte)))
     (if (= sign 0) byte (- byte (ash 1 len)))))
 
@@ -85,8 +82,7 @@
 (defun read-unary-coded-integer (bitreader &optional (one 0))
   "Read unary coded integer from bitreader
    By default 0 bit is considered as 1, 1 bit is terminator"
-  (declare (type (integer 0 1) one)
-	   (optimize (speed 3) (safety 0)))
+  (declare (type (integer 0 1) one))
 ;  (loop for bit = (tbs:read-bit bitreader)
 ;	while (= bit one)
 ;	sum 1))
@@ -106,8 +102,7 @@
 		read-rice-signed)
 	 (inline read-rice-signed))
 (defun read-rice-signed (bitreader param)
-  (declare (type (integer 0 30) param)
-	   (optimize (speed 3) (safety 0)))
+  (declare (type (integer 0 30) param))
   (let* ((unary (the (unsigned-byte 32)
 		 (read-unary-coded-integer bitreader)))
 	(binary (the (unsigned-byte 32)
