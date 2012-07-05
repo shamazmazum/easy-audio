@@ -27,6 +27,22 @@
   (if (find-if-not #'zerop (slot-value data 'rawdata))
       (error "Padding bytes is not zero")))
 
+(defmethod metadata-body-reader (stream (data seektable))
+  (flet ((read-seekpoint (stream)
+			 (let ((samplenum (read-bits-bignum 64 stream)))
+			   (if (/= samplenum +seekpoint-placeholder+)
+			       (let ((offset (read-bits-bignum 64 stream))
+				     (samples-in-frame (read-bits 16 stream)))
+				 (make-seekpoint :samplenum samplenum
+						 :offset offset
+						 :samples-in-frame samples-in-frame))))))
+    (multiple-value-bind (seekpoints-num  remainder)
+	(floor (metadata-length data) 18)
+      (if (/= remainder 0) (error "Bad seektable"))
+      (setf (seektable-seekpoints data)
+	    (loop for i below seekpoints-num collect
+		  (read-seekpoint stream))))))
+
 (defmethod metadata-body-reader (stream (data streaminfo))
   (with-slots (minblocksize maxblocksize) data
 	      (setf minblocksize (read-bits 16 stream)

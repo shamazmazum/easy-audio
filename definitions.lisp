@@ -22,6 +22,15 @@
 
 (defclass padding (metadata-header) ())
 
+(defstruct seekpoint
+  (samplenum 0 :type (unsigned-byte 64))
+  (offset 0 :type (unsigned-byte 64))
+  (samples-in-frame 0 :type (unsigned-byte 16)))
+
+(defclass seektable (metadata-header)
+  ((seekpoints :accessor seektable-seekpoints
+	       :type list)))
+
 (defgeneric metadata-body-reader (stream data))
 
 ;; Subframes
@@ -84,6 +93,7 @@
 
 (defparameter +block-name+ '(streaminfo padding application seektable vorbis-comment cuesheet picture)) ;; In case of using sbcl defconstant will give an error
 (defconstant +frame-sync-code+ 16382) ; 11111111111110
+(defconstant +seekpoint-placeholder+ #xFFFFFFFFFFFFFFFF)
 
 ;; Other stuff
 

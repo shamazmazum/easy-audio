@@ -11,7 +11,11 @@
 	   #:streaminfo-bitspersample
 	   #:streaminfo-totalsamples
 	   #:streaminfo-md5
-	   
+
+	   #:seekpoint-samplenum
+	   #:seekpoint-offset
+	   #:seekpoint-samples-in-frame
+	   #:seektable-seekpoints
 	   ;; And so on with metadata classes
 	   ;; Frame and its slots
 	   #:frame
