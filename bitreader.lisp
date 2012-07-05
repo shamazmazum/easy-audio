@@ -111,6 +111,34 @@
 			(move-forward reader bits-to-add)))
 		    result)))
 
+(declaim (ftype (function (positive-fixnum reader) (integer 0)) read-bits-bignum))
+(defun read-bits-bignum (bits reader)
+  (declare (type reader reader)
+	   (type positive-fixnum bits)
+	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note))
+  (with-accessors ((ibit reader-ibit))
+		  reader
+  
+		  (let ((iterations (ceiling (+ bits ibit) 8))
+			(result 0))
+		    (declare (type positive-fixnum iterations)
+			     (type (integer 0) result))
+		    (dotimes (i iterations)
+		      (if (can-not-read reader) (fill-buffer reader))
+		      (let ((bits-to-add (min bits (- 8 ibit))))
+			(declare (type bit-counter bits-to-add))
+			(setq result
+			      (logior result
+				      (the non-negative-fixnum
+					(ash
+					 (ldb (byte bits-to-add (- 8 ibit bits-to-add))
+					      (aref (reader-buffer reader)
+						    (reader-ibyte reader)))
+					 (the (unsigned-byte 32) (- bits bits-to-add)))))
+			      bits (- bits bits-to-add))
+			(move-forward reader bits-to-add)))
+		    result)))
+
 (declaim (ftype (function (reader) ub8) read-octet))
 (defun read-octet (reader)
   (declare (type reader reader))

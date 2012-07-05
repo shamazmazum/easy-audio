@@ -40,7 +40,8 @@
 	      (setf samplerate (read-bits 20 stream)
 		    channels (1+ (read-bits 3 stream))
 		    bitspersample (1+ (read-bits 5 stream))
-		    totalsamples (read-bits 36 stream)))
+		    totalsamples #+x86_64 (read-bits 36 stream)
+		                 #-x86_64 (read-bits-bignum 36 stream)))
   
   (let ((md5 (make-array 16 :element-type 'u8)))
     (read-octet-vector md5 stream)

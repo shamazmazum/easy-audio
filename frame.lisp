@@ -160,6 +160,7 @@
     (residual-reader bit-reader subframe frame out-buf)))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
+  (declare (ignore frame))
   (with-slots (actual-bps) subframe
 	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
 		    (unsigned-to-signed
@@ -167,6 +168,7 @@
 		     actual-bps))))
 
 (defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
+  (declare (ignore frame))
   (let ((bps (subframe-actual-bps subframe)))
 
     (with-slots (out-buf) subframe

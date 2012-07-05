@@ -10,4 +10,4 @@
 	       (:file "frame" :depends-on ("package"))
 	       (:file "decode" :depends-on ("package"))
 	       (:file "flac" :depends-on ("package")))
-  :depends-on (:babel))
+  :depends-on (:babel :trivial-features))

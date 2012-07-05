@@ -3,6 +3,7 @@
 (declaim (optimize (safety 0) (speed 3)))
 
 (defmethod subframe-decode ((subframe subframe-constant) frame)
+  (declare (ignore frame))
   (let ((out-buf (subframe-out-buf subframe))
 	(constant (subframe-constant-value subframe)))
     (declare (type (signed-byte 32) constant)
