@@ -136,7 +136,8 @@
     (read-bits-array bit-reader
 		     out-buf bps :signed t :len warm-up-samples)
     
-    (let ((precision (1+ (read-bits 4 bit-reader))))
+    (let ((precision (the fixnum
+		       (1+ (read-bits 4 bit-reader)))))
       (if (= #b10000 precision)
 	  (error "lpc coefficients precision cannot be 16")
 	(setf (subframe-lpc-precision subframe) precision))
@@ -228,12 +229,13 @@
     
     (with-slots (block-size) frame
 		(setf block-size
-		      (cond
-		       ((eql block-size :get-8-from-end)
-			(1+ (read-octet stream)))
-		       ((eql block-size :get-16-from-end)
-			(1+ (read-bits 16 stream)))
-		       (t block-size))))
+		      (the fixnum
+			(cond
+			 ((eql block-size :get-8-from-end)
+			  (1+ (read-octet stream)))
+			 ((eql block-size :get-16-from-end)
+			  (1+ (read-bits 16 stream)))
+			 (t block-size)))))
 
     (with-slots (sample-rate) frame
 		(setf sample-rate
