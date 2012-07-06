@@ -177,6 +177,7 @@
 		      (read-bits-array bit-reader out-buf bps :signed t)))))
 
 (defun subframe-reader (stream frame actual-bps)
+  (declare (type (integer 4 33) actual-bps))
   (if (/= (read-bit stream) 0) (error "Error reading subframe"))
     (let* ((type-num (read-bits 6 stream))
 	   (type-args
@@ -186,11 +187,11 @@
 	     ((and
 	       (>= type-num 8)
 	       (<= type-num 12))
-	      (list 'subframe-fixed :order (- type-num 8)))     ; 001000-001100
+	      (list 'subframe-fixed :order (logand type-num #b111)))     ; 001000-001100
 	     ((and
 	       (>= type-num 32)
 	       (<= type-num 63))
-	      (list 'subframe-lpc :order (1+ (- type-num 32)))) ; 100000-111111
+	      (list 'subframe-lpc :order (1+ (logand type-num #b11111)))) ; 100000-111111
 	     (t (error "Error subframe type"))))
 	   (wasted-bits (read-bit stream)))
 
@@ -260,7 +261,7 @@
 	      (symbol
 	       ;; Do bps correction
 	       (let ((sample-size (frame-sample-size frame)))
-		 (declare (type (integer 4 33) sample-size))
+		 (declare (type (integer 4 32) sample-size))
 		 (loop for sf below 2 collect
 		       (subframe-reader
 			stream frame

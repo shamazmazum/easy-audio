@@ -4,21 +4,38 @@
 
 ;; Metadata
 (defclass metadata-header ()
-  ((last-block-p :accessor metadata-last-block-p)
-   (type :accessor metadata-type)
-   (length :accessor metadata-length)
-   rawdata))
+  ((last-block-p :accessor metadata-last-block-p
+		 :type boolean)
+   (type :accessor metadata-type
+	 :type fixnum)
+   (length :accessor metadata-length
+	   :type fixnum)
+   (rawdata :type (simple-array u8))))
 
 (defclass streaminfo (metadata-header)
-  ((minblocksize :accessor streaminfo-minblocksize)
-   (maxblocksize :accessor streaminfo-maxblocksize)
-   (minframesize :accessor streaminfo-minframesize)
-   (maxframesize :accessor streaminfo-maxframesize)
-   (samplerate :accessor streaminfo-samplerate)
-   (channels :accessor streaminfo-channels)
-   (bitspersample :accessor streaminfo-bitspersample)
-   (totalsamples :accessor streaminfo-totalsamples)
-   (md5 :accessor streaminfo-md5)))
+  ((minblocksize  :accessor streaminfo-minblocksize
+		  :type non-negative-fixnum)
+   
+   (maxblocksize  :accessor streaminfo-maxblocksize
+		  :type non-negative-fixnum)
+   
+   (minframesize  :accessor streaminfo-minframesize
+		  :type non-negative-fixnum)
+   
+   (maxframesize  :accessor streaminfo-maxframesize
+		  :type non-negative-fixnum)
+   
+   (samplerate    :accessor streaminfo-samplerate
+		  :type non-negative-fixnum)
+   
+   (channels      :accessor streaminfo-channels
+		  :type (integer 1 8))
+   
+   (bitspersample :accessor streaminfo-bitspersample
+		  :type non-negative-fixnum)
+   
+   (totalsamples  :accessor streaminfo-totalsamples)
+   (md5           :accessor streaminfo-md5)))
 
 (defclass padding (metadata-header) ())
 
@@ -37,10 +54,10 @@
 (defclass subframe ()
   ((wasted-bps :accessor subframe-wasted-bps
 	       :initarg :wasted-bps
-	       :type fixnum)
+	       :type non-negative-fixnum)
    (actual-bps :accessor subframe-actual-bps
 	       :initarg :actual-bps
-	       :type fixnum)
+	       :type (integer 4 33))
    (out-buf :accessor subframe-out-buf
 	    :initarg :out-buf
 	    :type (simple-array (signed-byte 32)))))
@@ -82,7 +99,7 @@
 		       :documentation "Number of channels or one of
                                        :mid/side, :left/side, :right/side")
    (sample-size :accessor frame-sample-size
-		:type (integer 4 33))
+		:type (integer 4 32))
    (number :accessor frame-number)
    (crc-8 :accessor frame-crc-8
 	  :type u8)

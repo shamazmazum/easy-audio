@@ -13,7 +13,7 @@
 	   (metadata-blocks
 	    (loop for metadata-block = (metadata-reader bitreader)
 		  collect metadata-block
-		  while (= 0 (slot-value metadata-block 'last-block-p)))))
+		  while (null (slot-value metadata-block 'last-block-p)))))
       
       (values
        metadata-blocks
