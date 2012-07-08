@@ -95,20 +95,23 @@
 		       (read-bits 4 bit-reader)))
 	 (sample-idx (subframe-order subframe))
 	 (blocksize (frame-block-size frame))
-	 (predictor-order (subframe-order subframe)))
-    (declare (type fixnum sample-idx blocksize predictor-order))
+	 (predictor-order (subframe-order subframe))
+	 (partition-samples (ash blocksize (- part-order))))
+    (declare (type fixnum sample-idx
+		   blocksize predictor-order
+		   partition-samples))
     
     (loop for i below (ash 1 part-order) do
 	  (let ((samples-num
 		 (cond
 		  ;; FIXME:: Check following lines
-		  ((zerop i) (- (ash blocksize (- part-order)) predictor-order))
-		  (t (ash blocksize (- part-order)))))
+		  ((zerop i) (- partition-samples predictor-order))
+		  (t partition-samples)))
 		(rice-parameter (read-bits param-len bit-reader)))
 	    (declare (type fixnum rice-parameter))
 	    
 	    (cond
-	     ((< rice-parameter esc-code)
+	     ((/= rice-parameter esc-code)
 	      (loop for sample below samples-num do
 		    (setf (aref out sample-idx)
 			  (read-rice-signed bit-reader rice-parameter))
