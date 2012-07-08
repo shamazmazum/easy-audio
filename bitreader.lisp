@@ -9,9 +9,6 @@
 (deftype ub8 () '(unsigned-byte 8))
 (deftype simple-ub8-vector () '(simple-array ub8 (*)))
 
-(define-condition reader-end-of-stream ()
-  ((reader :initarg :reader)))
-
 (defparameter *buffer-size* 4096)
 
 (declaim (optimize (speed 3) (safety 0)))
@@ -63,8 +60,7 @@
 		  (setf end
 			(read-sequence buffer stream))
 
-		  (if (= end 0) (error 'reader-end-of-stream
-				       :reader reader))))
+		  (if (= end 0) (error 'flac-eof))))
 
 (declaim (inline can-not-read))
 (defun can-not-read (reader)

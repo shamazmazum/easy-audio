@@ -18,3 +18,10 @@
       (values
        metadata-blocks
        bitreader))))
+
+(defmacro with-open-flac ((blocks stream file-name) &body body)
+  `(multiple-value-bind (,blocks ,stream)
+       (open-flac ,file-name)
+     (unwind-protect
+	 (progn ,@body)
+       (close-reader ,stream))))

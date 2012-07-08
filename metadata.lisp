@@ -16,7 +16,7 @@
     (handler-case
      (let ((mtype (get-metadata-type (slot-value data 'type))))
        (change-class data mtype))
-     (error () ())) ; Надо обрабатывать более специфичную ошибку из get-reader
+     (flac-bad-metadata-type () ()))
 
     (metadata-body-reader stream data)
     data))
@@ -28,7 +28,8 @@
   ;; Sanity check
   (if (find-if-not #'zerop (the (simple-array u8)
 			     (slot-value data 'rawdata)))
-      (error "Padding bytes is not zero")))
+      (error 'flac-bad-metadata
+	     :message "Padding bytes is not zero")))
 
 (defmethod metadata-body-reader (stream (data seektable))
   (flet ((read-seekpoint (stream)
@@ -41,7 +42,8 @@
 						 :samples-in-frame samples-in-frame))))))
     (multiple-value-bind (seekpoints-num  remainder)
 	(floor (the (unsigned-byte 24) (metadata-length data)) 18)
-      (if (/= remainder 0) (error "Bad seektable"))
+      (if (/= remainder 0) (error 'flac-bad-metadata
+				  :message "Bad seektable"))
       (setf (seektable-seekpoints data)
 	    (loop for i below seekpoints-num collect
 		  (read-seekpoint stream))))))

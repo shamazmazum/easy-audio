@@ -36,4 +36,12 @@
 	   #:subframe-decode ; Not needed to end user, actually
 	   #:frame-decode
 
-	   #:close-reader))
+	   #:close-reader
+
+	   ;; Conditions
+	   #:flac-error
+	   #:flac-eof
+	   #:flac-bad-metadata
+
+	   ;; Macro
+	   #:with-open-flac))

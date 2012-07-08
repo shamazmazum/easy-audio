@@ -1,6 +1,23 @@
 (in-package :cl-flac)
 
+(declaim (optimize (safety 0)))
 (deftype u8 () '(unsigned-byte 8))
+
+(define-condition flac-error ()
+  ((:message :initarg :message
+	     :initform ""
+	     :type string
+	     :reader flac-error-message)))
+
+(define-condition flac-eof (flac-error) ())
+(define-condition flac-bad-metadata (flac-error) ()
+  (:report (lambda (c s)
+	     (format s "Bad metadata: ~A"
+		     (flac-error-message c)))))
+(define-condition flac-bad-metadata-type (flac-error) ()
+  (:report (lambda (c s)
+	     (format s "Bad metadata type: ~A"
+		     (flac-error-message c)))))
 
 ;; Metadata
 (defclass metadata-header ()
@@ -115,5 +132,9 @@
 ;; Other stuff
 
 (defun get-metadata-type (code)
-  (if (= code 127) (error "Code 127 is invalid"))
-  (nth code +block-name+))
+  (if (= code 127) (error 'flac-bad-metadata-type
+			  :message "Code 127 is invalid"))
+  
+  (let ((mtype (nth code +block-name+)))
+    (if (find-class mtype nil) mtype
+      (error 'flac-bad-metadata-type))))
