@@ -44,4 +44,7 @@
 	   #:flac-bad-metadata
 
 	   ;; Macro
-	   #:with-open-flac))
+	   #:with-open-flac
+
+	   ;; Restarts
+	   #:skip-malformed-metadata))

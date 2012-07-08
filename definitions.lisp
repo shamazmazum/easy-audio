@@ -10,10 +10,19 @@
 	     :reader flac-error-message)))
 
 (define-condition flac-eof (flac-error) ())
-(define-condition flac-bad-metadata (flac-error) ()
+
+(define-condition flac-bad-metadata (flac-error)
+  ((bits-to-read :reader flac-bits-to-read
+		 :initarg :bits-to-read
+		 :initform 0
+		 :type non-negative-fixnum)
+   
+   (metadata     :reader flac-metadata
+		 :initarg :metadata))
   (:report (lambda (c s)
 	     (format s "Bad metadata: ~A"
 		     (flac-error-message c)))))
+
 (define-condition flac-bad-metadata-type (flac-error) ()
   (:report (lambda (c s)
 	     (format s "Bad metadata type: ~A"

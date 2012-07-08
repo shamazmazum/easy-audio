@@ -29,7 +29,8 @@
   (if (find-if-not #'zerop (the (simple-array u8)
 			     (slot-value data 'rawdata)))
       (error 'flac-bad-metadata
-	     :message "Padding bytes is not zero")))
+	     :message "Padding bytes is not zero"
+	     :metadata data)))
 
 (defmethod metadata-body-reader (stream (data seektable))
   (flet ((read-seekpoint (stream)
@@ -40,10 +41,12 @@
 				 (make-seekpoint :samplenum samplenum
 						 :offset offset
 						 :samples-in-frame samples-in-frame))))))
-    (multiple-value-bind (seekpoints-num  remainder)
+    (multiple-value-bind (seekpoints-num remainder)
 	(floor (the (unsigned-byte 24) (metadata-length data)) 18)
       (if (/= remainder 0) (error 'flac-bad-metadata
-				  :message "Bad seektable"))
+				  :message "Bad seektable"
+				  :bits-to-read (metadata-length data)
+				  :metadata data))
       (setf (seektable-seekpoints data)
 	    (loop for i below seekpoints-num collect
 		  (read-seekpoint stream))))))

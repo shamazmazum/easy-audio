@@ -40,15 +40,16 @@
    fixed block size and if total samples in stream is known"
   (multiple-value-bind (blocks stream)
       (flac:open-flac flac-name)
-    (let* ((streaminfo (first blocks))
+
+    (let* ((streaminfo (the streaminfo (first blocks)))
 	   (buf2 (make-array 2 :element-type '(unsigned-byte 8)))
 	   (buf4 (make-array 4 :element-type '(unsigned-byte 8)))
-
+	   
 	   (minblocksize (streaminfo-minblocksize streaminfo))
 	   (maxblocksize (streaminfo-maxblocksize streaminfo))
 	   (totalsamples (streaminfo-totalsamples streaminfo))
 	   (blocksize minblocksize)
-
+	   
 	   (bps (streaminfo-bitspersample streaminfo))
 	   (channels (streaminfo-channels streaminfo))
 	   (samplerate (streaminfo-samplerate streaminfo)))
@@ -57,7 +58,7 @@
 	  (error "Number of total samples is unknown"))
       (if (/= minblocksize maxblocksize)
 	  (error "Block size must be fixed"))
-
+      
       (if (not (or (= 8 bps)
 		   (= 16 bps)))
 	  (error "Bps must be 16 or 8"))
@@ -81,30 +82,30 @@
 			(write-sequence (integer-to-array 16 buf4) out-stream)
 			(write-byte 1 out-stream)
 			(write-byte 0 out-stream)
-
+			
 			(write-sequence (integer-to-array
 					 channels buf2) out-stream)
 			
 			(write-sequence (integer-to-array
 					 samplerate buf4) out-stream)
-
+			
 			(write-sequence (integer-to-array
 					 (ash
 					  (* samplerate channels bps) -3)
 					 buf4) out-stream)
-
+			
 			(write-sequence (integer-to-array
 					 (ash
 					  (* channels bps) -3)
 					 buf2) out-stream)
-
+			
 			(write-sequence (integer-to-array
 					 bps buf2) out-stream)
-
+			
 			;; Subchunk 2
 			(write-sequence +wav-subchunk2-id+ out-stream)
 			(write-sequence (integer-to-array size
-					 buf4) out-stream)))
+							  buf4) out-stream)))
       
       (with-open-file (out-stream wav-name
 				  :direction :output
@@ -112,10 +113,10 @@
 				  :element-type (list 'signed-byte bps))
 		      (file-position out-stream
 				     (/ (ash 44 3) bps))
-
+		      
 		      (let ((buf (make-array (* blocksize channels)
 					     :element-type '(signed-byte 32))))
-
+			
 			(loop for i below totalsamples
 			      by blocksize do
 			      (write-sequence (mixchannels buf (frame-decode (frame-reader stream streaminfo)))
