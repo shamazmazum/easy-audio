@@ -8,7 +8,8 @@
 	(cond
 	 ((= val 0) :fixed)
 	 ((= val 1) :variable)
-	 (t (error "Blocking strategy must be 0 or 1")))))
+	 (t (error 'flac-bad-frame
+		   :message "Blocking strategy must be 0 or 1")))))
 
 (defmethod (setf frame-block-size) (val (frame frame))
   (declare (type (unsigned-byte 4) val))
@@ -23,11 +24,13 @@
 	 ((and (> val 7)
 	       (<= val 15))            ; 1000-1111
 	  (ash 1 val))
-	 (t (error "Frame block size is invalid")))))
+	 (t (error 'flac-bad-frame
+		   :message "Frame block size is invalid")))))
 
 (defmethod (setf frame-sample-rate) (val (frame frame))
   (declare (type (unsigned-byte 4) val))
-  (if (= val 15) (error "Frame sample rate is invalid"))
+  (if (= val 15) (error 'flac-bad-frame
+			:message "Frame sample rate is invalid"))
   (let ((sample-rates (list
 		       (streaminfo-samplerate (frame-streaminfo frame)) ; 0000
 		       88200   ; 0001
@@ -56,7 +59,8 @@
 	      ((= val 8) :left/side)   ; 1000
 	      ((= val 9) :right/side)  ; 1001
 	      ((= val 10) :mid/side)   ; 1001
-	      (t (error "Invalid channel assignment")))))
+	      (t (error 'flac-bad-frame
+			:message "Invalid channel assignment")))))
 
 (defmethod (setf frame-sample-size) (val (frame frame))
   (declare (type (unsigned-byte 3) val))
@@ -85,7 +89,8 @@
       (residual-body-reader bit-reader subframe frame out
 			    :param-len 5
 			    :esc-code #b11111))
-     (t (error "Invalid residual coding method")))))
+     (t (error 'flac-bad-frame
+	       :message "Invalid residual coding method")))))
 
 (defun residual-body-reader (bit-reader subframe frame out &key param-len esc-code)
   (declare (type fixnum param-len esc-code)
@@ -142,7 +147,8 @@
     (let ((precision (the fixnum
 		       (1+ (read-bits 4 bit-reader)))))
       (if (= #b10000 precision)
-	  (error "lpc coefficients precision cannot be 16")
+	  (error 'flac-bad-frame
+		 :message "lpc coefficients precision cannot be 16")
 	(setf (subframe-lpc-precision subframe) precision))
       
       (setf (subframe-lpc-coeff-shift subframe)
@@ -181,7 +187,8 @@
 
 (defun subframe-reader (stream frame actual-bps)
   (declare (type (integer 4 33) actual-bps))
-  (if (/= (read-bit stream) 0) (error "Error reading subframe"))
+  (if (/= (read-bit stream) 0) (error 'flac-bad-frame
+				      :message "Error reading subframe"))
     (let* ((type-num (read-bits 6 stream))
 	   (type-args
 	    (cond
@@ -195,7 +202,8 @@
 	       (>= type-num 32)
 	       (<= type-num 63))
 	      (list 'subframe-lpc :order (1+ (logand type-num #b11111)))) ; 100000-111111
-	     (t (error "Error subframe type"))))
+	     (t (error 'flac-bad-frame
+		       :message "Error subframe type"))))
 	   (wasted-bits (read-bit stream)))
 
       ;; FIXME: Do not know what to do with wasted bits
@@ -215,8 +223,10 @@
 
 (defun frame-reader (stream streaminfo)
   (let ((frame (make-instance 'frame :streaminfo streaminfo)))
-    (if (/= +frame-sync-code+ (read-bits 14 stream)) (error "Frame sync code is not 11111111111110"))
-    (if (/= 0 (read-bit stream)) (error "Error reading frame"))
+    (if (/= +frame-sync-code+ (read-bits 14 stream)) (error 'flac-bad-frame
+							    :message "Frame sync code is not 11111111111110"))
+    (if (/= 0 (read-bit stream)) (error 'flac-bad-frame
+					:message "Error reading frame"))
     (setf (frame-blocking-strategy frame) (read-bit stream))
     
     (setf (frame-block-size frame) (read-bits 4 stream))
@@ -224,12 +234,14 @@
 
     (setf (frame-channel-assignment frame) (read-bits 4 stream))
     (setf (frame-sample-size frame) (read-bits 3 stream))
-    (if (/= 0 (read-bit stream)) (error "Error reading frame"))
+    (if (/= 0 (read-bit stream)) (error 'flac-bad-frame
+					:message "Error reading frame"))
 
     (setf (frame-number frame)
 	  (if (eql (frame-blocking-strategy frame) :fixed)
 	      (read-utf8-u32 stream)
-	    (error "Variable block size not implemented yet")))
+	    (error 'flac-bad-frame
+		   :message "Variable block size not implemented yet")))
     
     (with-slots (block-size) frame
 		(setf block-size
@@ -281,9 +293,11 @@
 			       (= sf 1))
 			  (1+ sample-size))
 			 (t sample-size))))))
-	    (t (error "Wrong channel assignment")))))
+	    (t (error 'flac-bad-frame
+		      :message "Wrong channel assignment")))))
 
     ;; Check zero padding
-    (if (/= (read-to-byte-alignment stream) 0) (error "Padding to byte-alignment is not zero"))
+    (if (/= (read-to-byte-alignment stream) 0) (error 'flac-bad-frame
+						      :message "Padding to byte-alignment is not zero"))
     (setf (frame-crc-16 frame) (read-bits 16 stream))
   frame))

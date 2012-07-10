@@ -4,10 +4,10 @@
 (deftype u8 () '(unsigned-byte 8))
 
 (define-condition flac-error ()
-  ((:message :initarg :message
-	     :initform ""
-	     :type string
-	     :reader flac-error-message)))
+  ((message :initarg :message
+	    :initform ""
+	    :type string
+	    :reader flac-error-message)))
 
 (define-condition flac-eof (flac-error) ())
 
@@ -26,6 +26,11 @@
 (define-condition flac-bad-metadata-type (flac-error) ()
   (:report (lambda (c s)
 	     (format s "Bad metadata type: ~A"
+		     (flac-error-message c)))))
+
+(define-condition flac-bad-frame (flac-error) ()
+  (:report (lambda (c s)
+	     (format s "Bad frame: ~A"
 		     (flac-error-message c)))))
 
 ;; Metadata

@@ -42,6 +42,7 @@
 	   #:flac-error
 	   #:flac-eof
 	   #:flac-bad-metadata
+	   #:flac-bad-frame
 
 	   ;; Macro
 	   #:with-open-flac
