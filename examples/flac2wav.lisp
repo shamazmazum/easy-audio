@@ -38,8 +38,8 @@
 (defun flac2wav (flac-name wav-name)
   "Decodes flac to wav. Works only for 8 or 16 bps,
    fixed block size and if total samples in stream is known"
-  (multiple-value-bind (blocks stream)
-      (flac:open-flac flac-name)
+  (with-open-flac (blocks stream
+			  (open flac-name :element-type '(unsigned-byte 8)))
 
     (let* ((streaminfo (the streaminfo (first blocks)))
 	   (buf2 (make-array 2 :element-type '(unsigned-byte 8)))
@@ -120,5 +120,4 @@
 			(loop for i below totalsamples
 			      by blocksize do
 			      (write-sequence (mixchannels buf (frame-decode (frame-reader stream streaminfo)))
-					      out-stream)))))
-    (close-reader stream)))
+					      out-stream)))))))
