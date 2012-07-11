@@ -137,6 +137,8 @@
 
 (declaim (ftype (function (reader) ub8) read-octet))
 (defun read-octet (reader)
+  "Reads current octet from reader
+   Ignores ibit"
   (declare (type reader reader))
   (if (can-not-read reader) (fill-buffer reader))
   
@@ -181,3 +183,34 @@
 
 (defun close-reader (reader)
   (close (reader-stream reader)))
+
+(declaim (ftype (function (reader &optional t) non-negative-fixnum) reader-position))
+(defun reader-position (reader &optional val)
+  "Returns or sets number of readed octets.
+   Similar to file-position
+   Sets ibit to zero if val is specified"
+  (declare (type reader reader))
+  (if val
+      (progn
+	(reset-counters reader)
+	(file-position (reader-stream reader) val))
+    (the non-negative-fixnum
+      (+ (the non-negative-fixnum ;; Limit to 536 mb on x86 sbcl!
+	   (file-position (reader-stream reader)))
+	 (- (reader-end reader))
+	 (reader-ibyte reader)))))
+
+(declaim (ftype (function (reader (unsigned-byte 8)) (unsigned-byte 8)) peek-octet))
+(defun peek-octet (reader octet)
+  "Sets input to the first octet found in stream"
+  (declare (type (unsigned-byte 8) octet)
+	   (type reader reader))
+  (setf (reader-ibyte reader)
+	(loop for pos = (position octet (reader-buffer reader)
+				  :start (reader-ibyte reader))
+	      until pos
+	      do
+	      (fill-buffer reader)
+	      (setf (reader-ibyte reader) 0)
+	      finally (return pos)))
+  octet)
