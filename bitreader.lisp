@@ -192,8 +192,8 @@
   (declare (type reader reader))
   (if val
       (progn
-	(reset-counters reader)
-	(file-position (reader-stream reader) val))
+	(file-position (reader-stream reader) val)
+	(fill-buffer reader))
     (the non-negative-fixnum
       (+ (the non-negative-fixnum ;; Limit to 536 mb on x86 sbcl!
 	   (file-position (reader-stream reader)))

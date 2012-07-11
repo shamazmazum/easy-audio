@@ -112,3 +112,24 @@
     (if (= (ldb (byte 1 0) val) 1)
 	(- 0 (ash val -1) 1)
       (ash val -1))))
+
+(defun restore-sync (bitreader)
+  (declare (type reader bitreader))
+  ;; Make sure, we are byte aligned
+  ;; We must be, but anyway
+  (read-to-byte-alignment bitreader)
+  ;; Search first #xff octet
+  (peek-octet bitreader #xff)
+  (let ((pos (reader-position bitreader))
+	(sync-code (read-bits 16 bitreader)))
+    (declare (type non-negative-fixnum pos sync-code))
+    (cond
+     ((or (= sync-code #xfff8)  ;; Begin of frame header, fixed block size
+	  (= sync-code #xfff9)) ;; Begin of frame header, variable block size
+      (reader-position bitreader pos))
+     
+     ((= sync-code #xffff) ;; Might be first octet of frame-header
+      (reader-position bitreader (the positive-fixnum (1+ pos)))
+      (restore-sync bitreader))
+
+     (t (restore-sync bitreader)))))
