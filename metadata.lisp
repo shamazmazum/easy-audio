@@ -2,6 +2,10 @@
 
 (declaim (optimize (speed 3)))
 
+(defun metadata-summar-length (blocks)
+  (declare (type list blocks))
+  (reduce #'+ (mapcar #'(lambda (data) (metadata-length data)) blocks)))
+
 (defun metadata-header-reader (stream header)
   (with-slots (last-block-p type length) header
 	      (setf last-block-p (if (= 0 (read-bit stream)) nil t)

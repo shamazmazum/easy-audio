@@ -65,7 +65,10 @@
    (bitspersample :accessor streaminfo-bitspersample
 		  :type non-negative-fixnum)
    
-   (totalsamples  :accessor streaminfo-totalsamples)
+   (totalsamples  :accessor streaminfo-totalsamples
+		  :type #+x86_64 positive-fixnum
+		        #-x86_64 (integer 1))
+   
    (md5           :accessor streaminfo-md5)))
 
 (defclass padding (metadata-header) ())

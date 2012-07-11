@@ -301,3 +301,111 @@
 						      :message "Padding to byte-alignment is not zero"))
     (setf (frame-crc-16 frame) (read-bits 16 stream))
   frame))
+
+;; Rather slow (and buggy) absolute sample seek
+(defun seek-sample (bitreader streaminfo sample start
+			      &optional seektable)
+  "Seeks to interchannel sample.
+   Sets input to new frame, which contains this sample
+   Returns position of this sample in the frame"
+  (declare (type reader bitreader)
+	   (type streaminfo streaminfo)
+	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note)) ; Since we have bignum arithmetic here
+
+  ;; Init the bounds where desired sample must be
+  (let* ((start-sample 0)
+	 (start-pos start)
+	 (totalsamples (streaminfo-totalsamples streaminfo))
+	 (end-sample totalsamples)
+	 (end-pos (reader-length bitreader)))
+    
+    ;; Now, if seektable is present, correct the bounds
+    (if seektable
+	(flet ((find-bounding-seekpoints (points)
+	    "Returns bounding seekpoints, samplenum of one is less or equal
+             than desired sample, samplenum of another is greater or equal.
+             Second value is t if bounding seekpoints is equal"
+            (let* ((pos (position-if #'(lambda (point)
+					 (>= (seekpoint-samplenum point)
+					     sample))
+				     points))
+		   (point (nth pos points)))
+	      (if (= sample (seekpoint-samplenum point))
+		  (values point point t)
+		(values (nth (1- pos) points) point nil)))))
+
+	  (multiple-value-bind (lowerpoint upperpoint pointseq)
+	      (find-bounding-seekpoints (seektable-seekpoints seektable))
+	    (if pointseq
+		;; We are extremely lucky
+		;; All we need to do is set input to new frame
+		(progn
+		  (reader-position bitreader
+				   (+ start (seekpoint-offset lowerpoint)))
+		  (return-from seek-sample 0)))
+	    
+	    (setq start-sample (seekpoint-samplenum lowerpoint)
+		  start-pos (+ start (seekpoint-offset lowerpoint))
+		  
+		  end-sample (seekpoint-samplenum upperpoint)
+		  end-pos (+ start (seekpoint-offset upperpoint)))))
+      
+      ;; Check implementation limitations
+      
+      (if (= end-sample 0)
+	  (error 'flac-bad-metadata
+		 :message "Totalsamples must be known")))
+
+    (if (/= (the non-negative-fixnum (streaminfo-minblocksize streaminfo))
+	    (the non-negative-fixnum (streaminfo-maxblocksize streaminfo)))
+	(error 'flac-bad-metadata
+	       :message "Cannot seek with variable blocksize"))
+
+    (multiple-value-bind (needed-num remainder)
+	(floor sample (streaminfo-maxblocksize streaminfo))
+      (declare (type non-negative-fixnum needed-num remainder))
+
+      (flet ((calc-pos-linear (x x1 x2 y1 y2)
+			      (+ y1 (/ (* (- y2 y1)
+					  (- x x1))
+				       (- x2 x1)))))
+	
+	;; Inaccurate seek
+	;; Now estimate position of new frame with desired sample
+	(let ((pos (calc-pos-linear sample start-sample end-sample start-pos end-pos))
+	      (maxblocksize (streaminfo-maxblocksize streaminfo)))
+	  (declare (type non-negative-fixnum maxblocksize))
+	  
+	  (do ((frame-num 0)
+	       (old-frame-num 1))
+	      ((= frame-num old-frame-num))
+	    (declare (type non-negative-fixnum frame-num old-frame-num))
+	    
+	    (reader-position bitreader (floor pos))
+	    (restore-sync bitreader)
+	    
+	    (let ((frame (frame-reader bitreader streaminfo))) ; This line is slow
+
+	      
+	      (setq old-frame-num frame-num
+		    frame-num (frame-number frame))
+	      (setq pos
+		    (cond
+		     ((> frame-num needed-num)
+		      (calc-pos-linear sample start-sample (* frame-num maxblocksize) start-pos pos))
+
+		     ((< frame-num needed-num)
+		      (calc-pos-linear sample (* frame-num maxblocksize) end-sample pos end-pos))
+		     (t pos)))))
+
+	  ;; Accurate search (slow too)
+	  (reader-position bitreader (- (floor pos)
+					(streaminfo-maxframesize streaminfo)))
+	  (restore-sync bitreader)))
+
+      (loop for pos = (reader-position bitreader)
+	    for fr = (frame-reader bitreader streaminfo)
+	    until (= needed-num (frame-number fr))
+	    finally (reader-position bitreader pos))
+	    	  
+      remainder)))

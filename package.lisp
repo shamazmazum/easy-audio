@@ -12,6 +12,7 @@
 	   #:streaminfo-totalsamples
 	   #:streaminfo-md5
 
+	   #:seekpoint
 	   #:seekpoint-samplenum
 	   #:seekpoint-offset
 	   #:seekpoint-samples-in-frame
@@ -35,6 +36,8 @@
 	   #:frame-reader
 	   #:subframe-decode ; Not needed to end user, actually
 	   #:frame-decode
+	   #:seeksample
+	   #:metadata-summar-length
 
 	   #:close-reader
 

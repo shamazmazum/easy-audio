@@ -10,3 +10,4 @@ There is simple flac 2 wav converter in cl-flac-examples. Example of use:
 (flac-examples:flac2wav "file.flac" "file.wav")
 
 It is about 5 times slower than original flac decoder written on C.
+Not tested with 32 bit architectures.

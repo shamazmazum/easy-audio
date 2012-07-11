@@ -13,6 +13,7 @@
 
 (declaim (optimize (speed 3) (safety 0)))
 
+;; Might be restrictions for 32 bit systems
 (defstruct reader
   (ibit 0 :type bit-counter)
   (ibyte 0 :type non-negative-fixnum)
@@ -214,3 +215,11 @@
 	      (setf (reader-ibyte reader) 0)
 	      finally (return pos)))
   octet)
+
+(declaim (ftype (function (reader) non-negative-fixnum) reader-length))
+(defun reader-length (reader)
+  "Returns length of stream in octets or zero
+   if the value is unknown"
+  (declare (type reader reader))
+  (let ((len (file-length (reader-stream reader))))
+    (if len len 0)))
