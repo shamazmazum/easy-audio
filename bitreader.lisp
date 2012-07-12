@@ -82,7 +82,7 @@
     (move-forward reader)))
 
 (declaim (ftype (function (positive-fixnum reader) non-negative-fixnum) read-bits))
-(defun read-bits (bits reader)
+#|(defun read-bits (bits reader)
   (declare (type reader reader)
 	   (type positive-fixnum bits))
   (with-accessors ((ibit reader-ibit))
@@ -106,7 +106,57 @@
 					 (the (unsigned-byte 32) (- bits bits-to-add)))))
 			      bits (- bits bits-to-add))
 			(move-forward reader bits-to-add)))
-		    result)))
+		    result)))|#
+
+(defun read-bits (bits reader)
+  (declare (type reader reader)
+	   (type positive-fixnum bits))
+  (with-accessors ((ibit reader-ibit)
+		   (ibyte reader-ibyte))
+		  reader
+
+		  (if (can-not-read reader) (fill-buffer reader))
+		  (cond
+		   ((<= bits (- 8 ibit))
+		    (prog1
+			(ldb (byte bits (- 8 ibit bits))
+			     (aref (reader-buffer reader)
+				   (reader-ibyte reader)))
+		      (move-forward reader bits)))
+
+		   (t
+		    (let* ((size (- 8 ibit))
+			   (offset (- bits size))
+			   (result (ash (ldb (byte size 0)
+					     (aref (reader-buffer reader)
+						   ibyte))
+					offset)))
+		      
+		      (declare (type bit-counter size)
+			       (type non-negative-fixnum result offset))
+		      
+		      (setf ibit 0)
+		      (incf ibyte)
+
+		      (dotimes (i (floor offset 8))
+			(if (can-not-read reader) (fill-buffer reader))
+			(decf offset 8)
+			(setq result (logior result
+					     (the non-negative-fixnum
+					       (ash (aref (reader-buffer reader) ibyte)
+						    offset))))
+			(incf ibyte))
+
+		      (if (/= offset 0)
+			  (progn
+			    (if (can-not-read reader) (fill-buffer reader))
+			    (setq result
+				  (logior result (the non-negative-fixnum
+						   (ldb (byte (the bit-counter offset)
+							      (- 8 offset))
+						      (aref (reader-buffer reader) ibyte)))))
+			    (incf ibit offset)))
+		      result)))))
 
 (declaim (ftype (function (positive-fixnum reader) (integer 0)) read-bits-bignum))
 (defun read-bits-bignum (bits reader)
