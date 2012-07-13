@@ -50,6 +50,9 @@
 			(setf ibit 0)
 			(incf ibyte)))))
 
+;; If stream is 300 Mb, there are (ceiling (* 300 10^6) 4096) =
+;; 73243 calls to fill-buffer. Not many, but inline it anyway
+(declaim (inline fill-buffer))
 (defun fill-buffer (reader)
   (declare (type reader reader))
   (reset-counters reader)
@@ -108,6 +111,7 @@
 			(move-forward reader bits-to-add)))
 		    result)))|#
 
+;; Must be a bit faster
 (defun read-bits (bits reader)
   (declare (type reader reader)
 	   (type positive-fixnum bits))
