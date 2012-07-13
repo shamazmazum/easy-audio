@@ -36,7 +36,7 @@
 	   #:frame-reader
 	   #:subframe-decode ; Not needed to end user, actually
 	   #:frame-decode
-	   #:seeksample
+	   #:seek-sample
 	   #:metadata-summar-length
 
 	   #:close-reader
