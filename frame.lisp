@@ -318,6 +318,12 @@
 	 (totalsamples (streaminfo-totalsamples streaminfo))
 	 (end-sample totalsamples)
 	 (end-pos (reader-length bitreader)))
+
+    (if (and (> sample totalsamples)
+	     (/= totalsamples 0)) ; Actually, in current implementation totalsamples must be known, therefore is not zero.
+	(error 'flac-error
+	       :message "Seek error. Desired sample number is bigger than
+                         number of samples in stream"))
     
     ;; Now, if seektable is present, correct the bounds
     (if seektable
