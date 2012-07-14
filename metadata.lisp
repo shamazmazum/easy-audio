@@ -82,4 +82,4 @@
     (setf (slot-value data 'rawdata) chunk))) ; For debugging
 
 (defun metadata-find-seektable (metadata)
-  (find #'(lambda (x) (typep x 'seektable)) metadata))
+  (find-if #'(lambda (x) (typep x 'seektable)) metadata))
