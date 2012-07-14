@@ -52,14 +52,16 @@
        (/= 0 (logand x #xFC)))
       (setq v (logand x #x01) i 5))
      
-     (t (error "Error reading utf-8 coded value")))
+     (t (error 'flac-bad-frame
+	       :message "Error reading utf-8 coded value")))
 
     (loop for j from i downto 1 do
 	  (setq x (read-octet stream))
 	  (if (or
 	       (= 0 (logand x #x80))
 	       (/= 0 (logand x #x40)))
-	      (error "Error reading utf-8 coded value"))
+	      (error 'flac-bad-frame
+		     :message "Error reading utf-8 coded value"))
 	  (setq v (ash v 6))
 	  (setq v (logior v (logand x #x3F))))
     v))
@@ -113,8 +115,11 @@
 	(- 0 (ash val -1) 1)
       (ash val -1))))
 
-(defun restore-sync (bitreader)
-  (declare (type reader bitreader))
+(defun restore-sync (bitreader streaminfo)
+  "Restores lost sync and returns
+   number of frame to be readed"
+  (declare (type reader bitreader)
+	   (type streaminfo streaminfo))
   ;; Make sure, we are byte aligned
   ;; We must be, but anyway
   (read-to-byte-alignment bitreader)
@@ -126,10 +131,17 @@
     (cond
      ((or (= sync-code #xfff8)  ;; Begin of frame header, fixed block size
 	  (= sync-code #xfff9)) ;; Begin of frame header, variable block size
-      (reader-position bitreader pos))
+
+      (handler-case ;; Test if we really found a frame, or it is coincidence
+       (prog2
+	   (reader-position bitreader pos)
+	   (frame-number (frame-reader bitreader streaminfo))
+	 (reader-position bitreader pos))
+       (flac-bad-frame ()
+		       (restore-sync bitreader streaminfo))))
      
      ((= sync-code #xffff) ;; Might be first octet of frame-header
       (reader-position bitreader (the positive-fixnum (1+ pos)))
-      (restore-sync bitreader))
+      (restore-sync bitreader streaminfo))
 
-     (t (restore-sync bitreader)))))
+     (t (restore-sync bitreader streaminfo)))))

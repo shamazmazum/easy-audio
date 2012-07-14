@@ -313,14 +313,12 @@
 	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note)) ; Since we have bignum arithmetic here
 
   ;; Init the bounds where desired sample must be
-  (let* ((start-sample 0)
-	 (start-pos start)
-	 (totalsamples (streaminfo-totalsamples streaminfo))
-	 (end-sample totalsamples)
-	 (end-pos (reader-length bitreader)))
+  (let ((start-pos start)
+	(totalsamples (streaminfo-totalsamples streaminfo))
+	(end-pos (reader-length bitreader)))
 
     (if (and (> sample totalsamples)
-	     (/= totalsamples 0)) ; Actually, in current implementation totalsamples must be known, therefore is not zero.
+	     (/= totalsamples 0))
 	(error 'flac-error
 	       :message "Seek error. Desired sample number is bigger than
                          number of samples in stream"))
@@ -350,17 +348,10 @@
 				   (+ start (seekpoint-offset lowerpoint)))
 		  (return-from seek-sample 0)))
 	    
-	    (setq start-sample (seekpoint-samplenum lowerpoint)
-		  start-pos (+ start (seekpoint-offset lowerpoint))
-		  
-		  end-sample (seekpoint-samplenum upperpoint)
-		  end-pos (+ start (seekpoint-offset upperpoint)))))
+	    (setq start-pos (+ start (seekpoint-offset lowerpoint))
+		  end-pos (+ start (seekpoint-offset upperpoint))))))
       
-      ;; Check implementation limitations
-      
-      (if (= end-sample 0)
-	  (error 'flac-bad-metadata
-		 :message "Totalsamples must be known")))
+    ;; Check implementation limitations
 
     (if (/= (the non-negative-fixnum (streaminfo-minblocksize streaminfo))
 	    (the non-negative-fixnum (streaminfo-maxblocksize streaminfo)))
@@ -371,47 +362,28 @@
 	(floor sample (streaminfo-maxblocksize streaminfo))
       (declare (type non-negative-fixnum needed-num remainder))
 
-      (flet ((calc-pos-linear (x x1 x2 y1 y2)
-			      (+ y1 (/ (* (- y2 y1)
-					  (- x x1))
-				       (- x2 x1)))))
+      (labels ((dichotomy-search (start end)
+				 "Searches for desired frame num by
+                                  dividing stream in half"
+				 (let* ((first-half start)
+					(second-half (floor (+ start end) 2))
+					
+					(firstnum (progn (reader-position bitreader first-half)
+							 (restore-sync bitreader streaminfo)))
+					
+					(secondnum (progn (reader-position bitreader (1- second-half))
+							  (restore-sync bitreader streaminfo))))
+
+				   (if (< needed-num firstnum) (error 'flac-error
+								       :message "Seek error"))
+
+				   (cond 
+				    ((< secondnum needed-num)
+				     (dichotomy-search second-half end))
+				    ((> secondnum needed-num)
+				     (dichotomy-search start second-half))
+				    (t
+				     (values start end))))))
 	
-	;; Inaccurate seek
-	;; Now estimate position of new frame with desired sample
-	(let ((pos (calc-pos-linear sample start-sample end-sample start-pos end-pos))
-	      (maxblocksize (streaminfo-maxblocksize streaminfo)))
-	  (declare (type non-negative-fixnum maxblocksize))
-	  
-	  (do ((frame-num 0)
-	       (old-frame-num 1))
-	      ((= frame-num old-frame-num))
-	    (declare (type non-negative-fixnum frame-num old-frame-num))
-	    
-	    (reader-position bitreader (floor pos))
-	    (restore-sync bitreader)
-	    
-	    (let ((frame (frame-reader bitreader streaminfo))) ; This line is slow
-
-	      
-	      (setq old-frame-num frame-num
-		    frame-num (frame-number frame))
-	      (setq pos
-		    (cond
-		     ((> frame-num needed-num)
-		      (calc-pos-linear sample start-sample (* frame-num maxblocksize) start-pos pos))
-
-		     ((< frame-num needed-num)
-		      (calc-pos-linear sample (* frame-num maxblocksize) end-sample pos end-pos))
-		     (t pos)))))
-
-	  ;; Accurate search (slow too)
-	  (reader-position bitreader (- (floor pos)
-					(streaminfo-maxframesize streaminfo)))
-	  (restore-sync bitreader)))
-
-      (loop for pos = (reader-position bitreader)
-	    for fr = (frame-reader bitreader streaminfo)
-	    until (= needed-num (frame-number fr))
-	    finally (reader-position bitreader pos))
-	    	  
-      remainder)))
+	(dichotomy-search start-pos end-pos)
+	remainder))))
