@@ -80,3 +80,6 @@
 			   :element-type 'u8)))
     (read-octet-vector chunk stream)
     (setf (slot-value data 'rawdata) chunk))) ; For debugging
+
+(defun metadata-find-seektable (metadata)
+  (find #'(lambda (x) (typep x 'seektable)) metadata))

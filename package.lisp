@@ -38,6 +38,7 @@
 	   #:frame-decode
 	   #:seek-sample
 	   #:metadata-summar-length
+	   #:metadata-find-seektable
 
 	   #:close-reader
 
