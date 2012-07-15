@@ -105,6 +105,12 @@
   ((seekpoints :accessor seektable-seekpoints
 	       :type list)))
 
+(defclass vorbis-comment (metadata-header)
+  ((vendor-comment :type string
+		   :accessor vorbis-vendor-comment)
+   (user-comments  :type list
+		   :accessor vorbis-user-comments)))
+
 (defgeneric metadata-body-reader (stream data))
 
 ;; Subframes

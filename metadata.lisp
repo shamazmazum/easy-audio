@@ -59,6 +59,26 @@
 	     :message "Padding bytes is not zero"
 	     :metadata data)))
 
+(defmethod metadata-body-reader (stream (data vorbis-comment))
+  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+  (flet ((read-comment-string (stream)
+	  (let ((buffer (make-array (list #+x86_64 (read-bits-le 32 stream)
+					  #-x86_64 (read-bits-le-bignum 32 stream))
+					   :element-type '(unsigned-byte 8))))
+	    (read-octet-vector buffer stream)
+	    (babel:octets-to-string buffer))))
+    
+    (setf (vorbis-vendor-comment data)
+	  (read-comment-string stream))
+
+    (let ((comments-num #+x86_64 (read-bits-le 32 stream)
+			#-x86_64 (read-bits-le-bignum 32 stream)))
+      
+      (setf (vorbis-user-comments data)
+	    (loop for i below comments-num collect
+		  (read-comment-string stream))))))
+			    
+
 (defmethod metadata-body-reader (stream (data seektable))
   (flet ((read-seekpoint (stream)
 			 (let ((samplenum (read-bits-bignum 64 stream)))
@@ -105,4 +125,5 @@
     (setf (slot-value data 'rawdata) chunk))) ; For debugging
 
 (defun metadata-find-seektable (metadata)
+  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (find-if #'(lambda (x) (typep x 'seektable)) metadata))

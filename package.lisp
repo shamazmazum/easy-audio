@@ -40,8 +40,14 @@
 	   #:seekpoint-offset
 	   #:seekpoint-samples-in-frame
 	   #:seektable-seekpoints
+
+	   #:vorbis-comment
+	   #:vorbis-vendor-comment
+	   #:vorbis-user-comments
+	   
 	   ;; And so on with metadata classes
 	   ;; Frame and its slots
+	   
 	   #:frame
 	   #:frame-streaminfo
 	   #:frame-blocking-strategy
