@@ -107,34 +107,30 @@
 		 (reader-ibyte reader)))
     (move-forward reader)))
 
-(declaim (ftype (function (positive-fixnum reader) non-negative-fixnum) read-bits))
-#|(defun read-bits (bits reader)
-  (declare (type reader reader)
-	   (type positive-fixnum bits))
-  (with-accessors ((ibit reader-ibit))
-		  reader
-  
-		  (let ((iterations (ceiling (+ bits ibit) 8))
-			(result 0))
-		    (declare (type positive-fixnum iterations)
-			     (type non-negative-fixnum result))
-		    (dotimes (i iterations)
-		      (if (can-not-read reader) (fill-buffer reader))
-		      (let ((bits-to-add (min bits (- 8 ibit))))
-			(declare (type bit-counter bits-to-add))
-			(setq result
-			      (logior result
-				      (the non-negative-fixnum
-					(ash
-					 (ldb (byte bits-to-add (- 8 ibit bits-to-add))
-					      (aref (reader-buffer reader)
-						    (reader-ibyte reader)))
-					 (the (unsigned-byte 32) (- bits bits-to-add)))))
-			      bits (- bits bits-to-add))
-			(move-forward reader bits-to-add)))
-		    result)))|#
+(defmacro read-bits-loop ((reader bits return-type bits-to-add ibit
+				 inc-form) &body body)
+  (let ((result (gensym))
+	(iter (gensym))
+	(tot-iter (gensym)))
+    `(with-accessors ((,ibit reader-ibit))
+		     reader
+		     
+		     (let* ((,result 0)
+			    (,tot-iter (ceiling (+ ,bits ,ibit))))
+		       (declare (type ,return-type ,result)
+				(type positive-fixnum ,tot-iter))
+		       (dotimes (,iter ,tot-iter)
+			 (if (can-not-read ,reader) (fill-buffer ,reader))
+			 (let ((,bits-to-add (min ,bits (- 8 ,ibit))))
+			   (declare (type bit-counter ,bits-to-add))
+			   (setq ,result (logior ,result ,inc-form)
+				 ,bits (- ,bits ,bits-to-add))
+			   (move-forward ,reader ,bits-to-add)
+			   ,@body))
+		       ,result))))
 
-;; Must be a bit faster
+(declaim (ftype (function (positive-fixnum reader) non-negative-fixnum) read-bits))
+;; Must be a bit faster in this way, than with use of read-bits-loop
 (defun read-bits (bits reader)
   (declare (type reader reader)
 	   (type positive-fixnum bits))
@@ -165,7 +161,8 @@
 		      (setf ibit 0)
 		      (incf ibyte)
 
-		      (dotimes (i (floor offset 8))
+		      (do ()
+			  ((< offset 8))
 			(if (can-not-read reader) (fill-buffer reader))
 			(decf offset 8)
 			(setq result (logior result
@@ -190,28 +187,48 @@
   (declare (type reader reader)
 	   (type positive-fixnum bits)
 	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note))
-  (with-accessors ((ibit reader-ibit))
-		  reader
-  
-		  (let ((iterations (ceiling (+ bits ibit) 8))
-			(result 0))
-		    (declare (type positive-fixnum iterations)
-			     (type (integer 0) result))
-		    (dotimes (i iterations)
-		      (if (can-not-read reader) (fill-buffer reader))
-		      (let ((bits-to-add (min bits (- 8 ibit))))
-			(declare (type bit-counter bits-to-add))
-			(setq result
-			      (logior result
-				      (the non-negative-fixnum
-					(ash
-					 (ldb (byte bits-to-add (- 8 ibit bits-to-add))
-					      (aref (reader-buffer reader)
-						    (reader-ibyte reader)))
-					 (the (unsigned-byte 32) (- bits bits-to-add)))))
-			      bits (- bits bits-to-add))
-			(move-forward reader bits-to-add)))
-		    result)))
+
+  (read-bits-loop (reader bits (integer 0)
+			  bits-to-add ibit
+			  (ash
+			   (ldb (byte bits-to-add (- 8 ibit bits-to-add))
+				(aref (reader-buffer reader)
+				      (reader-ibyte reader)))
+			   (the (unsigned-byte 32) (- bits bits-to-add))))))
+
+(declaim (ftype (function (positive-fixnum reader) non-negative-fixnum) read-bits-le))
+(defun read-bits-le (bits reader)
+  (declare (type reader reader)
+	   (type positive-fixnum bits))
+
+  (let ((added-bits 0))
+    (declare (type non-negative-fixnum added-bits))
+    (read-bits-loop (reader bits non-negative-fixnum
+			    bits-to-add ibit
+			    (the non-negative-fixnum
+			      (ash
+			       (ldb (byte bits-to-add (- 8 ibit bits-to-add))
+				    (aref (reader-buffer reader)
+					  (reader-ibyte reader)))
+			       (the (unsigned-byte 32) added-bits))))
+		    (incf added-bits bits-to-add))))
+
+(declaim (ftype (function (positive-fixnum reader) (integer 0)) read-bits-le-bignum))
+(defun read-bits-le-bignum (bits reader)
+  (declare (type reader reader)
+	   (type positive-fixnum bits)
+	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note))
+
+  (let ((added-bits 0))
+    (declare (type non-negative-fixnum added-bits))
+    (read-bits-loop (reader bits (integer 0)
+			    bits-to-add ibit
+			    (ash
+			     (ldb (byte bits-to-add (- 8 ibit bits-to-add))
+				  (aref (reader-buffer reader)
+					(reader-ibyte reader)))
+			     (the (unsigned-byte 32) added-bits)))
+		    (incf added-bits bits-to-add))))
 
 (declaim (ftype (function (reader) ub8) read-octet))
 (defun read-octet (reader)
