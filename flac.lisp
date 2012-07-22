@@ -23,6 +23,9 @@
 
 (in-package :cl-flac)
 
+(defun skip-malformed-metadata (c)
+  (invoke-restart 'skip-malformed-metadata c))
+
 (defun open-flac (stream)
   ;; Checking if stream is flac stream
   (let ((flac-header-array (make-array 4 :element-type 'u8)))
@@ -37,11 +40,12 @@
 		(restart-case
 		 (metadata-reader bitreader)
 		 (skip-malformed-metadata (c)
-					  (reader-position bitreader
-							   (metadata-start-position
-							    (flac-metadata c)))
-					  (metadata-last-block-p
-					   (flac-metadata c))))
+					  (let ((metadata (flac-metadata c)))
+					    (reader-position bitreader
+							     (+ (metadata-start-position metadata)
+								(metadata-length metadata)
+								4))
+					    (metadata-last-block-p metadata))))
 		
 		for read-farther =
 		(typecase metadata-block
