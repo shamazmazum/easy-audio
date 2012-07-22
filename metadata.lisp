@@ -24,14 +24,16 @@
 (in-package :cl-flac)
 
 (declaim (optimize (speed 3)))
+(defvar *data*) ;; For signaling errors from functions called from body-readers (they usual requires just a stream, so no need pass data object as argument)
 
 (defun metadata-summar-length (blocks)
   (declare (type list blocks))
   (reduce #'+ (mapcar #'(lambda (data) (metadata-length data)) blocks)))
 
 (defun metadata-header-reader (stream header)
-  (with-slots (last-block-p type length) header
-	      (setf last-block-p (if (= 0 (read-bit stream)) nil t)
+  (with-slots (last-block-p type length start-position) header
+	      (setf start-position (reader-position stream)
+		    last-block-p (if (= 0 (read-bit stream)) nil t)
 		    type (read-bits 7 stream)
 		    length (read-bits 24 stream)))
   header)
@@ -92,7 +94,6 @@
 	(floor (the (unsigned-byte 24) (metadata-length data)) 18)
       (if (/= remainder 0) (error 'flac-bad-metadata
 				  :message "Bad seektable"
-				  :bits-to-read (metadata-length data)
 				  :metadata data))
       (setf (seektable-seekpoints data)
 	    (loop for i below seekpoints-num collect
@@ -117,6 +118,67 @@
     (read-octet-vector md5 stream)
     (setf (streaminfo-md5 data) md5))
   data)
+
+(defun read-cuesheet-string (stream length)
+  (let ((buffer (make-array (list length) :element-type 'u8)))
+    (read-octet-vector buffer stream)
+    (let ((pos (position 0 buffer)))
+      (setq buffer
+	    (if pos (subseq buffer 0 pos) buffer)))
+    (babel:octets-to-string buffer)))
+
+(defun read-cuesheet-index (stream)
+  (let ((index (make-cuesheet-index)))
+    (setf (cuesheet-index-offset index) (read-bits-bignum 64 stream))
+    (setf (cuesheet-index-number index) (read-octet stream))
+
+    (let ((reserved (read-bits-bignum #.(* 3 8) stream)))
+      (if (/= 0 reserved) (error 'flac-bad-metadata
+				 :message "Bad cuesheet index"
+				 :metadata *data*)))
+    index))
+
+(defun read-cuesheet-track (stream)
+  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+  (let ((track (make-cuesheet-track)))
+    (setf (cuesheet-track-offset track) (read-bits-bignum 64 stream))
+    (setf (cuesheet-track-number track) (read-octet stream))
+    (setf (cuesheet-track-isrc track) (read-cuesheet-string stream 12))
+    (setf (cuesheet-track-type track) (if (= 0 (read-bit stream))
+					  :audio
+					:non-audio))
+    (setf (cuesheet-track-pre-emphasis track)
+	  (if (= 0 (read-bit stream)) :no-pre-emphasis :pre-emphasis))
+    
+    (let ((reserved (read-bits-bignum #.(+ 6 (* 8 13)) stream)))
+      (if (/= 0 reserved) (error 'flac-bad-metadata
+				 :message "Bad cuesheet track"
+				 :metadata *data*)))
+    
+    (let ((number-of-indices (read-octet stream)))
+      (setf (cuesheet-track-indices track)
+	    (loop for track below number-of-indices collect
+		  (read-cuesheet-index stream))))
+
+    track))
+
+(defmethod metadata-body-reader (stream (data cuesheet))
+  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+  (let ((*data* data))
+    (setf (cuesheet-catalog-id data) (read-cuesheet-string stream 128))
+    (setf (cuesheet-lead-in data) (read-bits-bignum 64 stream))
+    (setf (cuesheet-cdp data) (if (= 1 (read-bit stream)) t nil))
+    
+    (let ((reserved (read-bits-bignum #.(+ 7 (* 8 258)) stream)))
+      (if (/= 0 reserved) (error 'flac-bad-metadata
+				 :message "Bad cuesheet"
+				 :metadata data)))
+    
+    (let ((number-of-tracks (read-octet stream)))
+      (setf (cuesheet-tracks data)
+	    (loop for track below number-of-tracks collect
+		  (read-cuesheet-track stream))))
+  data))
 
 (defmethod metadata-body-reader (stream (data metadata-header))
   (let ((chunk (make-array (list (slot-value data 'length))

@@ -35,12 +35,7 @@
 (define-condition flac-eof (flac-error) ())
 
 (define-condition flac-bad-metadata (flac-error)
-  ((bits-to-read :reader flac-bits-to-read
-		 :initarg :bits-to-read
-		 :initform 0
-		 :type non-negative-fixnum)
-   
-   (metadata     :reader flac-metadata
+  ((metadata     :reader flac-metadata
 		 :initarg :metadata))
   (:report (lambda (c s)
 	     (format s "Bad metadata: ~A"
@@ -64,7 +59,10 @@
 	 :type fixnum)
    (length :accessor metadata-length
 	   :type fixnum)
-   (rawdata :type (simple-array u8))))
+   (rawdata :type (simple-array u8))
+   (start-position :documentation "Strart position of metadata block"
+		    :type non-negative-fixnum
+		    :accessor metadata-start-position)))
 
 (defclass streaminfo (metadata-header)
   ((minblocksize  :accessor streaminfo-minblocksize
@@ -110,6 +108,25 @@
 		   :accessor vorbis-vendor-comment)
    (user-comments  :type list
 		   :accessor vorbis-user-comments)))
+
+(defclass cuesheet (metadata-header)
+  ((catalog-id     :type string
+		   :accessor cuesheet-catalog-id)
+   (lead-in        :accessor cuesheet-lead-in)
+   (cdp            :accessor cuesheet-cdp
+		   :type boolean
+		   :documentation "t if cueshhet corresponds to Compact Disk")
+   (tracks         :accessor cuesheet-tracks)))
+
+(defstruct cuesheet-track
+  offset
+  number
+  isrc
+  type
+  pre-emphasis
+  indices)
+
+(defstruct cuesheet-index offset number)
 
 (defgeneric metadata-body-reader (stream data))
 

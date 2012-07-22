@@ -37,9 +37,9 @@
 		(restart-case
 		 (metadata-reader bitreader)
 		 (skip-malformed-metadata (c)
-					  (read-bits
-					   (flac-bits-to-read c)
-					   bitreader)
+					  (reader-position bitreader
+							   (metadata-start-position
+							    (flac-metadata c)))
 					  (metadata-last-block-p
 					   (flac-metadata c))))
 		

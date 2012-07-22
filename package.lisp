@@ -44,6 +44,24 @@
 	   #:vorbis-comment
 	   #:vorbis-vendor-comment
 	   #:vorbis-user-comments
+
+	   #:cuesheet
+	   #:cuesheet-catalog-id
+	   #:cuesheet-lead-in
+	   #:cuesheet-cdp
+	   #:cuesheet-tracks
+
+	   #:cuesheet-track
+	   #:cuesheet-track-offset
+	   #:cuesheet-track-number
+	   #:cuesheet-track-isrc
+	   #:cuesheet-track-type
+	   #:cuesheet-track-pre-emphasis
+	   #:cuesheet-track-indices
+
+	   #:cuesheet-index
+	   #:cuesheet-index-offset
+	   #:cuesheet-index-number
 	   
 	   ;; And so on with metadata classes
 	   ;; Frame and its slots
