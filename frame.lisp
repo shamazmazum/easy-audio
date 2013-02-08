@@ -229,11 +229,10 @@
 		       :message "Error subframe type"))))
 	   (wasted-bits (read-bit stream)))
 
-      ;; FIXME: Do not know what to do with wasted bits
       (if (= wasted-bits 1)
 	  (progn
-	    (warn "Do not know what to do with wasted bits")
-	    (setq wasted-bits (1+ (read-unary-coded-integer stream)))))
+	    (setq wasted-bits (1+ (read-unary-coded-integer stream))
+		  actual-bps (- actual-bps wasted-bits))))
       
       (let ((subframe (apply #'make-instance
 			     (append type-args (list :wasted-bps wasted-bits

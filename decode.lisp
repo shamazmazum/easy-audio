@@ -25,6 +25,18 @@
 
 (declaim (optimize (safety 0) (speed 3)))
 
+(defmethod subframe-decode :after ((subframe subframe) frame)
+  (declare (ignore frame))
+  (let ((wasted-bits (subframe-wasted-bps subframe))
+	(out-buf (subframe-out-buf subframe)))
+    (declare (type non-negative-fixnum wasted-bits)
+	     (type (simple-array (signed-byte 32)) out-buf))
+    (if (/= wasted-bits 0)
+	(map-into out-buf #'(lambda (sample)
+			      (declare (type (signed-byte 32) sample))
+			      (the fixnum (ash sample wasted-bits)))
+		  out-buf))))
+
 (defmethod subframe-decode ((subframe subframe-constant) frame)
   (declare (ignore frame))
   (let ((out-buf (subframe-out-buf subframe))
