@@ -222,23 +222,24 @@
 	 (mapcar #'(lambda (subframe) (subframe-decode subframe frame))
 		 (frame-subframes frame)))
   	(assignment (frame-channel-assignment frame)))
+    (declare (type (integer 0 10) assignment))
 
-    (if (typep assignment 'integer) (return-from frame-decode decoded-subframes))
+    (if (< assignment #b1000) (return-from frame-decode decoded-subframes))
     (if (/= 2 (length decoded-subframes)) (error "Bad channel assignment/number of subframes"))
 
     (destructuring-bind (left right) decoded-subframes
       (declare (type (simple-array (signed-byte 32)) left right))
       (cond
-       ((eq :left/side assignment)
+       ((= +left-side+ assignment)
 	;; Maybe just a loop?
 	(map-into right #'-
 		  left right))
        
-       ((eq :right/side assignment)
+       ((= +right-side+ assignment)
 	(map-into left #'+
 		  left right))
        
-       ((eq :mid/side assignment)
+       ((= +mid-side+ assignment)
 	(let ((block-size (frame-block-size frame)))
 	  (declare (type fixnum block-size))
 	  (dotimes (i block-size)

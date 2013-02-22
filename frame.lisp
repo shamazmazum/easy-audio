@@ -79,9 +79,9 @@
   (setf (slot-value frame 'channel-assignment)
 	(cond ((and (>= val 0)
 		    (<= val 7)) (1+ val))   ; 0000-0111
-	      ((= val 8) :left/side)   ; 1000
-	      ((= val 9) :right/side)  ; 1001
-	      ((= val 10) :mid/side)   ; 1001
+
+	      ((and (> val 7)
+		    (<= val 10)) val)  ; Special left/right/mid-side assignment
 	      (t (error 'flac-bad-frame
 			:message "Invalid channel assignment")))))
 
@@ -289,34 +289,30 @@
     (setf (frame-crc-8 frame) (read-octet stream))
 
     (let ((assignment (frame-channel-assignment frame)))
+      (declare (type (integer 0 10) assignment))
       (setf (frame-subframes frame)
-	    (typecase assignment
-	      (fixnum
-	       (loop for sf below
-		     (the fixnum (frame-channel-assignment frame)) collect
-		     (subframe-reader stream frame (frame-sample-size frame))))
-	      (symbol
+	    (if (< assignment #b1000)
+		(loop for sf fixnum below (frame-channel-assignment frame)
+		      collect (subframe-reader stream frame (frame-sample-size frame)))
 	       ;; Do bps correction
-	       (let ((sample-size (frame-sample-size frame)))
-		 (declare (type (integer 4 32) sample-size))
-		 (loop for sf below 2 collect
-		       (subframe-reader
-			stream frame
-			(cond
-			 ((and (eq assignment :left/side)
-			       (= sf 1))
-			  (1+ sample-size))
-
-			 ((and (eq assignment :right/side)
-			       (= sf 0))
-			  (1+ sample-size))
-
-			 ((and (eq assignment :mid/side)
-			       (= sf 1))
-			  (1+ sample-size))
-			 (t sample-size))))))
-	    (t (error 'flac-bad-frame
-		      :message "Wrong channel assignment")))))
+	      (let ((sample-size (frame-sample-size frame)))
+		(declare (type (integer 4 32) sample-size))
+		(loop for sf below 2 collect
+		      (subframe-reader
+		       stream frame
+		       (cond
+			((and (= assignment +left-side+)
+			      (= sf 1))
+			 (1+ sample-size))
+			
+			((and (= assignment +right-side+)
+			      (= sf 0))
+			 (1+ sample-size))
+			
+			((and (= assignment +mid-side+)
+			      (= sf 1))
+			 (1+ sample-size))
+			(t sample-size))))))))
 
     ;; Check zero padding
     (if (/= (read-to-byte-alignment stream) 0) (error 'flac-bad-frame

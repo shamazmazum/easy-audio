@@ -167,6 +167,9 @@
 (defgeneric subframe-body-reader (bit-reader subframe frame))
 (defgeneric subframe-decode (subframe frame))
 
+(defconstant +left-side+ #b1000)
+(defconstant +right-side+ #b1001)
+(defconstant +mid-side+ #b1010)
 ;; Frame
 (defclass frame ()
   ((streaminfo :accessor frame-streaminfo
@@ -177,7 +180,8 @@
    (sample-rate :accessor frame-sample-rate)
    (channel-assignment :accessor frame-channel-assignment
 		       :documentation "Number of channels or one of
-                                       :mid/side, :left/side, :right/side")
+                                       :mid/side, :left/side, :right/side"
+		       :type (integer 0 10))
    (sample-size :accessor frame-sample-size
 		:type (integer 4 32))
    (number :accessor frame-number)
