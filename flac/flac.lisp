@@ -28,37 +28,32 @@
 
 (defconstant +flac-id+ #x664C6143) ; "fLaC"
 
+(defun fix-stream-position (bitreader metadata)
+  (reader-position bitreader
+                   (+ (metadata-start-position metadata)
+                      (metadata-length metadata)
+                      4)))
+
 (defun open-flac (stream)
   ;; Checking if stream is flac stream
   (let ((bitreader (make-reader :stream stream)))
     (if (/= +flac-id+ #+x86_64 (read-bits 32 bitreader)
                       #-x86_64 (bitreader.be-bignum:read-bits 32 bitreader))
         (error 'flac-error :message "Stream is not flac stream"))
-    
-    (let ((metadata-blocks
-           (loop for metadata-block =
-                 ;; I am not master of conditions handling, so
-                 ;; the following code is ugly
-                 (restart-case
-                  (metadata-reader bitreader)
-                  (skip-malformed-metadata (c)
-                                           (let ((metadata (flac-metadata c)))
-                                             (reader-position bitreader
-                                                              (+ (metadata-start-position metadata)
-                                                                 (metadata-length metadata)
-                                                                 4))
-                                             (metadata-last-block-p metadata))))
-                 
-                 for read-farther =
-                 (typecase metadata-block
-                   (metadata-header
-                    (not (slot-value metadata-block 'last-block-p)))
-                   (t (not metadata-block)))
-                 
-                 when (typep metadata-block 'metadata-header)
-                 collect metadata-block
-                 while read-farther)))
-      
-      (values
-       metadata-blocks
-       bitreader))))
+
+    (let (metadata-list)
+     (do (last-block)
+         (last-block)
+       
+       (setq last-block
+             (restart-case
+              (let ((metadata (metadata-reader bitreader)))
+                (push metadata metadata-list)
+                (metadata-last-block-p metadata))
+              (skip-malformed-metadata (c)
+                                       (let ((metadata (flac-metadata c)))
+                                         (fix-stream-position bitreader metadata)
+                                         (metadata-last-block-p metadata))))))
+     (values
+      (reverse metadata-list)
+      bitreader))))

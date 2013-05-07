@@ -30,25 +30,24 @@
   (declare (type list blocks))
   (reduce #'+ (mapcar #'(lambda (data) (metadata-length data)) blocks)))
 
-(defun metadata-header-reader (stream header)
-  (with-slots (last-block-p type length start-position) header
-	      (setf start-position (reader-position stream)
-		    last-block-p (if (= 0 (read-bit stream)) nil t)
-		    type (read-bits 7 stream)
-		    length (read-bits 24 stream)))
-  header)
+(defun metadata-header-reader (stream)
+  "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
+  (values (reader-position stream)
+          (if (= 0 (read-bit stream)) nil t)
+          (read-bits 7 stream)
+          (read-bits 24 stream)))
 
 (defun metadata-reader (stream)
-  (let ((data (make-instance 'metadata-header)))
-    (metadata-header-reader stream data)
+  (multiple-value-bind (start-position last-block-p type length)
+      (metadata-header-reader stream)
     
-    (handler-case
-     (let ((mtype (get-metadata-type (slot-value data 'type))))
-       (change-class data mtype))
-     (flac-bad-metadata-type () ()))
-
-    (metadata-body-reader stream data)
-    data))
+    (let* ((mtype (get-metadata-type type))
+           (data (make-instance mtype
+                                :last-block-p last-block-p
+                                :length length
+                                :start-position start-position)))
+      (metadata-body-reader stream data)
+      data)))
 
 (defmethod metadata-body-reader (stream (data padding))
   (declare (ignore stream))

@@ -39,11 +39,6 @@
 	     (format s "Bad metadata: ~A"
 		     (flac-error-message c)))))
 
-(define-condition flac-bad-metadata-type (flac-error) ()
-  (:report (lambda (c s)
-	     (format s "Bad metadata type: ~A"
-		     (flac-error-message c)))))
-
 (define-condition flac-bad-frame (flac-error) ()
   (:report (lambda (c s)
 	     (format s "Bad frame: ~A"
@@ -51,14 +46,19 @@
 
 ;; Metadata
 (defclass metadata-header ()
-  ((last-block-p :accessor metadata-last-block-p
-		 :type boolean)
-   (type :accessor metadata-type
-	 :type fixnum)
-   (length :accessor metadata-length
-	   :type fixnum)
-   (rawdata :type (simple-array u8))
-   (start-position :documentation "Strart position of metadata block"
+  ((last-block-p    :initarg :last-block-p
+                    :accessor metadata-last-block-p
+		    :type boolean)
+   ;; (type            :initarg :type
+   ;;                  :accessor metadata-type
+   ;;                  :type fixnum)
+   (length          :initarg :length
+                    :accessor metadata-length
+                    :type fixnum)
+   (rawdata         :initarg :rawdata
+                    :type (simple-array u8))
+   (start-position  :initarg :start-position
+                    :documentation "Strart position of metadata block"
 		    :type non-negative-fixnum
 		    :accessor metadata-start-position)))
 
@@ -93,8 +93,8 @@
 (defclass padding (metadata-header) ())
 
 (defstruct seekpoint
-  (samplenum 0 :type (unsigned-byte 64))
-  (offset 0 :type (unsigned-byte 64))
+  (samplenum 0        :type (unsigned-byte 64))
+  (offset 0           :type (unsigned-byte 64))
   (samples-in-frame 0 :type (unsigned-byte 16)))
 
 (defclass seektable (metadata-header)
@@ -197,9 +197,9 @@
 ;; Other stuff
 
 (defun get-metadata-type (code)
-  (if (= code 127) (error 'flac-bad-metadata-type
+  (if (= code 127) (error 'flac-bad-metadata
 			  :message "Code 127 is invalid"))
   
   (let ((mtype (nth code +block-name+)))
     (if (find-class mtype nil) mtype
-      (error 'flac-bad-metadata-type))))
+      (error 'flac-bad-metadata))))
