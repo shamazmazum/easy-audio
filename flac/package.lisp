@@ -21,8 +21,8 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage cl-flac
-  (:use #:cl)
+(defpackage easy-audio.flac
+  (:use #:cl #:bitreader #:bitreader.be-fixnum)
   (:nicknames #:flac)
   (:export #:streaminfo ; Metadata
 	   #:streaminfo-minblocksize
@@ -39,6 +39,7 @@
 	   #:seekpoint-samplenum
 	   #:seekpoint-offset
 	   #:seekpoint-samples-in-frame
+           #:seektable
 	   #:seektable-seekpoints
 
 	   #:vorbis-comment
@@ -94,9 +95,6 @@
 	   #:flac-eof
 	   #:flac-bad-metadata
 	   #:flac-bad-frame
-
-	   ;; Macro
-	   #:with-open-flac
 
 	   ;; Restarts
 	   #:skip-malformed-metadata))

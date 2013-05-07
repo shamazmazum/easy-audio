@@ -1,4 +1,4 @@
-;; Copyright (c) 2012, Vasily Postnicov
+;; Copyright (c) 2012-2013, Vasily Postnicov
 ;; All rights reserved.
 
 ;; Redistribution and use in source and binary forms, with or without
@@ -22,8 +22,12 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ;; Thanks to Love5an, author of trivial-bit-streams
+;; Do the same thing trivial-bit-streams does but without CLOS
+;; High performance is required here
 
-(in-package :cl-flac)
+(in-package :easy-music.bitreader)
+
+(declaim (optimize (speed 3) (safety 0)))
 
 (deftype non-negative-fixnum () '(integer 0 #.most-positive-fixnum))
 (deftype positive-fixnum () '(integer 1 #.most-positive-fixnum))
@@ -34,7 +38,9 @@
 
 (defparameter *buffer-size* 4096)
 
-(declaim (optimize (speed 3) (safety 0)))
+(define-condition bitreader-eof ()
+  ((bitreader :initarg :bitreader
+              :reader bitreader-eof-bitreader)))
 
 ;; Might be restrictions for 32 bit systems
 (defstruct reader
@@ -48,6 +54,7 @@
 
 (declaim (inline reset-counters))
 (defun reset-counters (reader)
+  "Resets ibit and ibyte in reader struct"
   (declare (type reader reader))
 
   (with-accessors ((ibit reader-ibit)
@@ -59,6 +66,8 @@
 
 (declaim (inline move-forward))
 (defun move-forward (reader &optional (bits 1))
+  "Moves position in READER bit reader in range [1; 8-ibit] BITS.
+   Maximum value of ibit is 7."
   (declare (type reader reader)
 	   (type positive-fixnum bits))
   
@@ -77,6 +86,7 @@
 ;; 73243 calls to fill-buffer. Not many, but inline it anyway
 (declaim (inline fill-buffer))
 (defun fill-buffer (reader)
+  "Fills internal buffer of READER"
   (declare (type reader reader))
   (reset-counters reader)
   (with-accessors ((end reader-end)
@@ -87,17 +97,20 @@
 		  (setf end
 			(read-sequence buffer stream))
 
-		  (if (= end 0) (error 'flac-eof))))
+		  (if (= end 0) (error 'flac-eof :bitreader reader))))
 
 (declaim (inline can-not-read))
 (defun can-not-read (reader)
+  "Checks if READER can be read without calling fill-buffer"
   (declare (type reader reader))
 
-  (if (< (reader-ibyte reader)
-	 (reader-end reader)) nil t))
+  (= (reader-ibyte reader)
+     (reader-end reader)))
+
 
 (declaim (ftype (function (reader) (integer 0 1)) read-bit))
 (defun read-bit (reader)
+  "Read a single bit from READER"
   (declare (type reader reader))
   (if (can-not-read reader) (fill-buffer reader))
 
@@ -128,6 +141,93 @@
 			   (move-forward ,reader ,bits-to-add)
 			   ,@body))
 		       ,result))))
+
+(declaim (ftype (function (reader) ub8) read-octet))
+(defun read-octet (reader)
+  "Reads current octet from reader
+   Ignores ibit"
+  (declare (type reader reader))
+  (if (can-not-read reader) (fill-buffer reader))
+  
+  (with-accessors ((ibyte reader-ibyte))
+		  reader
+
+		  (prog1
+		      (aref (reader-buffer reader) ibyte)
+		    (incf ibyte))))
+
+(declaim (ftype (function (simple-ub8-vector reader) non-negative-fixnum) read-octet-vector))
+(defun read-octet-vector (array reader)
+  ;; Stupid and maybe slow version.
+  ;; Why not? I do not use this function often
+  (declare (type simple-ub8-vector)
+	   (type reader reader))
+  
+  (dotimes (i (length array))
+    (if (can-not-read reader) (fill-buffer reader))
+    (with-accessors ((ibyte reader-ibyte))
+		    reader
+		    
+		    (prog1
+			(setf (aref array i)
+			      (aref (reader-buffer reader) ibyte))
+		      (incf ibyte))))
+  (length array))
+
+(declaim (ftype (function (reader) non-negative-fixnum) read-to-byte-alignment))
+(defun read-to-byte-alignment (reader)
+  (declare (type reader reader))
+  (with-accessors ((ibyte reader-ibyte)
+		   (ibit reader-ibit))
+		  reader
+
+		  (if (= ibit 0) (return-from read-to-byte-alignment 0))
+		  (prog1
+		      (ldb (byte (- 8 ibit) 0)
+			   (aref (reader-buffer reader) ibyte))
+		    (setf ibit 0)
+		    (incf ibyte))))
+
+(declaim (ftype (function (reader &optional t) non-negative-fixnum) reader-position))
+(defun reader-position (reader &optional val)
+  "Returns or sets number of readed octets.
+   Similar to file-position
+   Sets ibit to zero if val is specified"
+  (declare (type reader reader))
+  (if val
+      (progn
+	(file-position (reader-stream reader) val)
+	(fill-buffer reader))
+    (the non-negative-fixnum
+      (+ (the non-negative-fixnum ;; Limit to 536 mb on x86 sbcl!
+	   (file-position (reader-stream reader)))
+	 (- (reader-end reader))
+	 (reader-ibyte reader)))))
+
+(declaim (ftype (function (reader (unsigned-byte 8)) (unsigned-byte 8)) peek-octet))
+(defun peek-octet (reader octet)
+  "Sets input to the first octet found in stream"
+  (declare (type (unsigned-byte 8) octet)
+	   (type reader reader))
+  (setf (reader-ibyte reader)
+	(loop for pos = (position octet (reader-buffer reader)
+				  :start (reader-ibyte reader))
+	      until pos
+	      do
+	      (fill-buffer reader)
+	      (setf (reader-ibyte reader) 0)
+	      finally (return pos)))
+  octet)
+
+(declaim (ftype (function (reader) non-negative-fixnum) reader-length))
+(defun reader-length (reader)
+  "Returns length of stream in octets or zero
+   if the value is unknown"
+  (declare (type reader reader))
+  (let ((len (file-length (reader-stream reader))))
+    (if len len 0)))
+
+(in-package :easy-music.bitreader.be-fixnum)
 
 (declaim (ftype (function (positive-fixnum reader) non-negative-fixnum) read-bits))
 ;; Must be a bit faster in this way, than with use of read-bits-loop
@@ -182,8 +282,10 @@
 			    (incf ibit offset)))
 		      result)))))
 
-(declaim (ftype (function (positive-fixnum reader) (integer 0)) read-bits-bignum))
-(defun read-bits-bignum (bits reader)
+(in-package :easy-music.bitreader.be-bignum)
+
+(declaim (ftype (function (positive-fixnum reader) (integer 0)) read-bits))
+(defun read-bits (bits reader)
   (declare (type reader reader)
 	   (type positive-fixnum bits)
 	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note))
@@ -196,8 +298,10 @@
 				      (reader-ibyte reader)))
 			   (the (unsigned-byte 32) (- bits bits-to-add))))))
 
-(declaim (ftype (function (positive-fixnum reader) non-negative-fixnum) read-bits-le))
-(defun read-bits-le (bits reader)
+(in-package :easy-music.bitreader.le-fixnum)
+
+(declaim (ftype (function (positive-fixnum reader) non-negative-fixnum) read-bits))
+(defun read-bits (bits reader)
   (declare (type reader reader)
 	   (type positive-fixnum bits))
 
@@ -213,8 +317,10 @@
 			       (the (unsigned-byte 32) added-bits))))
 		    (incf added-bits bits-to-add))))
 
-(declaim (ftype (function (positive-fixnum reader) (integer 0)) read-bits-le-bignum))
-(defun read-bits-le-bignum (bits reader)
+(in-package :easy-music.bitreader.le-bignum)
+
+(declaim (ftype (function (positive-fixnum reader) (integer 0)) read-bits))
+(defun read-bits (bits reader)
   (declare (type reader reader)
 	   (type positive-fixnum bits)
 	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note))
@@ -229,91 +335,3 @@
 					(reader-ibyte reader)))
 			     (the (unsigned-byte 32) added-bits)))
 		    (incf added-bits bits-to-add))))
-
-(declaim (ftype (function (reader) ub8) read-octet))
-(defun read-octet (reader)
-  "Reads current octet from reader
-   Ignores ibit"
-  (declare (type reader reader))
-  (if (can-not-read reader) (fill-buffer reader))
-  
-  (with-accessors ((ibyte reader-ibyte))
-		  reader
-
-		  (prog1
-		      (aref (reader-buffer reader) ibyte)
-		    (incf ibyte))))
-
-(declaim (ftype (function (simple-ub8-vector reader) non-negative-fixnum) read-octet-vector))
-(defun read-octet-vector (array reader)
-  ;; Stupid and maybe slow version.
-  ;; Why not? I do not use this function often
-  (declare (type simple-ub8-vector)
-	   (type reader reader))
-  
-  (dotimes (i (length array))
-    (if (can-not-read reader) (fill-buffer reader))
-    (with-accessors ((ibyte reader-ibyte))
-		    reader
-		    
-		    (prog1
-			(setf (aref array i)
-			      (aref (reader-buffer reader) ibyte))
-		      (incf ibyte))))
-  (length array))
-
-(declaim (ftype (function (reader) non-negative-fixnum) read-to-byte-alignment))
-(defun read-to-byte-alignment (reader)
-  (declare (type reader reader))
-  (with-accessors ((ibyte reader-ibyte)
-		   (ibit reader-ibit))
-		  reader
-
-		  (if (= ibit 0) (return-from read-to-byte-alignment 0))
-		  (prog1
-		      (ldb (byte (- 8 ibit) 0)
-			   (aref (reader-buffer reader) ibyte))
-		    (setf ibit 0)
-		    (incf ibyte))))
-
-(defun close-reader (reader)
-  (close (reader-stream reader)))
-
-(declaim (ftype (function (reader &optional t) non-negative-fixnum) reader-position))
-(defun reader-position (reader &optional val)
-  "Returns or sets number of readed octets.
-   Similar to file-position
-   Sets ibit to zero if val is specified"
-  (declare (type reader reader))
-  (if val
-      (progn
-	(file-position (reader-stream reader) val)
-	(fill-buffer reader))
-    (the non-negative-fixnum
-      (+ (the non-negative-fixnum ;; Limit to 536 mb on x86 sbcl!
-	   (file-position (reader-stream reader)))
-	 (- (reader-end reader))
-	 (reader-ibyte reader)))))
-
-(declaim (ftype (function (reader (unsigned-byte 8)) (unsigned-byte 8)) peek-octet))
-(defun peek-octet (reader octet)
-  "Sets input to the first octet found in stream"
-  (declare (type (unsigned-byte 8) octet)
-	   (type reader reader))
-  (setf (reader-ibyte reader)
-	(loop for pos = (position octet (reader-buffer reader)
-				  :start (reader-ibyte reader))
-	      until pos
-	      do
-	      (fill-buffer reader)
-	      (setf (reader-ibyte reader) 0)
-	      finally (return pos)))
-  octet)
-
-(declaim (ftype (function (reader) non-negative-fixnum) reader-length))
-(defun reader-length (reader)
-  "Returns length of stream in octets or zero
-   if the value is unknown"
-  (declare (type reader reader))
-  (let ((len (file-length (reader-stream reader))))
-    (if len len 0)))

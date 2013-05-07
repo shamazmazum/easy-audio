@@ -21,7 +21,7 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cl-flac)
+(in-package :easy-audio.flac)
 
 (declaim (optimize (speed 3)))
 (defvar *data*) ;; For signaling errors from functions called from body-readers (they usual requires just a stream, so no need pass data object as argument)
@@ -64,8 +64,8 @@
 (defmethod metadata-body-reader (stream (data vorbis-comment))
   #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (flet ((read-comment-string (stream)
-	  (let ((buffer (make-array (list #+x86_64 (read-bits-le 32 stream)
-					  #-x86_64 (read-bits-le-bignum 32 stream))
+	  (let ((buffer (make-array (list #+x86_64 (bitreader.le-fixnum:read-bits 32 stream)
+					  #-x86_64 (bitreader.le-bignum:read-bits 32 stream))
 					   :element-type '(unsigned-byte 8))))
 	    (read-octet-vector buffer stream)
 	    (babel:octets-to-string buffer))))
@@ -73,8 +73,8 @@
     (setf (vorbis-vendor-comment data)
 	  (read-comment-string stream))
 
-    (let ((comments-num #+x86_64 (read-bits-le 32 stream)
-			#-x86_64 (read-bits-le-bignum 32 stream)))
+    (let ((comments-num #+x86_64 (bitreader.le-fixnum:read-bits 32 stream)
+			#-x86_64 (bitreader.le-bignum:read-bits 32 stream)))
       
       (setf (vorbis-user-comments data)
 	    (loop for i below comments-num collect
@@ -83,9 +83,9 @@
 
 (defmethod metadata-body-reader (stream (data seektable))
   (flet ((read-seekpoint (stream)
-			 (let ((samplenum (read-bits-bignum 64 stream)))
+			 (let ((samplenum (bitreader.be-bignum:read-bits 64 stream)))
 			   (if (/= (the (unsigned-byte 64) samplenum) +seekpoint-placeholder+)
-			       (let ((offset (read-bits-bignum 64 stream))
+			       (let ((offset (bitreader.be-bignum:read-bits 64 stream))
 				     (samples-in-frame (read-bits 16 stream)))
 				 (make-seekpoint :samplenum samplenum
 						 :offset offset
@@ -112,7 +112,7 @@
 	(streaminfo-bitspersample data) (the non-negative-fixnum
 					  (1+ (read-bits 5 stream)))
 	(streaminfo-totalsamples data) #+x86_64 (read-bits 36 stream)
-	                               #-x86_64 (read-bits-bignum 36 stream))
+	                               #-x86_64 (bitreader.be-bignum:read-bits 36 stream))
   
   (let ((md5 (make-array (list 16) :element-type 'u8)))
     (read-octet-vector md5 stream)
@@ -129,10 +129,10 @@
 
 (defun read-cuesheet-index (stream)
   (let ((index (make-cuesheet-index)))
-    (setf (cuesheet-index-offset index) (read-bits-bignum 64 stream))
+    (setf (cuesheet-index-offset index) (bitreader.be-bignum:read-bits 64 stream))
     (setf (cuesheet-index-number index) (read-octet stream))
 
-    (let ((reserved (read-bits-bignum #.(* 3 8) stream)))
+    (let ((reserved (bitreader.be-bignum:read-bits #.(* 3 8) stream)))
       (if (/= 0 reserved) (error 'flac-bad-metadata
 				 :message "Bad cuesheet index"
 				 :metadata *data*)))
@@ -141,7 +141,7 @@
 (defun read-cuesheet-track (stream)
   #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (let ((track (make-cuesheet-track)))
-    (setf (cuesheet-track-offset track) (read-bits-bignum 64 stream))
+    (setf (cuesheet-track-offset track) (bitreader.be-bignum:read-bits 64 stream))
     (setf (cuesheet-track-number track) (read-octet stream))
     (setf (cuesheet-track-isrc track) (read-cuesheet-string stream 12))
     (setf (cuesheet-track-type track) (if (= 0 (read-bit stream))
@@ -150,7 +150,7 @@
     (setf (cuesheet-track-pre-emphasis track)
 	  (if (= 0 (read-bit stream)) :no-pre-emphasis :pre-emphasis))
     
-    (let ((reserved (read-bits-bignum #.(+ 6 (* 8 13)) stream)))
+    (let ((reserved (bitreader.be-bignum:read-bits #.(+ 6 (* 8 13)) stream)))
       (if (/= 0 reserved) (error 'flac-bad-metadata
 				 :message "Bad cuesheet track"
 				 :metadata *data*)))
@@ -166,10 +166,10 @@
   #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (let ((*data* data))
     (setf (cuesheet-catalog-id data) (read-cuesheet-string stream 128))
-    (setf (cuesheet-lead-in data) (read-bits-bignum 64 stream))
+    (setf (cuesheet-lead-in data) (bitreader.be-bignum:read-bits 64 stream))
     (setf (cuesheet-cdp data) (if (= 1 (read-bit stream)) t nil))
     
-    (let ((reserved (read-bits-bignum #.(+ 7 (* 8 258)) stream)))
+    (let ((reserved (bitreader.be-bignum:read-bits #.(+ 7 (* 8 258)) stream)))
       (if (/= 0 reserved) (error 'flac-bad-metadata
 				 :message "Bad cuesheet"
 				 :metadata data)))

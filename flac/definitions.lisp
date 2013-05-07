@@ -21,7 +21,7 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :cl-flac)
+(in-package :easy-audio.flac)
 
 (declaim (optimize (safety 0)))
 (deftype u8 () '(unsigned-byte 8))
@@ -31,8 +31,6 @@
 	    :initform ""
 	    :type string
 	    :reader flac-error-message)))
-
-(define-condition flac-eof (flac-error) ())
 
 (define-condition flac-bad-metadata (flac-error)
   ((metadata     :reader flac-metadata
