@@ -21,22 +21,22 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package :flac-examples)
-
-(defparameter +wav-chunk-id+ (babel:string-to-octets "RIFF"))
-(defparameter +wav-subchunk1-id+ (babel:string-to-octets "fmt "))
-(defparameter +wav-subchunk2-id+ (babel:string-to-octets "data"))
-(defparameter +wave+ (babel:string-to-octets "WAVE"))
-(defconstant +header-size+ (* 8 44))
+(in-package :easy-audio.flac-examples)
 
 (defun integer-to-array (val array)
-  (declare (optimize (speed 3))
-	   (type (unsigned-byte 32) val)
-	   (type (simple-array (unsigned-byte 8)) array))
   (loop for i below (length array)
 	for pos from 0 by 8 do
 	(setf (aref array i)
 	      (ldb (byte 8 pos) val)))
+  array)
+
+(defun integer-to-array-be (val array)
+  (let* ((len (length array))
+         (len-bits (ash len 3)))
+    (loop for i below len
+          for pos from 0 by 8 do
+          (setf (aref array i)
+                (ldb (byte 8 (- len-bits pos 8)) val))))
   array)
 
 (defun mixchannels (out buffers)
@@ -61,74 +61,70 @@
 (defun flac2wav (flac-name wav-name)
   "Decodes flac to wav. Works only for 8 or 16 bps,
    fixed block size and if total samples in stream is known"
-  (with-open-flac (blocks stream
-			  (open flac-name :element-type '(unsigned-byte 8)))
+  (with-open-file (in flac-name :element-type '(unsigned-byte 8))
+    (multiple-value-bind (blocks in-reader) (open-flac in)
+      (let* ((streaminfo (the streaminfo (first blocks)))
+             (buf2 (make-array 2 :element-type '(unsigned-byte 8)))
+             (buf4 (make-array 4 :element-type '(unsigned-byte 8)))
+	   
+             (minblocksize (streaminfo-minblocksize streaminfo))
+             (maxblocksize (streaminfo-maxblocksize streaminfo))
+             (totalsamples (streaminfo-totalsamples streaminfo))
+             (blocksize minblocksize)
+             
+             (bps (streaminfo-bitspersample streaminfo))
+             (channels (streaminfo-channels streaminfo))
+             (samplerate (streaminfo-samplerate streaminfo)))
+      
+        (if (= 0 totalsamples)
+            (error "Number of total samples is unknown"))
+        (if (/= minblocksize maxblocksize)
+            (error "Block size must be fixed"))
+      
+        (if (not (or (= 8 bps)
+                     (= 16 bps)))
+            (error "Bps must be 16 or 8"))
+      
+        (with-open-file (out-stream wav-name
+                                    :direction :output
+                                    :if-exists :supersede
+                                    :if-does-not-exist :create
+                                    :element-type '(unsigned-byte 8))
+                        
+                        ;; Fill headers
+                        (write-sequence (integer-to-array-be wav:+wav-id+ buf4) out-stream)
+                        (let ((size
+                               (ash
+                                (* bps channels totalsamples) -3)))
+			
+                          (write-sequence (integer-to-array (+ 36 size) buf4) out-stream)
+                          (write-sequence (integer-to-array-be wav:+wav-format+ buf4) out-stream)
 
-    (let* ((streaminfo (the streaminfo (first blocks)))
-	   (buf2 (make-array 2 :element-type '(unsigned-byte 8)))
-	   (buf4 (make-array 4 :element-type '(unsigned-byte 8)))
-	   
-	   (minblocksize (streaminfo-minblocksize streaminfo))
-	   (maxblocksize (streaminfo-maxblocksize streaminfo))
-	   (totalsamples (streaminfo-totalsamples streaminfo))
-	   (blocksize minblocksize)
-	   
-	   (bps (streaminfo-bitspersample streaminfo))
-	   (channels (streaminfo-channels streaminfo))
-	   (samplerate (streaminfo-samplerate streaminfo)))
-      
-      (if (= 0 totalsamples)
-	  (error "Number of total samples is unknown"))
-      (if (/= minblocksize maxblocksize)
-	  (error "Block size must be fixed"))
-      
-      (if (not (or (= 8 bps)
-		   (= 16 bps)))
-	  (error "Bps must be 16 or 8"))
-      
-      (with-open-file (out-stream wav-name
-				  :direction :output
-				  :if-exists :supersede
-				  :if-does-not-exist :create
-				  :element-type '(unsigned-byte 8))
-		      ;; Fill headers
-		      (write-sequence +wav-chunk-id+ out-stream)
-		      (let ((size
-			     (ash
-			      (* bps channels totalsamples) -3)))
-			
-			(write-sequence (integer-to-array (+ 36 size) buf4) out-stream)
-			(write-sequence +wave+ out-stream)
-			
-			;; Subchunk 1
-			(write-sequence +wav-subchunk1-id+ out-stream)
-			(write-sequence (integer-to-array 16 buf4) out-stream)
-			(write-byte 1 out-stream)
-			(write-byte 0 out-stream)
-			
-			(write-sequence (integer-to-array
-					 channels buf2) out-stream)
-			
-			(write-sequence (integer-to-array
-					 samplerate buf4) out-stream)
-			
-			(write-sequence (integer-to-array
-					 (ash
-					  (* samplerate channels bps) -3)
-					 buf4) out-stream)
-			
-			(write-sequence (integer-to-array
-					 (ash
-					  (* channels bps) -3)
-					 buf2) out-stream)
-			
-			(write-sequence (integer-to-array
-					 bps buf2) out-stream)
-			
-			;; Subchunk 2
-			(write-sequence +wav-subchunk2-id+ out-stream)
-			(write-sequence (integer-to-array size
-							  buf4) out-stream)))
+                          
+                          ;; Subchunk 1
+                          (write-sequence (integer-to-array-be wav:+subchunk1-id+ buf4) out-stream)
+                          (write-sequence #(0 0 0 16) out-stream)
+                          (write-sequence (integer-to-array wav:+wave-format-pcm+ buf2) out-stream)
+                          (write-sequence (integer-to-array channels buf2) out-stream)
+                          (write-sequence (integer-to-array samplerate buf4) out-stream)
+                          
+                          (write-sequence (integer-to-array
+                                           (ash
+                                            (* samplerate channels bps) -3)
+                                           buf4) out-stream)
+                          
+                          (write-sequence (integer-to-array
+                                           (ash
+                                            (* channels bps) -3)
+                                           buf2) out-stream)
+                          
+                          (write-sequence (integer-to-array
+                                           bps buf2) out-stream)
+
+                          
+                          ;; Subchunk 2
+                          (write-sequence (integer-to-array-be wav:+subchunk2-id+ buf4) out-stream)
+                          (write-sequence (integer-to-array size buf4) out-stream)))
       
       (with-open-file (out-stream wav-name
 				  :direction :output
@@ -142,5 +138,5 @@
 			
 			(loop for i below totalsamples
 			      by blocksize do
-			      (write-sequence (mixchannels buf (frame-decode (frame-reader stream streaminfo)))
-					      out-stream)))))))
+			      (write-sequence (mixchannels buf (frame-decode (frame-reader in-reader streaminfo)))
+					      out-stream))))))))

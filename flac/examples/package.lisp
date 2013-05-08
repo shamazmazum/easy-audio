@@ -1,4 +1,4 @@
-;; Copyright (c) 2012, Vasily Postnicov
+;; Copyright (c) 2012-2013, Vasily Postnicov
 ;; All rights reserved.
 
 ;; Redistribution and use in source and binary forms, with or without
@@ -21,7 +21,7 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage cl-flac-examples
-  (:use #:cl #:flac)
+(defpackage easy-audio.flac-examples
+  (:use #:cl #:easy-audio.flac)
   (:nicknames #:flac-examples)
   (:export #:flac2wav))
