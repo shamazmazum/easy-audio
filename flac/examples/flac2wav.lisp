@@ -103,7 +103,7 @@
                           
                           ;; Subchunk 1
                           (write-sequence (integer-to-array-be wav:+subchunk1-id+ buf4) out-stream)
-                          (write-sequence #(0 0 0 16) out-stream)
+                          (write-sequence #(16 0 0 0) out-stream)
                           (write-sequence (integer-to-array wav:+wave-format-pcm+ buf2) out-stream)
                           (write-sequence (integer-to-array channels buf2) out-stream)
                           (write-sequence (integer-to-array samplerate buf4) out-stream)
