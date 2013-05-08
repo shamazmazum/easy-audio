@@ -10,5 +10,9 @@
 	       (:file "flac/metadata" :depends-on ("flac/package"))
 	       (:file "flac/frame" :depends-on ("flac/package"))
 	       (:file "flac/decode" :depends-on ("flac/package"))
-	       (:file "flac/flac" :depends-on ("flac/package")))
+	       (:file "flac/flac" :depends-on ("flac/package"))
+
+               (:file "wav/package" :depends-on ("bitreader/packages"))
+               (:file "wav/definitions" :depends-on ("wav/package"))
+               (:file "wav/wav" :depends-on ("wav/package")))
   :depends-on (:babel))

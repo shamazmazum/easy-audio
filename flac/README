@@ -1,0 +1,20 @@
+A sketch for flac decoder.
+
+Features:
+* Reads metadata from flac stream (not all metadata types is supported currently).
+  Also it can skip unparseable data.
+
+* Reads and decodes audio frames.
+
+* Can seek sample in stream by absolute sample number (with or without seektable)
+
+Frame and streaminfo data can be found in corresponding classes
+
+Unfortunately, there is no documentation present, but you can see simple flac 2 wav converter in cl-flac-examples.
+ Example of use:
+
+(asdf:load-system :cl-flac-examples)
+(flac-examples:flac2wav "file.flac" "file.wav")
+
+It is about 5 times slower than original flac decoder written on C.
+Not tested with 32 bit architectures.
