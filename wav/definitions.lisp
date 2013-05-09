@@ -30,12 +30,14 @@
 (defconstant +wav-format+ #x57415645
   "Letters (`WAVE')")
 
-(defconstant +subchunk1-id+ #x666d7420
-  "Subchunk 1 identifier. Contains letters `fmt '")
+(defconstant +format-subchunk+ #x666d7420
+  "Format subchunk identifier. Contains letters `fmt '")
 
-(defconstant +subchunk2-id+ #x64617461
-  "Subchunk 2 identifier. Contains letters `data'")
+(defconstant +data-subchunk+ #x64617461
+  "Data subchunk identifier. Contains letters `data'")
 
+(defconstant +fact-subchunk+ #x66616374
+  "Fact subchunk identifier. Contains letters `fact'")
 
 ;; Audio formats
 (defconstant +wave-format-pcm+         #x0001)
@@ -44,13 +46,18 @@
 (defconstant +wave-format-mulaw+       #x0007)
 (defconstant +wave-format-extensible+  #xfffe)
 
-;; Header data
-(defstruct wav-header
+;; Subchunk structures
+(defstruct (format-subchunk (:conc-name format-))
   audio-format
   channels-num
   samplerate
-  bps
-  extra-params)
+  bps)
+
+(defstruct (data-subchunk (:conc-name data-))
+  size)
+
+(defstruct (fact-subchunk (:conc-name fact-))
+  samples-num)
 
 ;; Condition
 (define-condition wav-error ()
@@ -60,3 +67,9 @@
 	    :reader wav-error-message))
   (:report (lambda (c s)
              (format s "Wav decoder error: ~A" (wav-error-message c)))))
+
+(define-condition wav-error-subchunk (wav-error)
+  ((reader      :initarg :reader
+                :reader wav-error-reader)
+   (rest-bytes  :initarg :rest-bytes
+                :reader wav-error-rest-bytes)))

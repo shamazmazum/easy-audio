@@ -26,8 +26,8 @@
   (:nicknames #:wav)
   (:export #:+wav-id+   ;; Useful constants which can be used in examples
            #:+wav-format+
-           #:+subchunk1-id+
-           #:+subchunk2-id+
+           #:+format-subchunk+
+           #:+data-subchunk+
 
            #:+wave-format-pcm+
            #:+wave-format-float+
@@ -35,13 +35,16 @@
            #:+wave-format-mulaw+
            #:+wave-format-extensible+
 
-           #:wav-header ;; Header structure and accessors
-           #:wav-header-audio-format
-           #:wav-header-channels-num
-           #:wav-header-samplerate
-           #:wav-header-bps
-           #:wav-header-extra-params
+           #:format-audio-format ;; Subchunk accessors
+           #:format-channels-num
+           #:format-samplerate
+           #:format-bps
 
-           #:wav-error  ;; Condition
+           #:data-size
+           
+           #:fact-samples-num
+
+           #:wav-error  ;; Conditions
+           #:wav-error-subchunk
 
            #:read-wav-header))

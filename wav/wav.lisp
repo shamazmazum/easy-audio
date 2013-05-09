@@ -23,68 +23,83 @@
 
 (in-package :easy-audio.wav)
 
+(defun read-chunk-header (reader)
+  (if (/= (bitreader.be-bignum:read-bits 32 reader)
+          +wav-id+)
+      (error 'wav-error :message "Not a wav stream"))
+  
+  ;; I Think we can ignore chunk size here and retreive it later
+  (read-bits 32 reader)
+
+  (if (/= (bitreader.be-bignum:read-bits 32 reader)
+          +wav-format+)
+      (error 'wav-error :message "Not a wav stream"))
+  
+  reader)
+
+(defun read-fact-subchunk (reader size)
+  (if (/= size 4) (error 'wav-error-subchunk
+                         :message "Fact subchunk size is not 4. Do not know what to do"
+                         :rest-bytes size))
+  (make-fact-subchunk :samples-num (read-bits 32 reader)))
+
+(defun read-format-subchunk (reader size)
+  (let ((subchunk (make-format-subchunk)))
+    (setf (format-audio-format subchunk)
+          (read-bits 16 reader)
+
+          (format-channels-num subchunk)
+          (read-bits 16 reader)
+
+          (format-samplerate subchunk)
+          (read-bits 32 reader))
+
+    ;; No sanity checks by now
+    (read-bits 32 reader) ;; Byte rate
+    (read-bits 16 reader) ;; Block align
+
+    (setf (format-bps subchunk)
+          (read-bits 16 reader))
+
+    (if (= size 16) subchunk
+      (error 'wav-error-subchunk
+             :message "Extended format subchunk is not supported"
+             :rest-bytes (- size 16)))))
+
+(defun read-subchunks (reader)
+  (let ((chunks
+         (loop for type = (bitreader.be-bignum:read-bits 32 reader)
+               until (= type +data-subchunk+)
+               collect
+               (let ((size (read-bits 32 reader)))
+                 (cond
+                  ((= type +format-subchunk+)
+                   (read-format-subchunk reader size))
+                  ((= type +fact-subchunk+)
+                   (read-fact-subchunk reader size))
+                  (t
+                   (error 'wav-error-subchunk
+                          :message "Unknown subchunk"
+                          :rest-bytes size)))))))
+    (append chunks (list (make-data-subchunk :size (read-bits 32 reader))))))
+
 (defun read-wav-header (stream)
-  "Reads WAV header and returns it and number
-   of bytes of `audio' data to read"
-  (let ((bitreader (make-reader :stream stream))
-        (header (make-wav-header)))
-    (if (/= (bitreader.be-bignum:read-bits 32 bitreader)
-            +wav-id+)
-        (error 'wav-error :message "Not a wav stream"))
+  (let* ((reader (read-chunk-header
+                  (make-reader :stream stream)))
+         (header-subchunks (read-subchunks reader))
+         (format-subchunk (car header-subchunks)))
+
+    ;; Sanity checks
+    (if (not (typep format-subchunk 'format-subchunk))
+        (error 'wav-error :message "First subchunk is not format"))
+
+    (if (not (or (= (format-audio-format format-subchunk) +wave-format-pcm+)
+                 (find-if #'(lambda (x) (typep x 'fact-subchunk)) header-subchunks)))
+        (error 'wav-error :message "Not fact subchunk in compressed wav"))
     
-    ;; I Think we can ignore chunk size here and retreive it later
-    (read-bits 32 bitreader)
-
-    (if (/= (bitreader.be-bignum:read-bits 32 bitreader)
-            +wav-format+)
-        (error 'wav-error :message "Not a wav stream"))
+    ;; Invalidate bitreader and set stream position
+    ;; to actual begining of sound data
+    (file-position stream (reader-position reader))
     
-    ;; Subchunk 1
-    (if (/= (bitreader.be-bignum:read-bits 32 bitreader)
-            +subchunk1-id+)
-        (error 'wav-error :message "Not a wav stream"))
-
-    (let ((subchunk1-size (read-bits 32 bitreader)))
-      (setf (wav-header-audio-format header)
-            (read-bits 16 bitreader)
-
-            (wav-header-channels-num header)
-            (read-bits 16 bitreader)
-
-            (wav-header-samplerate header)
-            (read-bits 32 bitreader))
-
-      (let ((byterate (read-bits 32 bitreader))
-            (block-align (read-bits 16 bitreader)))
-
-        (setf (wav-header-bps header)
-              (read-bits 16 bitreader))
-
-        ;; Sanity checks
-        (if (not
-             (and (= byterate (floor (* (wav-header-samplerate header)
-                                        (wav-header-channels-num header)
-                                        (wav-header-bps header)) 8))
-                  (= byterate (* (wav-header-samplerate header) block-align))))
-            (error 'wav-error :message "Malformed wav stream"))
-
-        (let ((extra-params-size (- subchunk1-size 16)))
-          (cond
-           ((> extra-params-size 0)
-            (setq extra-params-size (read-bits 16 bitreader))
-            (let ((extra-params (make-array (list extra-params-size)
-                                            :element-type '(unsigned-byte 8))))
-              (read-octet-vector extra-params bitreader)
-              (setf (wav-header-extra-params header) extra-params)))))))
-
-    ;; Subchunk 2
-    (if (/= (bitreader.be-bignum:read-bits 32 bitreader)
-            +subchunk2-id+)
-        (error 'wav-error :message "Not a wav stream"))
-    (let ((subchunk2-size (read-bits 32 bitreader)))
-
-      ;; Invalidate bitreader and set stream position
-      ;; to actual begining of sound data
-      (file-position stream (reader-position bitreader))
-
-      (values header subchunk2-size))))
+    (values header-subchunks
+            (data-size (car (last header-subchunks))))))
