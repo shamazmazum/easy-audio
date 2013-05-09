@@ -40,6 +40,7 @@
   "Fact subchunk identifier. Contains letters `fact'")
 
 ;; Audio formats
+(defconstant +wave-format-unknown+     #x0000)
 (defconstant +wave-format-pcm+         #x0001)
 (defconstant +wave-format-float+       #x0003)
 (defconstant +wave-format-alaw+        #x0006)
@@ -72,4 +73,6 @@
   ((reader      :initarg :reader
                 :reader wav-error-reader)
    (rest-bytes  :initarg :rest-bytes
-                :reader wav-error-rest-bytes)))
+                :reader wav-error-rest-bytes)
+   (subchunk    :initarg :subchunk
+                :reader wav-error-subchunk)))

@@ -24,7 +24,7 @@
 (defpackage easy-audio.wav
   (:use #:cl #:bitreader #:bitreader.le-bignum)
   (:nicknames #:wav)
-  (:export #:+wav-id+   ;; Useful constants which can be used in examples
+  (:export #:+wav-id+   ; Useful constants which can be used in examples
            #:+wav-format+
            #:+format-subchunk+
            #:+data-subchunk+
@@ -35,7 +35,7 @@
            #:+wave-format-mulaw+
            #:+wave-format-extensible+
 
-           #:format-audio-format ;; Subchunk accessors
+           #:format-audio-format ; Subchunk accessors
            #:format-channels-num
            #:format-samplerate
            #:format-bps
@@ -44,7 +44,9 @@
            
            #:fact-samples-num
 
-           #:wav-error  ;; Conditions
+           #:wav-error  ; Conditions
            #:wav-error-subchunk
+
+           #:skip-subchunk ; Restarts
 
            #:read-wav-header))

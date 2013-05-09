@@ -23,6 +23,9 @@
 
 (in-package :easy-audio.wav)
 
+(defun skip-subchunk (c)
+  (invoke-restart 'skip-subchunk c))
+
 (defun read-chunk-header (reader)
   (if (/= (bitreader.be-bignum:read-bits 32 reader)
           +wav-id+)
@@ -38,10 +41,12 @@
   reader)
 
 (defun read-fact-subchunk (reader size)
-  (if (/= size 4) (error 'wav-error-subchunk
-                         :message "Fact subchunk size is not 4. Do not know what to do"
-                         :rest-bytes size))
-  (make-fact-subchunk :samples-num (read-bits 32 reader)))
+  (let ((fact (make-fact-subchunk :samples-num (read-bits 32 reader))))
+    (if (/= size 4) (error 'wav-error-subchunk
+                           :message "Fact subchunk size is not 4. Do not know what to do"
+                           :rest-bytes (- size 4)
+                           :subchunk fact)
+      fact)))
 
 (defun read-format-subchunk (reader size)
   (let ((subchunk (make-format-subchunk)))
@@ -64,42 +69,56 @@
     (if (= size 16) subchunk
       (error 'wav-error-subchunk
              :message "Extended format subchunk is not supported"
-             :rest-bytes (- size 16)))))
+             :rest-bytes (- size 16)
+             :subchunk subchunk))))
 
 (defun read-subchunks (reader)
-  (let ((chunks
-         (loop for type = (bitreader.be-bignum:read-bits 32 reader)
-               until (= type +data-subchunk+)
-               collect
-               (let ((size (read-bits 32 reader)))
-                 (cond
-                  ((= type +format-subchunk+)
-                   (read-format-subchunk reader size))
-                  ((= type +fact-subchunk+)
-                   (read-fact-subchunk reader size))
-                  (t
-                   (error 'wav-error-subchunk
-                          :message "Unknown subchunk"
-                          :rest-bytes size)))))))
-    (append chunks (list (make-data-subchunk :size (read-bits 32 reader))))))
+  (let (chunks)
+    (tagbody
+     read-subchunks-loop
+     (let ((type (bitreader.be-bignum:read-bits 32 reader))
+           (size (read-bits 32 reader)))
+
+       (restart-case
+        (push
+         (cond
+          ((= type +format-subchunk+)
+           (read-format-subchunk reader size))
+          ((= type +fact-subchunk+)
+           (read-fact-subchunk reader size))
+          ((= type +data-subchunk+)
+           (make-data-subchunk :size size))
+          (t
+           (error 'wav-error-subchunk
+                  :message "Unknown subchunk"
+                  :reader reader
+                  :rest-bytes size)))
+         chunks)
+        (skip-subchunk (c) (read-bits (* 8 (wav-error-rest-bytes c))
+                                      (wav-error-reader c))))
+       (if (/= type +data-subchunk+) (go read-subchunks-loop))))
+    chunks))
 
 (defun read-wav-header (stream)
   (let* ((reader (read-chunk-header
                   (make-reader :stream stream)))
          (header-subchunks (read-subchunks reader))
-         (format-subchunk (car header-subchunks)))
+         (data-subchunk (car header-subchunks)))
+
+    (setq header-subchunks (nreverse header-subchunks))
 
     ;; Sanity checks
-    (if (not (typep format-subchunk 'format-subchunk))
-        (error 'wav-error :message "First subchunk is not format"))
+    (let ((format-subchunk (car header-subchunks)))
+      (if (not (typep format-subchunk 'format-subchunk))
+          (error 'wav-error :message "First subchunk is not format"))
 
-    (if (not (or (= (format-audio-format format-subchunk) +wave-format-pcm+)
-                 (find-if #'(lambda (x) (typep x 'fact-subchunk)) header-subchunks)))
-        (error 'wav-error :message "Not fact subchunk in compressed wav"))
+      (if (not (or (= (format-audio-format format-subchunk) +wave-format-pcm+)
+                   (find-if #'(lambda (x) (typep x 'fact-subchunk)) header-subchunks)))
+          (error 'wav-error :message "No fact subchunk in compressed wav")))
     
     ;; Invalidate bitreader and set stream position
     ;; to actual begining of sound data
     (file-position stream (reader-position reader))
     
     (values header-subchunks
-            (data-size (car (last header-subchunks))))))
+            (data-size data-subchunk))))
