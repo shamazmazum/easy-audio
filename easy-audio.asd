@@ -2,7 +2,10 @@
   :name :easy-audio
   :version "0.1"
   :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
-  :components ((:file "bitreader/packages")
+  :components ((:file "general-decodecs/package")
+	       (:file "general-decodecs/g.711" :depends-on ("general-decodecs/package"))
+
+               (:file "bitreader/packages")
 	       (:file "bitreader/bitreader" :depends-on ("bitreader/packages"))
 	       (:file "flac/package" :depends-on ("bitreader/packages"))
 	       (:file "flac/definitions" :depends-on ("flac/package"))
