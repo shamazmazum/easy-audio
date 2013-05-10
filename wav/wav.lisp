@@ -130,3 +130,11 @@
     
     (values header-subchunks
             (data-size data-subchunk))))
+
+;; Helper function(s)
+
+(defun samples-num (subchunks)
+  "Finds fact subchunk and gets number of samples in file from it"
+  (let ((fact (find-if #'(lambda (subchunk) (typep subchunk 'fact-subchunk))
+                       subchunks)))
+    (fact-samples-num fact)))

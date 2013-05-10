@@ -21,33 +21,10 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage easy-audio.wav
-  (:use #:cl #:bitreader #:bitreader.le-bignum)
-  (:nicknames #:wav)
-  (:export #:+wav-id+   ; Useful constants which can be used in examples
-           #:+wav-format+
-           #:+format-subchunk+
-           #:+data-subchunk+
-
-           #:+wave-format-pcm+
-           #:+wave-format-float+
-           #:+wave-format-alaw+
-           #:+wave-format-mulaw+
-           #:+wave-format-extensible+
-
-           #:format-audio-format ; Subchunk accessors
-           #:format-channels-num
-           #:format-samplerate
-           #:format-bps
-
-           #:data-size
-           
-           #:fact-samples-num
-           #:samples-num
-
-           #:wav-error  ; Conditions
-           #:wav-error-subchunk
-
-           #:skip-subchunk ; Restarts
-
-           #:read-wav-header))
+(defpackage easy-audio.wav-examples
+  (:use #:cl
+        #:easy-audio.wav
+        #:easy-audio.utils
+        #:easy-audio.general)
+  (:nicknames #:wav-examples)
+  (:export #:decode-g.711))
