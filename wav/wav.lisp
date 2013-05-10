@@ -27,6 +27,7 @@
   (invoke-restart 'skip-subchunk c))
 
 (defun read-chunk-header (reader)
+  "Reads RIFF chunk header"
   (if (/= (bitreader.be-bignum:read-bits 32 reader)
           +wav-id+)
       (error 'wav-error :message "Not a wav stream"))
@@ -41,6 +42,7 @@
   reader)
 
 (defun read-fact-subchunk (reader size)
+  "Reads fact subchunk of size SIZE from reader"
   (let ((fact (make-fact-subchunk :samples-num (read-bits 32 reader))))
     (if (/= size 4) (error 'wav-error-subchunk
                            :message "Fact subchunk size is not 4. Do not know what to do"
@@ -49,6 +51,7 @@
       fact)))
 
 (defun read-format-subchunk (reader size)
+  "Reads format subchunk of size SIZE from reader"
   (let ((subchunk (make-format-subchunk)))
     (setf (format-audio-format subchunk)
           (read-bits 16 reader)
@@ -73,6 +76,8 @@
              :subchunk subchunk))))
 
 (defun read-subchunks (reader)
+  "Reads all subchunks of wav file begining with
+   format subchunk and ending with data."
   (let (chunks)
     (tagbody
      read-subchunks-loop
@@ -100,6 +105,9 @@
     chunks))
 
 (defun read-wav-header (stream)
+  "Reads wav file header from STREAM. Returns two values:
+   list of subchunks and size of audio data to read.
+   Stream position is set to begining of audio data."
   (let* ((reader (read-chunk-header
                   (make-reader :stream stream)))
          (header-subchunks (read-subchunks reader))
