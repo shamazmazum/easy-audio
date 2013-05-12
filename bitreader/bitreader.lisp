@@ -84,7 +84,7 @@
         (read-sequence (reader-buffer reader)
                        (reader-stream reader)))
   
-  (if (= (reader-end reader) 0) (error 'flac-eof :bitreader reader)))
+  (if (= (reader-end reader) 0) (error 'bitreader-eof :bitreader reader)))
 
 (declaim (inline can-not-read))
 (defun can-not-read (reader)
