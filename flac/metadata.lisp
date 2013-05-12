@@ -50,15 +50,15 @@
       data)))
 
 (defmethod metadata-body-reader (stream (data padding))
-  (declare (ignore stream))
-  ;; Read length bytes
-  (call-next-method)
-  ;; Sanity check
-  (if (find-if-not #'zerop (the (simple-array u8)
-			     (slot-value data 'rawdata)))
-      (error 'flac-bad-metadata
-	     :message "Padding bytes is not zero"
-	     :metadata data)))
+  ;; Read zero padding bytes
+  (let ((chunk (make-array (list (metadata-length data))
+			   :element-type 'ub8)))
+    (read-octet-vector chunk stream)
+    ;; Do sanity checks
+    (if (find-if-not #'zerop  chunk)
+        (error 'flac-bad-metadata
+               :message "Padding bytes is not zero"
+               :metadata data))))
 
 (defmethod metadata-body-reader (stream (data vorbis-comment))
   #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
@@ -180,10 +180,9 @@
   data))
 
 (defmethod metadata-body-reader (stream (data metadata-header))
-  (let ((chunk (make-array (list (slot-value data 'length))
-			   :element-type 'u8)))
-    (read-octet-vector chunk stream)
-    (setf (slot-value data 'rawdata) chunk))) ; For debugging
+  (error 'flac-bad-metadata
+         :message "Unknown metadata block"
+         :metadata data))
 
 (defun metadata-find-seektable (metadata)
   #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))

@@ -26,15 +26,31 @@
 (defun skip-malformed-metadata (c)
   (invoke-restart 'skip-malformed-metadata c))
 
+(defun read-raw-block (c)
+  (invoke-restart 'read-raw-block c))
+
 (defconstant +flac-id+ #x664C6143) ; "fLaC"
 
+(defun read-block-and-fix (bitreader metadata)
+  "Read malformed metadata block in RAWDATA slot (for debugging)"
+  (reader-position bitreader
+                   (+ (metadata-start-position metadata)
+                      4))
+  (let ((chunk (make-array (list (metadata-length metadata))
+			   :element-type '(unsigned-byte 8))))
+    (read-octet-vector chunk bitreader)
+    (setf (slot-value metadata 'rawdata) chunk)))
+
 (defun fix-stream-position (bitreader metadata)
+  "Set stream position to end of the malformed metadata block"
   (reader-position bitreader
                    (+ (metadata-start-position metadata)
                       (metadata-length metadata)
                       4)))
 
 (defun open-flac (stream)
+  "Reads flac file from STREAM and returns two values:
+   list of metadata blocks and bitreader wrapper around stream"
   ;; Checking if stream is flac stream
   (let ((bitreader (make-reader :stream stream)))
     (if (/= +flac-id+ #+x86_64 (read-bits 32 bitreader)
@@ -53,7 +69,12 @@
               (skip-malformed-metadata (c)
                                        (let ((metadata (flac-metadata c)))
                                          (fix-stream-position bitreader metadata)
-                                         (metadata-last-block-p metadata))))))
+                                         (metadata-last-block-p metadata)))
+              (read-raw-block (c)
+                              (let ((metadata (flac-metadata c)))
+                                (read-block-and-fix bitreader metadata)
+                                (push metadata metadata-list)
+                                (metadata-last-block-p metadata))))))
      (values
       (reverse metadata-list)
       bitreader))))

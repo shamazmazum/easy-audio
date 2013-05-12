@@ -197,9 +197,5 @@
 ;; Other stuff
 
 (defun get-metadata-type (code)
-  (if (= code 127) (error 'flac-bad-metadata
-			  :message "Code 127 is invalid"))
-  
   (let ((mtype (nth code +block-name+)))
-    (if (find-class mtype nil) mtype
-      (error 'flac-bad-metadata))))
+    (if mtype mtype 'metadata-header)))

@@ -97,4 +97,5 @@
 	   #:flac-bad-frame
 
 	   ;; Restarts
-	   #:skip-malformed-metadata))
+	   #:skip-malformed-metadata
+           #:read-raw-block))
