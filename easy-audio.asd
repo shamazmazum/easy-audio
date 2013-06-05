@@ -19,6 +19,10 @@
                (:file "wav/definitions" :depends-on ("wav/package"))
                (:file "wav/wav" :depends-on ("wav/package"))
 
+               (:file "ape/package" :depends-on ("bitreader/packages"))
+               (:file "ape/definitions" :depends-on ("ape/package"))
+               (:file "ape/ape" :depends-on ("ape/package"))
+
                (:file "utils/package" :depends-on ("wav/package"))
                (:file "utils/utils" :depends-on ("utils/package")))
   :depends-on (:babel))
