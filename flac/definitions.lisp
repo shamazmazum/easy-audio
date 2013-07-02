@@ -190,12 +190,16 @@
    (crc-16 :accessor frame-crc-16
 	   :type fixnum)))
 
-(defparameter +block-name+ '(streaminfo padding application seektable vorbis-comment cuesheet picture)) ;; In case of using sbcl defconstant will give an error
+(defparameter +block-name+ '((0 . streaminfo)
+                             (1 . padding)
+                             (3 . seektable)
+                             (4 . vorbis-comment)
+                             (5 . cuesheet)))
 (defconstant +frame-sync-code+ 16382) ; 11111111111110
 (defconstant +seekpoint-placeholder+ #xFFFFFFFFFFFFFFFF)
 
 ;; Other stuff
 
 (defun get-metadata-type (code)
-  (let ((mtype (nth code +block-name+)))
-    (if mtype mtype 'metadata-header)))
+  (let ((mtype (assoc code +block-name+)))
+    (if mtype (cdr mtype) 'metadata-header)))
