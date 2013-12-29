@@ -23,7 +23,6 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize (speed 3)))
 (defvar *data*) ;; For signaling errors from functions called from body-readers (they usual requires just a stream, so no need pass data object as argument)
 
 (defun metadata-summar-length (blocks)
