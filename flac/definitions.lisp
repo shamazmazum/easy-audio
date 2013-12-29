@@ -46,9 +46,6 @@
   ((last-block-p    :initarg :last-block-p
                     :accessor metadata-last-block-p
 		    :type boolean)
-   ;; (type            :initarg :type
-   ;;                  :accessor metadata-type
-   ;;                  :type fixnum)
    (length          :initarg :length
                     :accessor metadata-length
                     :type positive-int)
@@ -62,28 +59,20 @@
 (defclass streaminfo (metadata-header)
   ((minblocksize  :accessor streaminfo-minblocksize
 		  :type non-negative-fixnum)
-   
    (maxblocksize  :accessor streaminfo-maxblocksize
 		  :type non-negative-fixnum)
-   
    (minframesize  :accessor streaminfo-minframesize
 		  :type non-negative-fixnum)
-   
    (maxframesize  :accessor streaminfo-maxframesize
 		  :type non-negative-fixnum)
-   
    (samplerate    :accessor streaminfo-samplerate
 		  :type non-negative-fixnum)
-   
    (channels      :accessor streaminfo-channels
 		  :type (integer 1 8))
-   
    (bitspersample :accessor streaminfo-bitspersample
 		  :type non-negative-fixnum)
-   
    (totalsamples  :accessor streaminfo-totalsamples
 		  :type positive-int)
-   
    (md5           :accessor streaminfo-md5)))
 
 (defclass padding (metadata-header) ())
@@ -132,9 +121,9 @@
    (actual-bps :accessor subframe-actual-bps
 	       :initarg :actual-bps
 	       :type (integer 4 33))
-   (out-buf :accessor subframe-out-buf
-	    :initarg :out-buf
-	    :type (simple-array (signed-byte 32)))))
+   (out-buf    :accessor subframe-out-buf
+	       :initarg :out-buf
+	       :type (simple-array (signed-byte 32)))))
 
 (defclass subframe-constant (subframe)
   ((constant-value :accessor subframe-constant-value
@@ -143,15 +132,15 @@
 (defclass subframe-verbatim (subframe) ())
 
 (defclass subframe-lpc (subframe)
-  ((order :accessor subframe-order
-	  :initarg :order
-	  :type fixnum)
-   (precision :accessor subframe-lpc-precision
-	      :type fixnum)
+  ((order           :accessor subframe-order
+	            :initarg :order
+	            :type fixnum)
+   (precision       :accessor subframe-lpc-precision
+	            :type fixnum)
    (predictor-coeff :accessor subframe-lpc-predictor-coeff
 		    :type (simple-array (signed-byte 32)))
-   (coeff-shift :accessor subframe-lpc-coeff-shift
-		:type (signed-byte 32))))
+   (coeff-shift     :accessor subframe-lpc-coeff-shift
+		    :type (signed-byte 32))))
 
 (defclass subframe-fixed (subframe)
   ((order :accessor subframe-order
@@ -166,25 +155,28 @@
 (defconstant +mid-side+ #b1010)
 ;; Frame
 (defclass frame ()
-  ((streaminfo :accessor frame-streaminfo
-	       :initarg :streaminfo)
-   (blocking-strategy :accessor frame-blocking-strategy
-		      :type symbol)
-   (block-size :accessor frame-block-size)
-   (sample-rate :accessor frame-sample-rate)
+  ((streaminfo         :accessor frame-streaminfo
+	               :initarg :streaminfo)
+   (blocking-strategy  :accessor frame-blocking-strategy
+		       :type symbol)
+   (block-size         :accessor frame-block-size
+                       :type non-negative-fixnum)
+   (sample-rate        :accessor frame-sample-rate
+                       :type non-negative-fixnum)
    (channel-assignment :accessor frame-channel-assignment
 		       :documentation "Number of channels or one of
                                        :mid/side, :left/side, :right/side"
 		       :type (integer 0 10))
-   (sample-size :accessor frame-sample-size
-		:type (integer 4 32))
-   (number :accessor frame-number)
-   (crc-8 :accessor frame-crc-8
-	  :type ub8)
-   (subframes :accessor frame-subframes
-	      :type list)
-   (crc-16 :accessor frame-crc-16
-	   :type fixnum)))
+   (sample-size        :accessor frame-sample-size
+		       :type (integer 4 32))
+   (number             :accessor frame-number
+                       :type unsigned-byte)
+   (crc-8              :accessor frame-crc-8
+	               :type ub8)
+   (subframes          :accessor frame-subframes
+	               :type list)
+   (crc-16             :accessor frame-crc-16
+	               :type fixnum)))
 
 (defparameter +block-name+ '((0 . streaminfo)
                              (1 . padding)
