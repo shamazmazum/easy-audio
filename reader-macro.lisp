@@ -21,39 +21,18 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage easy-music.bitreader
-  (:use #:cl)
-  (:nicknames #:bitreader)
-  (:export #:non-negative-fixnum ; Types
-           #:positive-fixnum
-           #:non-negative-int
-           #:positive-int
-           #:bit-counter
-           #:ub4
-           #:ub8
-           #:simple-ub8-vector
+;; Comment it out if you do not want restrictions
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (pushnew :easy-audio-use-fixnums *features*)
+  (pushnew :easy-audio-unsafe-code *features*))
 
-           #:bitreader-eof       ; Conditions
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun type-decl-func (stream sub-char num)
+    (declare (ignore sub-char num))
+    (let ((type (read stream))
+          (form (read stream)))
+      #-easy-audio-use-fixnums (declare (ignore type))
+      #+easy-audio-use-fixnums `(the ,type ,form)
+      #-easy-audio-use-fixnums form))
 
-           #:reader              ; Reader structure and accessors
-           #:make-reader
-           #:reader-ibit
-           #:reader-ibyte
-           #:reader-end
-           #:reader-stream
-           #:reader-buffer
-           
-           #:reset-counters      ; Helper functions & macros
-           #:move-forward
-           #:fill-buffer
-           #:can-not-read
-           #:read-bits-loop
-
-           #:read-bit            ; "End user" functions
-           #:read-bits
-           #:read-octet
-           #:read-octet-vector
-           #:read-to-byte-alignment
-           #:reader-position
-           #:peek-octet
-           #:reader-length))
+  (set-dispatch-macro-character #\# #\f #'type-decl-func))
