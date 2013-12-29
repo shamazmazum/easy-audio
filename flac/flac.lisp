@@ -23,12 +23,6 @@
 
 (in-package :easy-audio.flac)
 
-(defun skip-malformed-metadata (c)
-  (invoke-restart 'skip-malformed-metadata c))
-
-(defun read-raw-block (c)
-  (invoke-restart 'read-raw-block c))
-
 (defconstant +flac-id+ #x664C6143) ; "fLaC"
 
 (defun read-block-and-fix (bitreader metadata)

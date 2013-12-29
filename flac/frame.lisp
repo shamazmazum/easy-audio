@@ -244,6 +244,13 @@
 	subframe)))
 
 (defun frame-reader (stream streaminfo)
+  (restart-case
+      (frame-reader% stream streaminfo)
+      (skip-malformed-frame ()
+        (restore-sync stream streaminfo))))
+
+(declaim (inline frame-reader%))
+(defun frame-reader% (stream streaminfo)
   (let ((frame (make-instance 'frame :streaminfo streaminfo)))
     (if (/= +frame-sync-code+ (read-bits 14 stream)) (error 'flac-bad-frame
 							    :message "Frame sync code is not 11111111111110"))
