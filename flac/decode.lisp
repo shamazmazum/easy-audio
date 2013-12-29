@@ -23,7 +23,9 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize (safety 0) (speed 3)))
+(declaim (optimize
+          #+easy-audio-unsafe-code
+          (safety 0) (speed 3)))
 
 (defmethod subframe-decode :after ((subframe subframe) frame)
   (declare (ignore frame))
@@ -141,9 +143,6 @@
 	     (type (signed-byte 32) shift))
     
     (macrolet ((calc-out-buf (n)
-			     #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
-			     ;; All *,+,= in unwrapped version is open-coded
-			     ;; So muffle all compile-time notes here
 			     (let ((idx (gensym))
 				   (sum (gensym)))
 			       `(do ((,idx ,n (1+ ,idx)))

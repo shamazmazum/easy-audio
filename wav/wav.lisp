@@ -28,14 +28,14 @@
 
 (defun read-chunk-header (reader)
   "Reads RIFF chunk header"
-  (if (/= (bitreader.be-bignum:read-bits 32 reader)
+  (if (/= (read-bits 32 reader)
           +wav-id+)
       (error 'wav-error :message "Not a wav stream"))
   
   ;; I Think we can ignore chunk size here and retreive it later
-  (read-bits 32 reader)
+  (read-bits 32 reader :endianness :little)
 
-  (if (/= (bitreader.be-bignum:read-bits 32 reader)
+  (if (/= (read-bits 32 reader)
           +wav-format+)
       (error 'wav-error :message "Not a wav stream"))
   
@@ -43,7 +43,7 @@
 
 (defun read-fact-subchunk (reader size)
   "Reads fact subchunk of size SIZE from reader"
-  (let ((fact (make-fact-subchunk :samples-num (read-bits 32 reader))))
+  (let ((fact (make-fact-subchunk :samples-num (read-bits 32 reader :endianness :little))))
     (if (/= size 4) (error 'wav-error-subchunk
                            :message "Fact subchunk size is not 4. Do not know what to do"
                            :rest-bytes (- size 4)
@@ -54,20 +54,20 @@
   "Reads format subchunk of size SIZE from reader"
   (let ((subchunk (make-format-subchunk)))
     (setf (format-audio-format subchunk)
-          (read-bits 16 reader)
+          (read-bits 16 reader :endianness :little)
 
           (format-channels-num subchunk)
-          (read-bits 16 reader)
+          (read-bits 16 reader :endianness :little)
 
           (format-samplerate subchunk)
-          (read-bits 32 reader))
+          (read-bits 32 reader :endianness :little))
 
     ;; No sanity checks by now
-    (read-bits 32 reader) ;; Byte rate
-    (read-bits 16 reader) ;; Block align
+    (read-bits 32 reader :endianness :little) ;; Byte rate
+    (read-bits 16 reader :endianness :little) ;; Block align
 
     (setf (format-bps subchunk)
-          (read-bits 16 reader))
+          (read-bits 16 reader :endianness :little))
 
     (if (= size 16) subchunk
       (error 'wav-error-subchunk
@@ -81,8 +81,8 @@
   (let (chunks)
     (tagbody
      read-subchunks-loop
-     (let ((type (bitreader.be-bignum:read-bits 32 reader))
-           (size (read-bits 32 reader)))
+     (let ((type (read-bits 32 reader))
+           (size (read-bits 32 reader :endianness :little)))
 
        (restart-case
         (push

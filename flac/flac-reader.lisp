@@ -23,7 +23,7 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize (safety 0) (speed 3)))
+(declaim (optimize (speed 3)))
 
 (defun read-bits-array (stream array size &key
 			       signed
@@ -44,7 +44,7 @@
   (let ((x (read-octet stream))
 	i
 	(v 0))
-    (declare (type (integer 0 255) x)
+    (declare (type (unsigned-byte 8) x)
 	     (type (unsigned-byte 32) v))
     (cond
      (( = 0 (logand x #x80))

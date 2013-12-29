@@ -48,29 +48,10 @@
            #:read-bits-loop
 
            #:read-bit            ; "End user" functions
+           #:read-bits
            #:read-octet
            #:read-octet-vector
            #:read-to-byte-alignment
            #:reader-position
            #:peek-octet
            #:reader-length))
-
-(defpackage easy-music.bitreader.be-fixnum
-  (:use #:cl #:bitreader)
-  (:nicknames #:bitreader.be-fixnum)
-  (:export #:read-bits))
-
-(defpackage easy-music.bitreader.le-fixnum
-  (:use #:cl #:bitreader)
-  (:nicknames #:bitreader.le-fixnum)
-  (:export #:read-bits))
-
-(defpackage easy-music.bitreader.be-bignum
-  (:use #:cl #:bitreader)
-  (:nicknames #:bitreader.be-bignum)
-  (:export #:read-bits))
-
-(defpackage easy-music.bitreader.le-bignum
-  (:use #:cl #:bitreader)
-  (:nicknames #:bitreader.le-bignum)
-  (:export #:read-bits))

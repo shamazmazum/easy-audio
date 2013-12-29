@@ -23,9 +23,6 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize (safety 0)))
-(deftype u8 () '(unsigned-byte 8))
-
 (define-condition flac-error ()
   ((message :initarg :message
 	    :initform ""
@@ -54,12 +51,12 @@
    ;;                  :type fixnum)
    (length          :initarg :length
                     :accessor metadata-length
-                    :type fixnum)
+                    :type positive-int)
    (rawdata         :initarg :rawdata
-                    :type (simple-array u8))
+                    :type (simple-array ub8))
    (start-position  :initarg :start-position
                     :documentation "Strart position of metadata block"
-		    :type non-negative-fixnum
+		    :type non-negative-int
 		    :accessor metadata-start-position)))
 
 (defclass streaminfo (metadata-header)
@@ -85,8 +82,7 @@
 		  :type non-negative-fixnum)
    
    (totalsamples  :accessor streaminfo-totalsamples
-		  :type #+x86_64 positive-fixnum
-		        #-x86_64 (integer 1))
+		  :type positive-int)
    
    (md5           :accessor streaminfo-md5)))
 
@@ -184,7 +180,7 @@
 		:type (integer 4 32))
    (number :accessor frame-number)
    (crc-8 :accessor frame-crc-8
-	  :type u8)
+	  :type ub8)
    (subframes :accessor frame-subframes
 	      :type list)
    (crc-16 :accessor frame-crc-16

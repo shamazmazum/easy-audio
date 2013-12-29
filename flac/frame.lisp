@@ -23,7 +23,7 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize (safety 0) (speed 3)))
+(declaim (optimize (speed 3)))
 
 (defmethod (setf frame-blocking-strategy) (val (frame frame))
   (declare (type (integer 0 1) val))

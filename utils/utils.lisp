@@ -24,7 +24,8 @@
    written"
   (declare (type list buffers)
 	   (type (simple-array (signed-byte 32)) out)
-	   (optimize (speed 3) (safety 0)))
+	   (optimize #+easy-audio-unsafe-code
+                     (safety 0) (speed 3)))
   (let ((offset (length buffers))
 	(size (length (the (simple-array (signed-byte 32))
 			(nth 0 buffers))))
