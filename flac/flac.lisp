@@ -61,19 +61,24 @@
          (last-block)
        
        (setq last-block
-             (restart-case
-              (let ((metadata (metadata-reader bitreader)))
-                (push metadata metadata-list)
-                (metadata-last-block-p metadata))
-              (skip-malformed-metadata (c)
-                                       (let ((metadata (flac-metadata c)))
-                                         (fix-stream-position bitreader metadata)
-                                         (metadata-last-block-p metadata)))
-              (read-raw-block (c)
-                              (let ((metadata (flac-metadata c)))
-                                (read-block-and-fix bitreader metadata)
-                                (push metadata metadata-list)
-                                (metadata-last-block-p metadata))))))
+             (debug:with-interactive-debug
+                 (restart-case
+                     (let ((metadata (metadata-reader bitreader)))
+                       (push metadata metadata-list)
+                       (metadata-last-block-p metadata))
+                   
+                   (skip-malformed-metadata (c)
+                     :interactive (lambda () (list debug:*current-condition*))
+                     (let ((metadata (flac-metadata c)))
+                       (fix-stream-position bitreader metadata)
+                       (metadata-last-block-p metadata)))
+                   
+                   (read-raw-block (c)
+                     :interactive (lambda () (list debug:*current-condition*))
+                     (let ((metadata (flac-metadata c)))
+                       (read-block-and-fix bitreader metadata)
+                       (push metadata metadata-list)
+                       (metadata-last-block-p metadata)))))))
      (values
       (reverse metadata-list)
       bitreader))))

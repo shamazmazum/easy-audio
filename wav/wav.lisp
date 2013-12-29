@@ -84,23 +84,27 @@
      (let ((type (read-bits 32 reader))
            (size (read-bits 32 reader :endianness :little)))
 
-       (restart-case
-        (push
-         (cond
-          ((= type +format-subchunk+)
-           (read-format-subchunk reader size))
-          ((= type +fact-subchunk+)
-           (read-fact-subchunk reader size))
-          ((= type +data-subchunk+)
-           (make-data-subchunk :size size))
-          (t
-           (error 'wav-error-subchunk
-                  :message "Unknown subchunk"
-                  :reader reader
-                  :rest-bytes size)))
-         chunks)
-        (skip-subchunk (c) (read-bits (* 8 (wav-error-rest-bytes c))
-                                      (wav-error-reader c))))
+       (debug:with-interactive-debug
+           (restart-case
+               (push
+                (cond
+                  ((= type +format-subchunk+)
+                   (read-format-subchunk reader size))
+                  ((= type +fact-subchunk+)
+                   (read-fact-subchunk reader size))
+                  ((= type +data-subchunk+)
+                   (make-data-subchunk :size size))
+                  (t
+                   (error 'wav-error-subchunk
+                          :message "Unknown subchunk"
+                          :reader reader
+                          :rest-bytes size)))
+                chunks)
+             
+             (skip-subchunk (c)
+               :interactive (lambda () (list debug:*current-condition*))
+               (read-bits (* 8 (wav-error-rest-bytes c))
+                          (wav-error-reader c)))))
        (if (/= type +data-subchunk+) (go read-subchunks-loop))))
     chunks))
 

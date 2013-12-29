@@ -36,3 +36,25 @@
       #-easy-audio-use-fixnums form))
 
   (set-dispatch-macro-character #\# #\f #'type-decl-func))
+
+(defpackage easy-audio-debug
+  (:use :cl)
+  (:nicknames :debug)
+  (:export #:*current-condition*
+           #:with-interactive-debug))
+
+(in-package :easy-audio-debug)
+
+(defvar *current-condition*)
+
+(defmacro with-interactive-debug (&body body)
+  (let ((debugger-hook (gensym)))
+    `(let ((,debugger-hook *debugger-hook*))
+       (flet ((,debugger-hook (condition me)
+                (declare (ignore me))
+                (let ((*debugger-hook* ,debugger-hook)
+                      (*current-condition* condition))
+                  (invoke-debugger condition))))
+
+         (let ((*debugger-hook* #',debugger-hook))
+           ,@body)))))

@@ -2,7 +2,7 @@
   :name :easy-audio
   :version "0.1"
   :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
-  :components ((:file "reader-macro")
+  :components ((:file "easy-audio-early")
                
                (:file "general-decodecs/package")
 	       (:file "general-decodecs/g.711" :depends-on ("general-decodecs/package"))
