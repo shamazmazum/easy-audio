@@ -32,7 +32,7 @@
 (defun metadata-header-reader (stream)
   "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
   (values (reader-position stream)
-          (if (= 0 (read-bit stream)) nil t)
+          (/= 0 (read-bit stream))
           (read-bits 7 stream)
           (read-bits 24 stream)))
 
@@ -54,7 +54,7 @@
 			   :element-type 'ub8)))
     (read-octet-vector chunk stream)
     ;; Do sanity checks
-    (if (find-if-not #'zerop  chunk)
+    (if (notevery #'zerop  chunk)
         (error 'flac-bad-metadata
                :message "Padding bytes is not zero"
                :metadata data))))
