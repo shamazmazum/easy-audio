@@ -200,26 +200,24 @@ common to all subframes (which are in the header)."))
 (defconstant +mid-side+ #b1010)
 ;; Frame
 (defclass frame ()
-  ((streaminfo         :accessor frame-streaminfo
-	               :initarg :streaminfo)
-   (blocking-strategy  :accessor frame-blocking-strategy
+  ((blocking-strategy  :reader frame-blocking-strategy
 		       :type (member :fixed :variable)
                        :documentation "Is the blocking strategy :FIXED (frame header contains the
 frame number) or :VARIABLE (frame header contains the sample number)")
-   (block-size         :accessor frame-block-size
+   (block-size         :reader frame-block-size
                        :type non-negative-fixnum
                        :documentation "Block size in samples")
-   (sample-rate        :accessor frame-sample-rate
+   (sample-rate        :reader frame-sample-rate
                        :type non-negative-fixnum
                        :documentation "Sample rate")
-   (channel-assignment :accessor frame-channel-assignment
+   (channel-assignment :reader frame-channel-assignment
 		       :documentation "Number of channels or one of
                                        :mid/side, :left/side, :right/side"
 		       :type (integer 0 10))
-   (sample-size        :accessor frame-sample-size
+   (sample-size        :reader frame-sample-size
 		       :type (integer 4 32)
                        :documentation "Bits per sample")
-   (number             :accessor frame-number
+   (number             :reader frame-number
                        :type unsigned-byte
                        :documentation "Frame/sample number")
    (crc-8              :accessor frame-crc-8

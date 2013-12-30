@@ -25,37 +25,35 @@
 
 (declaim (optimize (speed 3)))
 
-(defmethod (setf frame-blocking-strategy) (val (frame frame))
-  (declare (type (integer 0 1) val))
-  (setf (slot-value frame 'blocking-strategy)
-	(cond
-	 ((= val 0) :fixed)
-	 ((= val 1) :variable)
-	 (t (error 'flac-bad-frame
-		   :message "Blocking strategy must be 0 or 1")))))
+(defun get-blocking-strategy (val)
+  (declare (type fixnum val))
+  (cond
+    ((= val 0) :fixed)
+    ((= val 1) :variable)
+    (t (error 'flac-bad-frame
+              :message "Blocking strategy must be 0 or 1"))))
 
-(defmethod (setf frame-block-size) (val (frame frame))
+(defun get-block-size (val)
   (declare (type (unsigned-byte 4) val))
-  (setf (slot-value frame 'block-size)
-	(cond
-	 ((= val 1) 192)               ; 0001
-	 ((and (> val 1)
-	       (<= val 5))             ; 0010-0101
-	  (ash 576 (- val 2)))
-	 ((= val 6) :get-8-from-end)   ; 0110
-	 ((= val 7) :get-16-from-end)  ; 0111
-	 ((and (> val 7)
-	       (<= val 15))            ; 1000-1111
-	  (ash 1 val))
-	 (t (error 'flac-bad-frame
-		   :message "Frame block size is invalid")))))
+  (cond
+    ((= val 1) 192)               ; 0001
+    ((and (> val 1)
+          (<= val 5))             ; 0010-0101
+     (ash 576 (- val 2)))
+    ((= val 6) :get-8-from-end)   ; 0110
+    ((= val 7) :get-16-from-end)  ; 0111
+    ((and (> val 7)
+          (<= val 15))            ; 1000-1111
+     (ash 1 val))
+    (t (error 'flac-bad-frame
+              :message "Frame block size is invalid"))))
 
-(defmethod (setf frame-sample-rate) (val (frame frame))
+(defun get-sample-rate (streaminfo val)
   (declare (type (unsigned-byte 4) val))
   (if (= val 15) (error 'flac-bad-frame
-			:message "Frame sample rate is invalid"))
+                        :message "Frame sample rate is invalid"))
   (let ((sample-rates (list
-		       (streaminfo-samplerate (frame-streaminfo frame)) ; 0000
+		       (streaminfo-samplerate streaminfo) ; 0000
 		       88200   ; 0001
 		       176400  ; 0010
 		       192000  ; 0011
@@ -71,24 +69,22 @@
 		       :get-16-bit-from-end-hz
 		       :get-16-bit-from-end-tenshz)))
 		       
-  (setf (slot-value frame 'sample-rate)
-	(nth val sample-rates))))
+    (nth val sample-rates)))
 
-(defmethod (setf frame-channel-assignment) (val (frame frame))
+(defun get-channel-assignment (val)
   (declare (type fixnum val))
-  (setf (slot-value frame 'channel-assignment)
-	(cond ((and (>= val 0)
-		    (<= val 7)) (1+ val))   ; 0000-0111
+  (cond ((and (>= val 0)
+              (<= val 7)) (1+ val))   ; 0000-0111
+        
+        ((and (> val 7)
+              (<= val 10)) val)       ; Special left/right/mid-side assignment
+        (t (error 'flac-bad-frame
+                  :message "Invalid channel assignment"))))
 
-	      ((and (> val 7)
-		    (<= val 10)) val)  ; Special left/right/mid-side assignment
-	      (t (error 'flac-bad-frame
-			:message "Invalid channel assignment")))))
-
-(defmethod (setf frame-sample-size) (val (frame frame))
+(defun get-sample-size (streaminfo val)
   (declare (type (unsigned-byte 3) val))
   (let ((sample-sizes (list
-		       (streaminfo-bitspersample (frame-streaminfo frame)) ; 000
+		       (streaminfo-bitspersample streaminfo) ; 000
 		       8            ; 001
 		       12           ; 010
 		       :reserved    ; 011
@@ -96,7 +92,7 @@
 		       20           ; 101
 		       24           ; 110
 		       :reserved))) ; 111
-    (setf (slot-value frame 'sample-size) (nth val sample-sizes))))
+    (nth val sample-sizes)))
 
 ;; Residual reader
 (declaim (inline residual-reader))
@@ -250,48 +246,54 @@
         (restore-sync stream streaminfo))))
 
 (defmethod frame-reader (stream streaminfo)
-  (let ((frame (make-instance 'frame :streaminfo streaminfo)))
+  (let ((frame (make-instance 'frame)))
     (if (/= +frame-sync-code+ (read-bits 14 stream)) (error 'flac-bad-frame
 							    :message "Frame sync code is not 11111111111110"))
     (if (/= 0 (read-bit stream)) (error 'flac-bad-frame
 					:message "Error reading frame"))
-    (setf (frame-blocking-strategy frame) (read-bit stream))
+
+    (with-slots (blocking-strategy
+                 block-size
+                 sample-rate
+                 channel-assignment
+                 sample-size
+                 number) frame
+      
+      (setf blocking-strategy (get-blocking-strategy (read-bit stream))
+            block-size (get-block-size (read-bits 4 stream))
+            sample-rate (get-sample-rate streaminfo (read-bits 4 stream))
+            channel-assignment (get-channel-assignment (read-bits 4 stream))
+            sample-size (get-sample-size streaminfo (read-bits 3 stream)))
+      
+      (if (/= 0 (read-bit stream)) (error 'flac-bad-frame
+                                          :message "Error reading frame"))
+
+      (setf number
+            (if (eq blocking-strategy :fixed)
+                (read-utf8-u32 stream)
+                (error 'flac-bad-frame
+                       :message "Variable block size not implemented yet"))
     
-    (setf (frame-block-size frame) (read-bits 4 stream))
-    (setf (frame-sample-rate frame) (read-bits 4 stream))
+            block-size
+            (the fixnum
+                 (cond
+                   ((eq block-size :get-8-from-end)
+                    (1+ (read-octet stream)))
+                   ((eq block-size :get-16-from-end)
+                    (1+ (read-bits 16 stream)))
+                   (t block-size)))
 
-    (setf (frame-channel-assignment frame) (read-bits 4 stream))
-    (setf (frame-sample-size frame) (read-bits 3 stream))
-    (if (/= 0 (read-bit stream)) (error 'flac-bad-frame
-					:message "Error reading frame"))
-
-    (setf (frame-number frame)
-	  (if (eql (frame-blocking-strategy frame) :fixed)
-	      (read-utf8-u32 stream)
-	    (error 'flac-bad-frame
-		   :message "Variable block size not implemented yet")))
+            sample-rate
+            (the fixnum
+                 (cond
+                   ((eq sample-rate :get-8-bit-from-end-khz)
+                    (* 1000 (read-octet stream)))
+                   ((eq sample-rate :get-16-bit-from-end-hz)
+                    (read-bits 16 stream))
+                   ((eq sample-rate :get-16-bit-from-end-tenshz)
+                    (* 10 (read-bits 16 stream)))
+                   (t sample-rate)))))
     
-    (with-slots (block-size) frame
-		(setf block-size
-		      (the fixnum
-			(cond
-			 ((eql block-size :get-8-from-end)
-			  (1+ (read-octet stream)))
-			 ((eql block-size :get-16-from-end)
-			  (1+ (read-bits 16 stream)))
-			 (t block-size)))))
-
-    (with-slots (sample-rate) frame
-		(setf sample-rate
-		      (the fixnum
-			(cond
-			 ((eql sample-rate :get-8-bit-from-end-khz)
-			  (* 1000 (read-octet stream)))
-			 ((eql sample-rate :get-16-bit-from-end-hz)
-			  (read-bits 16 stream))
-			 ((eql sample-rate :get-16-bit-from-end-tenshz)
-			  (* 10 (read-bits 16 stream)))
-			 (t sample-rate)))))
     (setf (frame-crc-8 frame) (read-octet stream))
 
     (let ((assignment (frame-channel-assignment frame)))
