@@ -242,6 +242,28 @@ code)"))
                              (5 . cuesheet)))
 (defconstant +frame-sync-code+ 16382) ; 11111111111110
 (defconstant +seekpoint-placeholder+ #xFFFFFFFFFFFFFFFF)
+(defparameter +coded-sample-rates+
+  '(88200   ; 0001
+    176400  ; 0010
+    192000  ; 0011
+    8000    ; 0100
+    16000   ; 0101
+    22050   ; 0110
+    24000   ; 0111
+    32000   ; 1000
+    44100   ; 1001
+    48000   ; 1010
+    96000   ; 1011
+    :get-8-bit-from-end-khz
+    :get-16-bit-from-end-hz
+    :get-16-bit-from-end-tenshz))
+(defparameter +coded-sample-sizes+
+  '((#b001 . 8)
+    (#b010 . 12)
+    (#b100 . 16)
+    (#b101 . 20)
+    (#b110 . 24)))
+    
 
 ;; Other stuff
 

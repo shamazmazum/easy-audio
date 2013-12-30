@@ -34,65 +34,41 @@
               :message "Blocking strategy must be 0 or 1"))))
 
 (defun get-block-size (val)
-  (declare (type (unsigned-byte 4) val))
+  (declare (type positive-fixnum val))
   (cond
     ((= val 1) 192)               ; 0001
-    ((and (> val 1)
-          (<= val 5))             ; 0010-0101
+    ((<= val 5)                   ; 0010-0101
      (ash 576 (- val 2)))
     ((= val 6) :get-8-from-end)   ; 0110
     ((= val 7) :get-16-from-end)  ; 0111
-    ((and (> val 7)
-          (<= val 15))            ; 1000-1111
+    ((<= val 15)            ; 1000-1111
      (ash 1 val))
     (t (error 'flac-bad-frame
               :message "Frame block size is invalid"))))
 
 (defun get-sample-rate (streaminfo val)
-  (declare (type (unsigned-byte 4) val))
-  (if (= val 15) (error 'flac-bad-frame
-                        :message "Frame sample rate is invalid"))
-  (let ((sample-rates (list
-		       (streaminfo-samplerate streaminfo) ; 0000
-		       88200   ; 0001
-		       176400  ; 0010
-		       192000  ; 0011
-		       8000    ; 0100
-		       16000   ; 0101
-		       22050   ; 0110
-		       24000   ; 0111
-		       32000   ; 1000
-		       44100   ; 1001
-		       48000   ; 1010
-		       96000   ; 1011
-		       :get-8-bit-from-end-khz
-		       :get-16-bit-from-end-hz
-		       :get-16-bit-from-end-tenshz)))
-		       
-    (nth val sample-rates)))
+  (declare (type non-negative-fixnum val))
+  (cond
+    ((= val 0) (streaminfo-samplerate streaminfo))
+    ((< val 15) (nth (1- val) +coded-sample-rates+))
+    (t
+     (error 'flac-bad-frame
+            :message "Frame sample rate is invalid"))))
 
 (defun get-channel-assignment (val)
-  (declare (type fixnum val))
-  (cond ((and (>= val 0)
-              (<= val 7)) (1+ val))   ; 0000-0111
-        
-        ((and (> val 7)
-              (<= val 10)) val)       ; Special left/right/mid-side assignment
+  (declare (type non-negative-fixnum val))
+  (cond ((<= val 7) (1+ val))   ; 0000-0111
+        ((<= val 10) val)       ; Special left/right/mid-side assignment
         (t (error 'flac-bad-frame
                   :message "Invalid channel assignment"))))
 
 (defun get-sample-size (streaminfo val)
-  (declare (type (unsigned-byte 3) val))
-  (let ((sample-sizes (list
-		       (streaminfo-bitspersample streaminfo) ; 000
-		       8            ; 001
-		       12           ; 010
-		       :reserved    ; 011
-		       16           ; 100
-		       20           ; 101
-		       24           ; 110
-		       :reserved))) ; 111
-    (nth val sample-sizes)))
+  (declare (type non-negative-fixnum val))
+  (if (= val 0)
+      (streaminfo-bitspersample streaminfo)
+      (or (cdr (assoc val +coded-sample-sizes+))
+          (error 'flac-bad-frame
+                 :message "Invalid sample size"))))
 
 ;; Residual reader
 (declaim (inline residual-reader))
