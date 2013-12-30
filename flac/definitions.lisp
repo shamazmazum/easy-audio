@@ -234,6 +234,9 @@ frame number) or :VARIABLE (frame header contains the sample number)")
 code)"))
   (:documentation "Audio frame class"))
 
+(defgeneric frame-reader (stream streaminfo)
+  (:documentation "Read a frame from a stream"))
+
 (defparameter +block-name+ '((0 . streaminfo)
                              (1 . padding)
                              (3 . seektable)
