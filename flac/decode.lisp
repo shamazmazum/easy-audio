@@ -214,6 +214,8 @@
   out-buf))  
 
 (defun frame-decode (frame)
+  "Decode a frame destructively modifying (and garbaging) all subframes within.
+Returns list of decoded audio buffers (one buffer for each channel)."
   (declare (optimize (speed 3)
 		     (safety 0)))
 

@@ -244,6 +244,7 @@
 	subframe)))
 
 (defun frame-reader (stream streaminfo)
+  "Read a frame from a stream"
   (restart-case
       (frame-reader% stream streaminfo)
       (skip-malformed-frame ()

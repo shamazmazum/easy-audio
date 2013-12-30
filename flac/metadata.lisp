@@ -26,6 +26,7 @@
 (defvar *data*) ;; For signaling errors from functions called from body-readers (they usual requires just a stream, so no need pass data object as argument)
 
 (defun metadata-summar-length (blocks)
+  "Returns length of metadata blocks given in bytes"
   (declare (type list blocks))
   (reduce #'+ (mapcar #'(lambda (data) (metadata-length data)) blocks)))
 
@@ -37,6 +38,7 @@
           (read-bits 24 stream)))
 
 (defun metadata-reader (stream)
+  "Read one metadata block from STREAM"
   (multiple-value-bind (start-position last-block-p type length)
       (metadata-header-reader stream)
     
