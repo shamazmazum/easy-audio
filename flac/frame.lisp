@@ -276,34 +276,27 @@
     
     (setf (frame-crc-8 frame) (read-octet stream))
 
-    (let ((assignment (frame-channel-assignment frame)))
-      (declare (type non-negative-fixnum assignment))
+    (let ((assignment (frame-channel-assignment frame))
+          (sample-size (frame-sample-size frame)))
+      (declare (type non-negative-fixnum assignment)
+               (type (integer 4 32) sample-size))
       (setf (frame-subframes frame)
-	    (if (<= assignment +max-channels+)
-		(loop for sf fixnum below (frame-channel-assignment frame)
-		      collect (let ((*out-buffer* (nth sf out-buffers)))
-                                (subframe-reader stream frame (frame-sample-size frame))))
-	       ;; Do bps correction
-	      (let ((sample-size (frame-sample-size frame)))
-		(declare (type (integer 4 32) sample-size))
-		(loop for sf below 2 collect
-                     (let ((*out-buffer* (nth sf out-buffers)))
-                       (subframe-reader
-                        stream frame
-                        (cond
-                          ((and (= assignment +left-side+)
-                                (= sf 1))
-                           (1+ sample-size))
-                          
-                          ((and (= assignment +right-side+)
-                                (= sf 0))
-                           (1+ sample-size))
-                          
-                          ((and (= assignment +mid-side+)
-                                (= sf 1))
-                           (1+ sample-size))
-                          (t sample-size)))))))))
-
+            (loop for sf fixnum below (if (<= assignment +max-channels+) assignment 2)
+                  collect (let ((*out-buffer* (nth sf out-buffers)))
+                            (subframe-reader
+                             stream frame
+                             ;; Do bps correction
+                             (cond
+                               ((or
+                                 (and (= assignment +left-side+)
+                                      (= sf 1))
+                                 (and (= assignment +right-side+)
+                                      (= sf 0))
+                                 (and (= assignment +mid-side+)
+                                      (= sf 1)))
+                                (1+ sample-size))
+                               (t sample-size)))))))
+    
     ;; Check zero padding
     (if (/= (read-to-byte-alignment stream) 0) (error 'flac-bad-frame
 						      :message "Padding to byte-alignment is not zero"))
