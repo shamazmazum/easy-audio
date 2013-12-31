@@ -29,6 +29,9 @@
 	    :type string
 	    :reader flac-error-message
             :documentation "Error message"))
+  (:report (lambda (c s)
+	     (format s "General flac error: ~A"
+		     (flac-error-message c))))
   (:documentation "General (unspecified) flac error"))
 
 (define-condition flac-bad-metadata (flac-error)

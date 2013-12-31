@@ -82,11 +82,11 @@
 	   ;; Functions
 	   #:open-flac
 	   #:frame-reader
-	   #:subframe-decode ; Not needed to end user, actually
 	   #:frame-decode
 	   #:seek-sample
 	   #:metadata-summar-length
 	   #:metadata-find-seektable
+           #:make-output-buffers
 
 	   #:close-reader
 

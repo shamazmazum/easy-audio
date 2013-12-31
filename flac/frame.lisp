@@ -219,6 +219,7 @@
   (restart-case
       (call-next-method)
       (skip-malformed-frame ()
+        :report "Skip this frame and restore sync"
         (restore-sync stream streaminfo))))
 
 (defmethod frame-reader (stream streaminfo)

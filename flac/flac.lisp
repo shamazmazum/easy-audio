@@ -63,12 +63,14 @@
                    
                    (skip-malformed-metadata (c)
                      :interactive (lambda () (list debug:*current-condition*))
+                     :report "Skip malformed metadata"
                      (let ((metadata (flac-metadata c)))
                        (fix-stream-position bitreader metadata)
                        (metadata-last-block-p metadata)))
                    
                    (read-raw-block (c)
                      :interactive (lambda () (list debug:*current-condition*))
+                     :report "Interprete as unknown metadata block"
                      (let ((metadata (flac-metadata c)))
                        (read-block-and-fix bitreader metadata)
                        (push metadata metadata-list)
