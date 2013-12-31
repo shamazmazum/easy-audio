@@ -25,6 +25,8 @@
 
 (declaim (optimize (speed 3)))
 
+(defvar *out-buffer*)
+
 (defun get-blocking-strategy (val)
   (declare (type fixnum val))
   (cond
@@ -209,20 +211,22 @@
       (let ((subframe (apply #'make-instance
 			     (append type-args (list :wasted-bps wasted-bits
 						     :actual-bps actual-bps
-						     :out-buf (make-array
-							       (list (frame-block-size frame))
-							       :element-type '(signed-byte 32)))))))
+						     :out-buf (or *out-buffer*
+                                                                  (make-array
+                                                                   (list (frame-block-size frame))
+                                                                   :element-type '(signed-byte 32))))))))
 	(subframe-body-reader stream subframe frame)
 	subframe)))
 
-(defmethod frame-reader :around (stream streaminfo)
+(defmethod frame-reader :around (stream streaminfo &optional out-buffers)
+  (declare (ignore out-buffers))
   (restart-case
       (call-next-method)
       (skip-malformed-frame ()
         :report "Skip this frame and restore sync"
         (restore-sync stream streaminfo))))
 
-(defmethod frame-reader (stream streaminfo)
+(defmethod frame-reader (stream streaminfo &optional out-buffers)
   (let ((frame (make-instance 'frame)))
     (if (/= +frame-sync-code+ (read-bits 14 stream)) (error 'flac-bad-frame
 							    :message "Frame sync code is not 11111111111110"))
@@ -278,26 +282,28 @@
       (setf (frame-subframes frame)
 	    (if (< assignment #b1000)
 		(loop for sf fixnum below (frame-channel-assignment frame)
-		      collect (subframe-reader stream frame (frame-sample-size frame)))
+		      collect (let ((*out-buffer* (nth sf out-buffers)))
+                                (subframe-reader stream frame (frame-sample-size frame))))
 	       ;; Do bps correction
 	      (let ((sample-size (frame-sample-size frame)))
 		(declare (type (integer 4 32) sample-size))
 		(loop for sf below 2 collect
-		      (subframe-reader
-		       stream frame
-		       (cond
-			((and (= assignment +left-side+)
-			      (= sf 1))
-			 (1+ sample-size))
-			
-			((and (= assignment +right-side+)
-			      (= sf 0))
-			 (1+ sample-size))
-			
-			((and (= assignment +mid-side+)
-			      (= sf 1))
-			 (1+ sample-size))
-			(t sample-size))))))))
+                     (let ((*out-buffer* (nth sf out-buffers)))
+                       (subframe-reader
+                        stream frame
+                        (cond
+                          ((and (= assignment +left-side+)
+                                (= sf 1))
+                           (1+ sample-size))
+                          
+                          ((and (= assignment +right-side+)
+                                (= sf 0))
+                           (1+ sample-size))
+                          
+                          ((and (= assignment +mid-side+)
+                                (= sf 1))
+                           (1+ sample-size))
+                          (t sample-size)))))))))
 
     ;; Check zero padding
     (if (/= (read-to-byte-alignment stream) 0) (error 'flac-bad-frame

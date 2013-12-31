@@ -78,3 +78,11 @@
      (values
       (reverse metadata-list)
       bitreader))))
+
+(defun make-output-buffers (streaminfo)
+  (let ((blocksize (streaminfo-minblocksize streaminfo)))
+    (if (= blocksize (streaminfo-maxblocksize streaminfo))
+        (loop repeat (streaminfo-channels streaminfo)
+           collect (make-array (list blocksize)
+                               :element-type '(signed-byte 32)))
+        (error 'flac-error :message "Cannot make output buffers: variable block size in stream"))))

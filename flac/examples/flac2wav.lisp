@@ -74,9 +74,10 @@
                         (/ (ash 44 3) bps))
 		      
          (let ((buf (make-array (* blocksize channels)
-                                :element-type '(signed-byte 32))))
+                                :element-type '(signed-byte 32)))
+               (flac-out-data (make-output-buffers streaminfo)))
 			
            (loop for i below totalsamples
                  by blocksize do
-                 (write-sequence (mixchannels buf (frame-decode (frame-reader in-reader streaminfo)))
+                 (write-sequence (mixchannels buf (frame-decode (frame-reader in-reader streaminfo flac-out-data)))
                                  out-stream))))))))
