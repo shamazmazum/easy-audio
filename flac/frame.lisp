@@ -186,36 +186,39 @@
   (if (/= (read-bit stream) 0) (error 'flac-bad-frame
 				      :message "Error reading subframe"))
     (let* ((type-num (read-bits 6 stream))
-	   (type-args
+	   (subframe
 	    (cond
-	     ((= type-num 0) '(subframe-constant))         ; 000000
-	     ((= type-num 1) '(subframe-verbatim))         ; 000001
+	     ((= type-num 0) (make-instance 'subframe-constant))         ; 000000
+	     ((= type-num 1) (make-instance 'subframe-verbatim))         ; 000001
 	     ((and
 	       (>= type-num 8)
 	       (<= type-num 12))
-	      (list 'subframe-fixed :order (logand type-num #b111)))     ; 001000-001100
+	      (make-instance 'subframe-fixed :order (logand type-num #b111)))     ; 001000-001100
 	     ((and
 	       (>= type-num 32)
 	       (<= type-num 63))
-	      (list 'subframe-lpc :order (1+ (logand type-num #b11111)))) ; 100000-111111
+	      (make-instance 'subframe-lpc :order (1+ (logand type-num #b11111)))) ; 100000-111111
 	     (t (error 'flac-bad-frame
 		       :message "Error subframe type"))))
-	   (wasted-bits (read-bit stream)))
+           (wasted-bits
+            (let ((lead-in-bit (read-bit stream)))
+              (if (= lead-in-bit 1)
+                  (1+ (read-unary-coded-integer stream))
+                0))))
+      (declare (type non-negative-fixnum wasted-bits))
 
-      (if (= wasted-bits 1)
-	  (progn
-	    (setq wasted-bits (1+ (read-unary-coded-integer stream))
-		  actual-bps (- actual-bps wasted-bits))))
-      
-      (let ((subframe (apply #'make-instance
-			     (append type-args (list :wasted-bps wasted-bits
-						     :actual-bps actual-bps
-						     :out-buf (or *out-buffer*
-                                                                  (make-array
-                                                                   (list (frame-block-size frame))
-                                                                   :element-type '(signed-byte 32))))))))
-	(subframe-body-reader stream subframe frame)
-	subframe)))
+      (setf (subframe-wasted-bps subframe) wasted-bits            
+            (subframe-actual-bps subframe)
+            (- actual-bps wasted-bits)
+
+            (subframe-out-buf subframe)
+            (or *out-buffer*
+                (make-array
+                 (list (frame-block-size frame))
+                 :element-type '(signed-byte 32))))
+
+      (subframe-body-reader stream subframe frame)
+      subframe))
 
 (defmethod frame-reader :around (stream streaminfo &optional out-buffers)
   (declare (ignore out-buffers))
