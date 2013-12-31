@@ -198,9 +198,12 @@ common to all subframes (which are in the header)."))
   (:documentation "Decode a SUBFRAME within current FRAME. Returns buffer of decoded data
   destructively modifying (and garbaging) the subframe."))
 
-(defconstant +left-side+ #b1000)
-(defconstant +right-side+ #b1001)
-(defconstant +mid-side+ #b1010)
+;; Add 1 to values described in FLAC specs
+(defconstant +left-side+ #b1001)  ; 1000 in spec
+(defconstant +right-side+ #b1010) ; 1001 in spec
+(defconstant +mid-side+ #b1011)   ; 1010 in spec
+(defconstant +max-channels+ 8)
+
 ;; Frame
 (defclass frame ()
   ((blocking-strategy  :reader frame-blocking-strategy

@@ -223,9 +223,9 @@ Returns list of decoded audio buffers (one buffer for each channel)."
 	 (mapcar #'(lambda (subframe) (subframe-decode subframe frame))
 		 (frame-subframes frame)))
   	(assignment (frame-channel-assignment frame)))
-    (declare (type (integer 0 10) assignment))
+    (declare (type non-negative-fixnum assignment))
 
-    (if (< assignment #b1000) (return-from frame-decode decoded-subframes))
+    (if (<= assignment +max-channels+) (return-from frame-decode decoded-subframes))
     (if (/= 2 (length decoded-subframes)) (error "Bad channel assignment/number of subframes"))
 
     (destructuring-bind (left right) decoded-subframes

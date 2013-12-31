@@ -59,8 +59,7 @@
 
 (defun get-channel-assignment (val)
   (declare (type non-negative-fixnum val))
-  (cond ((<= val 7) (1+ val))   ; 0000-0111
-        ((<= val 10) val)       ; Special left/right/mid-side assignment
+  (cond ((<= val 10) (1+ val))
         (t (error 'flac-bad-frame
                   :message "Invalid channel assignment"))))
 
@@ -278,9 +277,9 @@
     (setf (frame-crc-8 frame) (read-octet stream))
 
     (let ((assignment (frame-channel-assignment frame)))
-      (declare (type (integer 0 10) assignment))
+      (declare (type non-negative-fixnum assignment))
       (setf (frame-subframes frame)
-	    (if (< assignment #b1000)
+	    (if (<= assignment +max-channels+)
 		(loop for sf fixnum below (frame-channel-assignment frame)
 		      collect (let ((*out-buffer* (nth sf out-buffers)))
                                 (subframe-reader stream frame (frame-sample-size frame))))
