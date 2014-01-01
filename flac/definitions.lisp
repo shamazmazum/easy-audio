@@ -225,6 +225,7 @@ frame number) or :VARIABLE (frame header contains the sample number)")
                        :documentation "Bits per sample")
    (number             :reader frame-number
                        :type unsigned-byte
+                       :initform #.(ash 1 36)
                        :documentation "Frame/sample number")
    (crc-8              :accessor frame-crc-8
 	               :type ub8

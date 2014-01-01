@@ -221,12 +221,15 @@
       subframe))
 
 (defmethod frame-reader :around (stream streaminfo &optional out-buffers)
-  (declare (ignore out-buffers))
   (restart-case
       (call-next-method)
       (skip-malformed-frame ()
-        :report "Skip this frame and restore sync"
-        (restore-sync stream streaminfo))))
+        :report "Skip this frame and read the next one"
+        (restore-sync stream streaminfo)
+        (frame-reader stream streaminfo out-buffers))
+      (stop-reading ()
+        :report "Do nothing and return dummy frame"
+        (make-instance 'frame))))
 
 (defmethod frame-reader (stream streaminfo &optional out-buffers)
   (let ((frame (make-instance 'frame)))
