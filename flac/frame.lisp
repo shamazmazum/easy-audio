@@ -233,6 +233,8 @@
 
 (defmethod frame-reader (stream streaminfo &optional out-buffers)
   (let ((frame (make-instance 'frame)))
+    #+easy-audio-check-crc
+    (init-crc stream)
     (if (/= +frame-sync-code+ (read-bits 14 stream)) (error 'flac-bad-frame
 							    :message "Frame sync code is not 11111111111110"))
     (if (/= 0 (read-bit stream)) (error 'flac-bad-frame
@@ -306,6 +308,13 @@
     ;; Check zero padding
     (if (/= (read-to-byte-alignment stream) 0) (error 'flac-bad-frame
 						      :message "Padding to byte-alignment is not zero"))
+    #+easy-audio-check-crc
+    (let ((crc (get-crc stream)))
+      (setf (frame-crc-16 frame) crc)
+      (if (/= crc (read-bits 16 stream))
+          (error 'flac-bad-frame
+                 :message "Frame CRC mismatch")))
+    #-easy-audio-check-crc
     (setf (frame-crc-16 frame) (read-bits 16 stream))
   frame))
 

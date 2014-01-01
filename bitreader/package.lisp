@@ -56,4 +56,9 @@
            #:read-to-byte-alignment
            #:reader-position
            #:peek-octet
-           #:reader-length))
+           #:reader-length
+
+           #+easy-audio-check-crc
+           #:init-crc
+           #+easy-audio-check-crc
+           #:get-crc))

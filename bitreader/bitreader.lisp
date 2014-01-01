@@ -35,7 +35,9 @@
 (deftype positive-int () '(integer 1))
 (deftype bit-counter () '(integer 0 8))
 (deftype ub8 () '(unsigned-byte 8))
+(deftype ub16 () '(unsigned-byte 16))
 (deftype simple-ub8-vector () '(simple-array ub8 (*)))
+(deftype simple-ub16-vector () '(simple-array ub16 (*)))
 
 (defparameter *buffer-size* 4096)
 
@@ -44,13 +46,55 @@
               :reader bitreader-eof-bitreader)))
 
 (defstruct reader
-  (ibit 0 :type bit-counter)
-  (ibyte 0 :type non-negative-fixnum)
-  (end 0 :type non-negative-fixnum)
-  (buffer (make-array (list *buffer-size*)
+  (ibit      0 :type bit-counter)
+  (ibyte     0 :type non-negative-fixnum)
+  (end       0 :type non-negative-fixnum)
+  (buffer    (make-array (list *buffer-size*)
 		      :element-type 'ub8)
-	  :type simple-ub8-vector)
+	       :type simple-ub8-vector)
+  #+easy-audio-check-crc
+  (crc       0 :type ub16)
+  #+easy-audio-check-crc
+  (crc-start 0 :type non-negative-fixnum)
   stream)
+
+
+;; Fixme: do not forget to fix the generator !!!
+#+easy-audio-check-crc
+(declaim (type simple-ub16-vector +crc-table+))
+#+easy-audio-check-crc
+(defparameter +crc-table+
+  (make-array 256
+              :element-type 'ub16
+              :initial-contents
+              '#.(flet ((crc-for-byte (byte)
+                          (declare (type ub8 byte))
+                          (let ((crc (ash byte 8)))
+                            (declare (type ub16 crc))
+                            (loop for i fixnum below 8 do
+                                 (setq crc
+                                       (logand #xffff
+                                               (if (/= 0 (logand #x8000 crc))
+                                                   (logxor #x8005 (ash crc 1))
+                                                   (ash crc 1))))
+                               finally (return crc)))))
+                   (loop for i below 256 collect (crc-for-byte i)))))
+
+#+easy-audio-check-crc
+(declaim (ftype (function (simple-ub8-vector &optional ub16) ub16) crc))
+#+easy-audio-check-crc
+(defun crc (array &optional (start 0))
+  (declare (type (simple-array ub8) array)
+           (optimize (speed 3)))
+
+  (flet ((accumulate-crc (crc x)
+                         (declare (type ub16 crc)
+                                  (type ub8 x))
+                         (logand #xffff
+                                 (logxor (ash crc 8)
+                                         (aref +crc-table+
+                                               (logxor x (ash crc -8)))))))
+    (reduce #'accumulate-crc array :initial-value start)))
 
 (declaim (inline reset-counters))
 (defun reset-counters (reader)
@@ -81,6 +125,15 @@
 (defun fill-buffer (reader)
   "Fills internal buffer of READER"
   (reset-counters reader)
+  #+easy-audio-check-crc
+  (setf (reader-crc reader)
+        (crc (subseq (reader-buffer reader)
+                     (reader-crc-start reader)
+                     (reader-end reader))
+             (reader-crc reader))
+        
+        (reader-crc-start reader) 0)
+
   (setf (reader-end reader)
         (read-sequence (reader-buffer reader)
                        (reader-stream reader)))
@@ -226,3 +279,18 @@
           
           (move-forward reader bits-to-add))))
     result))
+
+#+easy-audio-check-crc
+(defun init-crc (reader)
+  (setf (reader-crc reader) 0
+        (reader-crc-start reader)
+        (reader-ibyte reader)))
+
+#+easy-audio-check-crc
+(declaim (ftype (function (reader) ub16) get-crc))
+#+easy-audio-check-crc
+(defun get-crc (reader)
+  (crc (subseq (reader-buffer reader)
+               (reader-crc-start reader)
+               (reader-ibyte reader))
+       (reader-crc reader)))
