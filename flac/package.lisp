@@ -99,4 +99,5 @@
 	   ;; Restarts
 	   #:skip-malformed-metadata
            #:skip-malformed-frame
+           #:stop-reading-frame
            #:read-raw-block))

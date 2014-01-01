@@ -227,7 +227,7 @@
         :report "Skip this frame and read the next one"
         (restore-sync stream streaminfo)
         (frame-reader stream streaminfo out-buffers))
-      (stop-reading ()
+      (stop-reading-frame ()
         :report "Do nothing and return dummy frame"
         (make-instance 'frame))))
 
