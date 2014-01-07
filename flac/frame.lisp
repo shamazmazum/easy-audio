@@ -204,7 +204,8 @@
             (let ((lead-in-bit (read-bit stream)))
               (if (= lead-in-bit 1)
                   (1+ (read-unary-coded-integer stream))
-                0))))
+                0)))
+           (blocksize (frame-block-size frame)))
       (declare (type non-negative-fixnum wasted-bits))
 
       (setf (subframe-wasted-bps subframe) wasted-bits            
@@ -212,9 +213,10 @@
             (- actual-bps wasted-bits)
 
             (subframe-out-buf subframe)
-            (or *out-buffer*
+            (if (= (length *out-buffer*) blocksize)
+                *out-buffer*
                 (make-array
-                 (list (frame-block-size frame))
+                 (list blocksize)
                  :element-type '(signed-byte 32))))
 
       (subframe-body-reader stream subframe frame)
