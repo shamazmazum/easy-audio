@@ -55,9 +55,7 @@
 
 (defmethod subframe-decode ((subframe subframe-fixed) frame)
   ;; Decodes subframe destructively modifiying it
-  (declare (optimize (speed 3)
-		     (safety 0))
-	   (ignore frame))
+  (declare (ignore frame))
   (let* ((out-buf (subframe-out-buf subframe))
 	 (order (subframe-order subframe))
 	 (len (length out-buf)))
@@ -136,8 +134,6 @@
 (defmacro gen-lpc-predictor (n)
   "Generate FIR linear predictor of order N"
   `(flet ((lpc-predictor (subframe)
-            (declare (optimize (speed 3)
-                               (safety 0)))
             (let ((out-buf (subframe-out-buf subframe))
                   (shift (subframe-lpc-coeff-shift subframe))
                   (coeff (subframe-lpc-predictor-coeff subframe)))
@@ -185,9 +181,6 @@
 (defun frame-decode (frame)
   "Decode a frame destructively modifying (and garbaging) all subframes within.
 Returns list of decoded audio buffers (one buffer for each channel)."
-  (declare (optimize (speed 3)
-		     (safety 0)))
-
   (let ((decoded-subframes
 	 (mapcar #'(lambda (subframe) (subframe-decode subframe frame))
 		 (frame-subframes frame)))
