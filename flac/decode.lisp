@@ -126,91 +126,61 @@
 	       (- shift)))))
     out-buf))|#
 
-;; Expanded version from libFLAC
-(defmethod subframe-decode ((subframe subframe-lpc) frame)
-  (declare (ignore frame)
-	   (optimize (speed 3)
-		     (safety 0)))
-  
-  (let* ((out-buf (subframe-out-buf subframe))
-	 (len (length out-buf))
-	 (shift (subframe-lpc-coeff-shift subframe))
-	 (order (subframe-order subframe))
-	 (coeff (subframe-lpc-predictor-coeff subframe)))
-    (declare (type (simple-array (signed-byte 32)) out-buf coeff)
-	     (type fixnum len order)
-	     (type (signed-byte 32) shift))
-    
-    (macrolet ((calc-out-buf (n)
-			     (let ((idx (gensym))
-				   (sum (gensym)))
-			       `(do ((,idx ,n (1+ ,idx)))
-				    ((= ,idx len))
-				  (declare (type fixnum ,idx))
-				  (let ((,sum 0))
-				    (declare (type fixnum ,sum))
-				    ,@(loop for j below n collect
-					    `(incf ,sum
-						   (* (aref coeff ,j)
-						      (aref out-buf (- ,idx ,(1+ j))))))
-				    (incf (aref out-buf ,idx)
-					  (the fixnum
-					    (ash ,sum (- shift)))))))))
+;; This version is much like libFLAC expanded one.
+;; The only difference is that we generate predictors of mostly useful orders first
+;; and get them from hash table.
 
-      (cond
-       ((<= order 12)
-	(cond
-	 ((> order 8)
-	  (cond
-	   ((> order 10)
-	    (cond
-	     ((= order 12)
-	      (calc-out-buf 12))
-	     (t (calc-out-buf 11))))
-	   
-	   (t
-	    (cond
-	     ((= order 10) (calc-out-buf 10))
-	     (t (calc-out-buf 9))))))
-	 
-	 (t
-	  (cond
-	   ((> order 4)
-	    (cond
-	     ((> order 6)
-	      (cond
-	       ((= order 8) (calc-out-buf 8))
-	       (t (calc-out-buf 7))))
-	     (t
-	      (cond
-	       ((= order 6) (calc-out-buf 6))
-	       (t (calc-out-buf 5))))))
-	   (t
-	    (cond
-	     ((> order 2)
-	      (cond
-	       ((= order 4) (calc-out-buf 4))
-	       (t (calc-out-buf 3))))
-	     
-	     (t
-	      (cond
-	       ((= order 2) (calc-out-buf 2))
-	       (t (calc-out-buf 1))))))))))
-       (t
-	(do ((i order (1+ i)))
-	    ((= i len))
-	  (declare (type fixnum i))
-	  (incf (aref out-buf i)
-		(the fixnum
-		  (ash
-		   (do ((j 0 (1+ j)) (sum 0))
-		       ((= j order) sum)
-		     (declare (type fixnum j sum))
-		     (incf sum
-			   (* (aref coeff j)
-			      (aref out-buf (- i j 1)))))
-		   (- shift))))))))
-  out-buf))  
+(defparameter *lpc-predictors* (make-hash-table)
+  "Precalculated FIR linear predictors")
+
+(defmacro gen-lpc-predictor (n)
+  "Generate FIR linear predictor of order N"
+  `(flet ((lpc-predictor (subframe)
+            (declare (optimize (speed 3)
+                               (safety 0)))
+            (let ((out-buf (subframe-out-buf subframe))
+                  (shift (subframe-lpc-coeff-shift subframe))
+                  (coeff (subframe-lpc-predictor-coeff subframe)))
+              (declare (type (simple-array (signed-byte 32)) out-buf coeff)
+                       (type (signed-byte 32) shift))
+              
+              (loop for i fixnum from ,n below (length out-buf)
+                 for sum fixnum = 0 do
+                   ,@(loop for j below n collect
+                          `(incf sum
+                                 (* (aref coeff ,j)
+                                    (aref out-buf (- i ,(1+ j))))))
+                   (incf (aref out-buf i)
+                         (the fixnum
+                              (ash sum (- shift))))))))
+     #'lpc-predictor))
+
+;; Populate hash table with predictors of orders from 1 to 12
+;; (These are most useful).
+(macrolet ((gen-lpc-predictors (n)
+             `(progn
+                ,@(loop for order from 1 to n collect
+                        `(setf (gethash ,order *lpc-predictors*)
+                               (gen-lpc-predictor ,order))))))
+
+  (gen-lpc-predictors 12))
+
+(defmethod subframe-decode ((subframe subframe-lpc) frame)
+  (declare (ignore frame))
+  (let* ((order (subframe-order subframe))
+         (predictor (gethash order *lpc-predictors*)))
+    
+    (if (not predictor)
+        ;; Funny stuff. If there is no desired predictor in hash table,
+        ;; generate it on the fly.
+        (setf (gethash order *lpc-predictors*)
+              (setq predictor
+                    (eval (list 'gen-lpc-predictor order)))))
+    
+    (funcall (the function predictor)
+             subframe))
+             
+  (subframe-out-buf subframe))
 
 (defun frame-decode (frame)
   "Decode a frame destructively modifying (and garbaging) all subframes within.
