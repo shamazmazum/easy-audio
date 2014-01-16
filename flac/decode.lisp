@@ -132,8 +132,7 @@
 	   (optimize (speed 3)
 		     (safety 0)))
   
-  (let* ((out-buf (the (simple-array (signed-byte 32))
-		    (subframe-out-buf subframe)))
+  (let* ((out-buf (subframe-out-buf subframe))
 	 (len (length out-buf))
 	 (shift (subframe-lpc-coeff-shift subframe))
 	 (order (subframe-order subframe))
