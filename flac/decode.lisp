@@ -133,23 +133,24 @@
 
 (defmacro gen-lpc-predictor (n)
   "Generate FIR linear predictor of order N"
-  `(flet ((lpc-predictor (subframe)
-            (let ((out-buf (subframe-out-buf subframe))
-                  (shift (subframe-lpc-coeff-shift subframe))
-                  (coeff (subframe-lpc-predictor-coeff subframe)))
-              (declare (type (simple-array (signed-byte 32)) out-buf coeff)
-                       (type (signed-byte 32) shift))
-              
-              (loop for i fixnum from ,n below (length out-buf)
-                 for sum fixnum = 0 do
-                   ,@(loop for j below n collect
-                          `(incf sum
-                                 (* (aref coeff ,j)
-                                    (aref out-buf (- i ,(1+ j))))))
-                   (incf (aref out-buf i)
-                         (the fixnum
-                              (ash sum (- shift))))))))
-     #'lpc-predictor))
+  (let ((func-name (intern (format nil "LPC-PREDICTOR-~D" n))))
+    `(flet ((,func-name (subframe)
+              (let ((out-buf (subframe-out-buf subframe))
+                    (shift (subframe-lpc-coeff-shift subframe))
+                    (coeff (subframe-lpc-predictor-coeff subframe)))
+                (declare (type (simple-array (signed-byte 32)) out-buf coeff)
+                         (type (signed-byte 32) shift))
+                
+                (loop for i fixnum from ,n below (length out-buf)
+                   for sum fixnum = 0 do
+                     ,@(loop for j below n collect
+                            `(incf sum
+                                   (* (aref coeff ,j)
+                                      (aref out-buf (- i ,(1+ j))))))
+                     (incf (aref out-buf i)
+                           (the fixnum
+                                (ash sum (- shift))))))))
+       #',func-name)))
 
 ;; Populate hash table with predictors of orders from 1 to 12
 ;; (These are most useful).
