@@ -106,7 +106,8 @@
 	 (inline read-unary-coded-integer))
 (defun read-unary-coded-integer (bitreader &optional (one 0))
   "Read unary coded integer from bitreader
-   By default 0 bit is considered as 1, 1 bit is terminator"
+   By default zero bit is considered as arithmetical 1,
+   1 bit is terminator"
   (declare (type (integer 0 1) one))
 ;  (loop for bit = (tbs:read-bit bitreader)
 ;	while (= bit one)
@@ -135,12 +136,12 @@
 	(val (logior (ash unary param) binary)))
       
     (if (= (ldb (byte 1 0) val) 1)
-	(- 0 (ash val -1) 1)
+	(- -1 (ash val -1))
       (ash val -1))))
 
 (defun restore-sync (bitreader streaminfo)
   "Restores lost sync and returns
-   number of frame to be readed"
+   number of frame to be read"
   (declare (type reader bitreader)
 	   (type streaminfo streaminfo))
   ;; Make sure, we are byte aligned
