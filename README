@@ -6,4 +6,4 @@ format too.
 Currently implemented: flac, wav (partially)
 Planned: ape, wavpack
 
-There is no unified API for all decodecs yet
+There is no unified API for all decoders yet

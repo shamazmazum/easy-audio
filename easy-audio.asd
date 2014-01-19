@@ -4,8 +4,8 @@
   :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
   :components ((:file "easy-audio-early")
                
-               (:file "general-decodecs/package")
-	       (:file "general-decodecs/g.711" :depends-on ("general-decodecs/package"))
+               (:file "general-decoders/package")
+	       (:file "general-decoders/g.711" :depends-on ("general-decoders/package"))
 
                (:file "bitreader/package")
 	       (:file "bitreader/bitreader" :depends-on ("bitreader/package"))
