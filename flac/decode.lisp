@@ -133,9 +133,11 @@
 
 (defmacro gen-lpc-predictor (n)
   "Generate FIR linear predictor of order N"
-  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (let ((func-name (intern (format nil "LPC-PREDICTOR-~D" n))))
     `(flet ((,func-name (subframe)
+              (declare (optimize
+                        #+easy-audio-unsafe-code
+                        (safety 0) (speed 3)))
               (let ((out-buf (subframe-out-buf subframe))
                     (shift (subframe-lpc-coeff-shift subframe))
                     (coeff (subframe-lpc-predictor-coeff subframe)))
@@ -144,20 +146,21 @@
                 
                 (loop for i fixnum from ,n below (length out-buf)
                    for sum fixnum = 0 do
-                     ,@(loop for j below n collect
+                     ,@(loop for j fixnum below n collect
                             `(incf sum
                                    (* (aref coeff ,j)
                                       (aref out-buf (- i ,(1+ j))))))
                      (incf (aref out-buf i)
                            (the fixnum
-                                (ash sum (- shift))))))))
+                                (ash sum (- shift)))))
+                out-buf)))
        #',func-name)))
 
 ;; Populate hash table with predictors of orders from 1 to 12
 ;; (These are most useful).
 (macrolet ((gen-lpc-predictors (n)
              `(progn
-                ,@(loop for order from 1 to n collect
+                ,@(loop for order fixnum from 1 to n collect
                         `(setf (gethash ,order *lpc-predictors*)
                                (gen-lpc-predictor ,order))))))
 
@@ -171,14 +174,10 @@
     (if (not predictor)
         ;; Funny stuff. If there is no desired predictor in hash table,
         ;; generate it on the fly.
-        (setf (gethash order *lpc-predictors*)
-              (setq predictor
-                    (eval (list 'gen-lpc-predictor order)))))
-    
-    (funcall (the function predictor)
-             subframe))
-             
-  (subframe-out-buf subframe))
+        (setf predictor (eval (list 'gen-lpc-predictor order))
+              (gethash order *lpc-predictors*) predictor))
+
+    (funcall (the function predictor) subframe)))
 
 (defun frame-decode (frame)
   "Decode a frame destructively modifying (and garbaging) all subframes within.
