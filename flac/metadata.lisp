@@ -23,7 +23,11 @@
 
 (in-package :easy-audio.flac)
 
-(defvar *data*) ;; For signaling errors from functions called from body-readers (they usual requires just a stream, so no need pass data object as argument)
+;; For signaling errors from functions called from body-readers
+;; (they usual requires just a stream, so no need pass data object as argument)
+(easy-audio-early:defvar-unbound *data*
+    "METADATA-BODY-READER bounds this var to metadata block
+     it is reading at the moment")
 
 (defun metadata-summar-length (blocks)
   "Returns length of metadata blocks given in bytes"

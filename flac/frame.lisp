@@ -25,7 +25,8 @@
 
 (declaim (optimize (speed 3)))
 
-(defvar *out-buffer*)
+(easy-audio-early:defvar-unbound *out-buffer*
+    "Output buffer for exactly one subframe")
 
 (defun get-blocking-strategy (val)
   (declare (type fixnum val))

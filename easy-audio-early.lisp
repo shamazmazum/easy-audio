@@ -21,6 +21,12 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+(defpackage easy-audio-early
+  (:use :cl)
+  (:export #:*current-condition*
+           #:with-interactive-debug
+           #:defvar-unbound))
+
 ;; Comment it out if you do not want restrictions
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (pushnew :easy-audio-use-fixnums *features*)
@@ -39,17 +45,24 @@
 
   (set-dispatch-macro-character #\# #\f #'type-decl-func))
 
-(defpackage easy-audio-debug
-  (:use :cl)
-  (:nicknames :debug)
-  (:export #:*current-condition*
-           #:with-interactive-debug))
+(in-package :easy-audio-early)
+;; Definition of documented unbound variables
+(defmacro defvar-unbound (var &optional doc-string)
+  "Defines special unbound variable with defvar,
+   also assigning documentation string if supported."
+  `(progn
+     (defvar ,var)
+     ,@(if doc-string `((setf (documentation ',var 'variable) ,doc-string)))))
 
-(in-package :easy-audio-debug)
-
-(defvar *current-condition*)
+;; For interactive restarts
+(defvar *current-condition*
+  "*CURRENT-CONDITION* is bound to signaled contition
+   when debugger is invoked while within WITH-INTERACTIVE-DEBUG")
 
 (defmacro with-interactive-debug (&body body)
+  "If any condition is signaled and the debugger is invoked while
+   within this macro, *CURRENT-CONDITION* will be bound to the
+   condition signaled"
   (let ((debugger-hook (gensym)))
     `(let ((,debugger-hook *debugger-hook*))
        (flet ((,debugger-hook (condition me)

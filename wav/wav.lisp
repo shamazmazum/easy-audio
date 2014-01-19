@@ -84,7 +84,7 @@
      (let ((type (read-bits 32 reader))
            (size (read-bits 32 reader :endianness :little)))
 
-       (debug:with-interactive-debug
+       (easy-audio-early:with-interactive-debug
            (restart-case
                (push
                 (cond
@@ -102,7 +102,7 @@
                 chunks)
              
              (skip-subchunk (c)
-               :interactive (lambda () (list debug:*current-condition*))
+               :interactive (lambda () (list easy-audio-early:*current-condition*))
                (read-bits (* 8 (wav-error-rest-bytes c))
                           (wav-error-reader c)))))
        (if (/= type +data-subchunk+) (go read-subchunks-loop))))
