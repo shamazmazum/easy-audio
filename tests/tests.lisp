@@ -93,12 +93,8 @@
                                       #x02 ,@(loop repeat 192 collect #x0b) ; Verbatim subframe with 8-bit values
                                       #x4d #x6b))                             ; CRC-16
     (let* ((reader (bitreader:make-reader :stream input))
-           (decoded-buf
-            (handler-case
-                (flac:frame-decode
-                 (flac:frame-reader reader nil))
-              (flac:flac-error () ()))))
-      (is (equalp decoded-buf
+           (frame  (flac:frame-reader reader nil)))
+      (is (equalp (flac:frame-decode frame)
                   (list (make-array 192 :initial-element 10)
                         (make-array 192 :initial-element 11)))))))
 

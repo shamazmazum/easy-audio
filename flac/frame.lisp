@@ -25,7 +25,6 @@
 
 (declaim (optimize (speed 3)))
 
-(declaim (type (simple-array (signed-byte 32)) *out-buffer*))
 (easy-audio-early:defvar-unbound *out-buffer*
     "Output buffer for exactly one subframe")
 
@@ -215,7 +214,10 @@
             (- actual-bps wasted-bits)
 
             (subframe-out-buf subframe)
-            (if (= (length *out-buffer*) blocksize)
+            (if (and *out-buffer*
+                     (= (length (the (simple-array (signed-byte 32))
+                                     *out-buffer*))
+                        blocksize))
                 *out-buffer*
                 (make-array
                  (list blocksize)
