@@ -23,4 +23,9 @@
 
                (:file "utils/package" :depends-on ("wav/package"))
                (:file "utils/utils" :depends-on ("utils/package")))
+  :perform (test-op (op system)
+                    (declare (ignore op system))
+                    (asdf:load-system :easy-audio-tests)
+                    (funcall
+                     (intern "RUN-TESTS" (find-package "EASY-AUDIO-TESTS"))))
   :depends-on (:babel))
