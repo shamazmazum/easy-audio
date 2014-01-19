@@ -34,17 +34,19 @@
          (mantissa (ldb (byte 4 0) toggled-bits))
          (exp (ldb (byte 3 4) toggled-bits))
          (res
-          (if (= exp 0) (logior (ash mantissa 4) #x8)
-            (ash (logior (ash mantissa 4) #x108)
+          (if (= exp 0) (+ (ash mantissa 4) #x8)
+            (ash (+ (ash mantissa 4) #x108)
                  (1- exp)))))
 
-    (if (/= 0 (logand coded-val #x80)) res (- res))))
+    (if (> coded-val #x7f) res (- res))))
 
 (declaim (ftype (function (ub8) b16) g.711-ulaw-decode))
 (defun g.711-ulaw-decode (coded-value)
   (let* ((inv (- #xff coded-value))
          (exp (ldb (byte 3 4) inv))
          (mantissa (ldb (byte 4 0) inv))
-         (res (- (ash (logior (ash mantissa 3) #x84) exp) 128)))
+         (res (ash (+ (ash mantissa 3) #x84) exp)))
 
-    (if (/= (logand coded-value #x80) 0) res (- res))))
+    (if (> coded-value #x7f)
+        (- res #x84)
+        (- #x84 res))))
