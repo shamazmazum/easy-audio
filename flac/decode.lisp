@@ -190,7 +190,8 @@ Returns list of decoded audio buffers (one buffer for each channel)."
     (declare (type non-negative-fixnum assignment))
 
     (if (<= assignment +max-channels+) (return-from frame-decode decoded-subframes))
-    (if (/= 2 (length decoded-subframes)) (error "Bad channel assignment/number of subframes"))
+    (if (/= 2 (length decoded-subframes))
+        (error 'flac-error :message "Bad channel assignment/number of subframes"))
 
     (destructuring-bind (left right) decoded-subframes
       (declare (type (simple-array (signed-byte 32)) left right))
@@ -217,5 +218,5 @@ Returns list of decoded audio buffers (one buffer for each channel)."
 		    (ash (+ mid side) -1)
 		    (aref right i)
 		    (ash (- mid side) -1))))))
-       (t (error "Wrong channel assignment"))))
+       (t (error 'flac-error :message "Wrong channel assignment"))))
     decoded-subframes))
