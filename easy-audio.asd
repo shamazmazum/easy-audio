@@ -1,6 +1,7 @@
 (defsystem :easy-audio
   :name :easy-audio
-  :version "0.1"
+  :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
+               (read input))
   :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
   :components ((:file "easy-audio-early")
                

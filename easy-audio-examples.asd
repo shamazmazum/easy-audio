@@ -1,6 +1,7 @@
 (defsystem :easy-audio-examples
   :name :easy-audio-examples
-  :version "0.1"
+  :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
+               (read input))
   :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
   :components ((:file "flac/examples/package")
                (:file "flac/examples/flac2wav" :depends-on ("flac/examples/package"))
