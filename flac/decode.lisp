@@ -133,6 +133,7 @@
 
 (defmacro gen-lpc-predictor (n)
   "Generate FIR linear predictor of order N"
+  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (let ((func-name (intern (format nil "LPC-PREDICTOR-~D" n))))
     `(flet ((,func-name (subframe)
               (let ((out-buf (subframe-out-buf subframe))
