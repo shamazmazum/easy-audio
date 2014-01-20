@@ -134,26 +134,24 @@
 (defmacro gen-lpc-predictor (n)
   "Generate FIR linear predictor of order N"
   (let ((func-name (intern (format nil "LPC-PREDICTOR-~D" n))))
-    `(flet ((,func-name (subframe)
+    `(flet ((,func-name (out-buf coeff shift)
               (declare (optimize
                         #+easy-audio-unsafe-code
-                        (safety 0) (speed 3)))
-              (let ((out-buf (subframe-out-buf subframe))
-                    (shift (subframe-lpc-coeff-shift subframe))
-                    (coeff (subframe-lpc-predictor-coeff subframe)))
-                (declare (type (simple-array (signed-byte 32)) out-buf coeff)
-                         (type (signed-byte 32) shift))
+                        (safety 0) (speed 3) (space 2))
+                       (type (simple-array (signed-byte 32)) out-buf coeff)
+                       (type (signed-byte 32) shift))
                 
-                (loop for i fixnum from ,n below (length out-buf)
-                   for sum fixnum = 0 do
-                     ,@(loop for j fixnum below n collect
-                            `(incf sum
-                                   (* (aref coeff ,j)
-                                      (aref out-buf (- i ,(1+ j))))))
-                     (incf (aref out-buf i)
-                           (the fixnum
-                                (ash sum (- shift)))))
-                out-buf)))
+              (loop for i fixnum from ,n below (length out-buf)
+                 for sum fixnum = 0 do
+                   ,@(loop for j fixnum below n collect
+                          `(incf sum
+                                 (* (aref coeff ,j)
+                                    (aref out-buf (- i ,(1+ j))))))
+                   (incf (aref out-buf i)
+                         (the fixnum
+                              (ash sum (- shift)))))
+              
+              out-buf))
        #',func-name)))
 
 ;; Populate hash table with predictors of orders from 1 to 12
@@ -177,7 +175,10 @@
         (setf predictor (eval (list 'gen-lpc-predictor order))
               (gethash order *lpc-predictors*) predictor))
 
-    (funcall (the function predictor) subframe)))
+    (funcall (the function predictor)
+             (subframe-out-buf subframe)
+             (subframe-lpc-predictor-coeff subframe)
+             (subframe-lpc-coeff-shift subframe))))
 
 (defun frame-decode (frame)
   "Decode a frame destructively modifying (and garbaging) all subframes within.
