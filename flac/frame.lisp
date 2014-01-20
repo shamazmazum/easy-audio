@@ -73,7 +73,6 @@
                  :message "Invalid sample size"))))
 
 ;; Residual reader
-(declaim (inline residual-reader))
 (defun residual-reader (bit-reader subframe frame out)
   (let ((coding-method (read-bits 2 bit-reader)))
     (declare (type (unsigned-byte 2) coding-method))
@@ -114,7 +113,7 @@
 	    
 	    (cond
 	     ((/= rice-parameter esc-code)
-	      (loop for sample below samples-num do
+	      (loop repeat samples-num do
 		    (setf (aref out sample-idx)
 			  (read-rice-signed bit-reader rice-parameter))
 		    (incf sample-idx)))

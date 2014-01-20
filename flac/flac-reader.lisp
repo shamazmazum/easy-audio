@@ -97,9 +97,10 @@
 (defun unsigned-to-signed (byte len)
   (declare (type (integer 0 32) len)
 	   (type (unsigned-byte 32) byte))
-  (let ((sign (ldb (byte 1 (1- len)) byte)))
-    (if (= sign 0) byte (- byte (ash 1 len)))))
-
+  (let ((sign-mask (ash 1 (1- len))))
+    (if (< byte sign-mask)
+        byte
+        (- byte (ash sign-mask 1)))))
 
 (declaim (ftype (function (t &optional (integer 0 1)) fixnum)
 		read-unary-coded-integer)
@@ -109,35 +110,27 @@
    By default zero bit is considered as arithmetical 1,
    1 bit is terminator"
   (declare (type (integer 0 1) one))
-;  (loop for bit = (tbs:read-bit bitreader)
-;	while (= bit one)
-;	sum 1))
-  (let ((bit 0)
-	(sum 0))
-    (declare (type (integer 0 1) bit)
-	     (type (unsigned-byte 32) sum))
+  (let ((sum 0))
+    (declare (type (unsigned-byte 32) sum))
   (tagbody reader-loop
-	     (setq bit (read-bit bitreader))
-	     (when (= one bit)
-	       (incf sum)
-	       (go reader-loop)))
+     (when (= one (read-bit bitreader))
+       (incf sum)
+       (go reader-loop)))
   sum))
 
 (declaim (ftype (function (t (integer 0 30))
 			  (signed-byte 32))
-		read-rice-signed)
-	 (inline read-rice-signed))
+		read-rice-signed))
 (defun read-rice-signed (bitreader param)
+  "Read signed rice-coded value"
   (declare (type (integer 0 30) param))
-  (let* ((unary (the (unsigned-byte 32)
-		 (read-unary-coded-integer bitreader)))
-	(binary (the (unsigned-byte 32)
-		  (read-bits param bitreader)))
-	(val (logior (ash unary param) binary)))
-      
-    (if (= (ldb (byte 1 0) val) 1)
-	(- -1 (ash val -1))
-      (ash val -1))))
+  (let* ((unary  (read-unary-coded-integer bitreader))
+         (binary (read-bits param bitreader))
+         (val    (logior (ash unary param) binary)))
+    
+    (if (zerop (logand val 1))
+      (ash val -1)
+      (- -1 (ash val -1)))))
 
 (defun restore-sync (bitreader streaminfo)
   "Restores lost sync and returns
