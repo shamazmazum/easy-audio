@@ -145,6 +145,40 @@ metadata type"))
 
 (defstruct cuesheet-index offset number)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter +picture-types+ '(:other :file-icon :other-file-icon
+                                  :cover-front :cover-back) ; Etc
+    "Meaning of picture type codes"))
+(deftype picture-type-id () `(or (integer 0 20) (member ,@+picture-types+)))
+
+(defclass picture (metadata-header)
+  ((picture-type   :type picture-type-id
+                   :accessor picture-type
+                   :documentation "One of 21 picture types (see flac format description)")
+   (mime-type      :type string
+                   :accessor picture-mime-type
+                   :documentation "String with MIME type")
+   (description    :type string
+                   :accessor picture-description
+                   :documentation "Picture description (UTF-8 coded string)")
+   (width          :type positive-int
+                   :accessor picture-width
+                   :documentation "Picture width")
+   (height         :type positive-int
+                   :accessor picture-height
+                   :documentation "Picture height")
+   (depth          :type positive-int
+                   :accessor picture-depth
+                   :documentation "Picture color depth")
+   (color-num      :type non-negative-int
+                   :accessor picture-color-num
+                   :documentation "Number of colors in indexed picture, 0 for non-indexed")
+   (picture        :type simple-ub8-vector
+                   :accessor picture-picture
+                   :documentation "The picture itself as array of octets"))
+  (:documentation "PICTURE metadata block"))
+                   
+
 (defgeneric metadata-body-reader (stream data)
   (:documentation "Reads a body of the metadata block DATA from STREAM. Can depend on slots
   common to all metadata blocks (which are in the header)."))
@@ -246,7 +280,8 @@ code)"))
                              (1 . padding)
                              (3 . seektable)
                              (4 . vorbis-comment)
-                             (5 . cuesheet)))
+                             (5 . cuesheet)
+                             (6 . picture)))
 (defconstant +frame-sync-code+ 16382) ; 11111111111110
 (defconstant +seekpoint-placeholder+ #xFFFFFFFFFFFFFFFF)
 (defparameter +coded-sample-rates+
@@ -270,10 +305,8 @@ code)"))
     (#b100 . 16)
     (#b101 . 20)
     (#b110 . 24)))
-    
 
 ;; Other stuff
-
 (defun get-metadata-type (code)
   "Get metadata type by code"
   (let ((mtype (assoc code +block-name+)))

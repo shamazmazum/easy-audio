@@ -63,7 +63,17 @@
 	   #:cuesheet-index
 	   #:cuesheet-index-offset
 	   #:cuesheet-index-number
-	   
+
+           #:picture
+           #:picture-type
+           #:picture-mime-type
+           #:picture-description
+           #:picture-width
+           #:picture-height
+           #:picture-depth
+           #:picture-color-num
+           #:picture-picture
+           
 	   ;; And so on with metadata classes
 	   ;; Frame and its slots
 	   

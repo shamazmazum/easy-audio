@@ -66,7 +66,6 @@
                :metadata data))))
 
 (defmethod metadata-body-reader (stream (data vorbis-comment))
-  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (flet ((read-comment-string (stream)
 	  (let ((buffer (make-array (list (read-bits 32 stream :endianness :little))
 					   :element-type '(unsigned-byte 8))))
@@ -138,7 +137,6 @@
     index))
 
 (defun read-cuesheet-track (stream)
-  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (let ((track (make-cuesheet-track)))
     (setf (cuesheet-track-offset track) (read-bits 64 stream))
     (setf (cuesheet-track-number track) (read-octet stream))
@@ -162,7 +160,6 @@
     track))
 
 (defmethod metadata-body-reader (stream (data cuesheet))
-  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (let ((*data* data))
     (setf (cuesheet-catalog-id data) (read-cuesheet-string stream 128))
     (setf (cuesheet-lead-in data) (read-bits 64 stream))
@@ -179,11 +176,51 @@
 		  (read-cuesheet-track stream))))
   data))
 
+(defmethod metadata-body-reader (stream (data picture))
+  (let ((picture-type (nth (read-bits 32 stream) +picture-types+)))
+    (if (not (typep picture-type 'picture-type-id))
+        (error 'flac-bad-metadata
+               :message "Bad picture type"
+               :metadata data))
+    (setf (picture-type data) picture-type))
+  
+  (let* ((mime-type-len (read-bits 32 stream))
+         (mime-type-seq (make-array (list mime-type-len)
+                                    :element-type '(unsigned-byte 8))))
+    (read-octet-vector mime-type-seq stream)
+    (if (notevery #'(lambda (char) (and (>= char #x20)
+                                        (<= char #x7e)))
+                  mime-type-seq)
+        (error 'flac-bad-metadata
+               :message "MIME type must be an ASCII string"
+               :metadata data))
+    (setf (picture-mime-type data) (babel:octets-to-string mime-type-seq)))
+
+  (let* ((description-len (read-bits 32 stream))
+         (description-seq (make-array (list description-len)
+                                      :element-type '(unsigned-byte 8))))
+    (read-octet-vector description-seq stream)
+    (setf (picture-description data) (babel:octets-to-string description-seq)))
+
+  (setf (picture-width data) (read-bits 32 stream)
+        (picture-height data) (read-bits 32 stream)
+        (picture-depth data) (read-bits 32 stream)
+        (picture-color-num data) (read-bits 32 stream))
+
+  (let* ((picture-len (read-bits 32 stream))
+         (picture-seq (make-array (list picture-len)
+                                  :element-type '(unsigned-byte 8))))
+    ;; FIXME: artifical sanity check: Picture can be less than 10 MiB
+    (if (> picture-len #.(ash 10 20))
+        (error 'flac-bad-metadata
+               :message (format nil "It's strange, but picture size is too long (~D bytes)" picture-len)
+               :metadata data))
+    (setf (picture-picture data) (read-octet-vector picture-seq stream))))
+
 (defmethod metadata-body-reader (stream (data metadata-header))
   (error 'flac-bad-metadata
          :message "Unknown metadata block"
          :metadata data))
 
 (defun metadata-find-seektable (metadata)
-  #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
   (find-if #'(lambda (x) (typep x 'seektable)) metadata))
