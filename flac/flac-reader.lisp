@@ -31,7 +31,7 @@
 			       (offset 0))
   ;; Will be replaced later
   (declare (type fixnum len offset size)
-	   (type (simple-array (signed-byte 32)) array))
+	   (type (sa-sb 32) array))
   (loop for i from offset below len do
 	(setf (aref array i)
 	      (if signed (unsigned-to-signed (read-bits size stream) size)
@@ -44,8 +44,8 @@
   (let ((x (read-octet stream))
 	i
 	(v 0))
-    (declare (type (unsigned-byte 8) x)
-	     (type (unsigned-byte 32) v))
+    (declare (type (ub 8) x)
+	     (type (ub 32) v))
     (cond
      (( = 0 (logand x #x80))
       (setq v x i 0))
@@ -90,13 +90,13 @@
     v))
 
 (declaim (inline unsigned-to-signed)
-	 (ftype (function ((unsigned-byte 32)
+	 (ftype (function ((ub 32)
 			   (integer 0 32))
-			  (signed-byte 32))
+			  (sb 32))
 		unsigned-to-signed))
 (defun unsigned-to-signed (byte len)
   (declare (type (integer 0 32) len)
-	   (type (unsigned-byte 32) byte))
+	   (type (ub 32) byte))
   (let ((sign-mask (ash 1 (1- len))))
     (if (< byte sign-mask)
         byte
@@ -111,7 +111,7 @@
    1 bit is terminator"
   (declare (type (integer 0 1) one))
   (let ((sum 0))
-    (declare (type (unsigned-byte 32) sum))
+    (declare (type (ub 32) sum))
   (tagbody reader-loop
      (when (= one (read-bit bitreader))
        (incf sum)
@@ -119,7 +119,7 @@
   sum))
 
 (declaim (ftype (function (t (integer 0 30))
-			  (signed-byte 32))
+			  (sb 32))
 		read-rice-signed))
 (defun read-rice-signed (bitreader param)
   "Read signed rice-coded value"

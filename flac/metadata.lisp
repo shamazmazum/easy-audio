@@ -57,7 +57,7 @@
 (defmethod metadata-body-reader (stream (data padding))
   ;; Read zero padding bytes
   (let ((chunk (make-array (list (metadata-length data))
-			   :element-type 'ub8)))
+			   :element-type '(ub 8))))
     (read-octet-vector chunk stream)
     ;; Do sanity checks
     (if (notevery #'zerop  chunk)
@@ -112,13 +112,13 @@
 	(streaminfo-bitspersample data) (1+ (read-bits 5 stream))
 	(streaminfo-totalsamples data) (read-bits 36 stream))
 
-  (let ((md5 (make-array (list 16) :element-type 'ub8)))
+  (let ((md5 (make-array (list 16) :element-type '(ub 8))))
     (read-octet-vector md5 stream)
     (setf (streaminfo-md5 data) md5))
   data)
 
 (defun read-cuesheet-string (stream length)
-  (let ((buffer (make-array (list length) :element-type 'ub8)))
+  (let ((buffer (make-array (list length) :element-type '(ub 8))))
     (read-octet-vector buffer stream)
     (let ((pos (position 0 buffer)))
       (setq buffer

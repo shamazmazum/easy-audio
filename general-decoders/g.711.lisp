@@ -25,10 +25,7 @@
 
 (declaim (optimize (speed 3)))
 
-(deftype ub8 () '(unsigned-byte 8))
-(deftype b16 () '(signed-byte 16))
-
-(declaim (ftype (function (ub8) b16) g.711-alaw-decode))
+(declaim (ftype (function ((ub 8)) (sb 16)) g.711-alaw-decode))
 (defun g.711-alaw-decode (coded-val)
   (let* ((toggled-bits (logxor coded-val #x55))
          (mantissa (ldb (byte 4 0) toggled-bits))
@@ -40,7 +37,7 @@
 
     (if (> coded-val #x7f) res (- res))))
 
-(declaim (ftype (function (ub8) b16) g.711-ulaw-decode))
+(declaim (ftype (function ((ub 8)) (sb 16)) g.711-ulaw-decode))
 (defun g.711-ulaw-decode (coded-value)
   (let* ((inv (- #xff coded-value))
          (exp (ldb (byte 3 4) inv))

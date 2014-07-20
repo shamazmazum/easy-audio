@@ -60,7 +60,7 @@
                     :documentation "Length of this metadata block in bytes (with exclusion of
 header)")
    (rawdata         :initarg :rawdata
-                    :type (simple-array ub8))
+                    :type (sa-ub 8))
    (start-position  :initarg :start-position
                     :documentation "Strart position of metadata block"
 		    :type non-negative-int
@@ -103,9 +103,9 @@ metadata type"))
 
 (defstruct seekpoint
   "A seekpoint (entry in sdeektable)"
-  (samplenum 0        :type (unsigned-byte 64))
-  (offset 0           :type (unsigned-byte 64))
-  (samples-in-frame 0 :type (unsigned-byte 16)))
+  (samplenum 0        :type (ub 64))
+  (offset 0           :type (ub 64))
+  (samples-in-frame 0 :type (ub 16)))
 
 (defclass seektable (metadata-header)
   ((seekpoints :accessor seektable-seekpoints
@@ -173,7 +173,7 @@ metadata type"))
    (color-num      :type non-negative-int
                    :accessor picture-color-num
                    :documentation "Number of colors in indexed picture, 0 for non-indexed")
-   (picture        :type simple-ub8-vector
+   (picture        :type (sa-ub 8)
                    :accessor picture-picture
                    :documentation "The picture itself as array of octets"))
   (:documentation "PICTURE metadata block"))
@@ -193,12 +193,12 @@ metadata type"))
 	       :type (integer 4 33))
    (out-buf    :accessor subframe-out-buf
 	       :initarg :out-buf
-	       :type (simple-array (signed-byte 32))))
+	       :type (sa-sb 32)))
   (:documentation "An ancestor of all 4 types of subframes. Is not instaneated."))
 
 (defclass subframe-constant (subframe)
   ((constant-value :accessor subframe-constant-value
-		   :type (signed-byte 32)
+		   :type (sb 32)
                    :documentation "The value of all samples"))
   (:documentation "Subframe with швутешсфд samples"))
 
@@ -213,9 +213,9 @@ metadata type"))
    (precision       :accessor subframe-lpc-precision
 	            :type fixnum)
    (predictor-coeff :accessor subframe-lpc-predictor-coeff
-		    :type (simple-array (signed-byte 32)))
+		    :type (sa-sb 32))
    (coeff-shift     :accessor subframe-lpc-coeff-shift
-		    :type (signed-byte 32)))
+		    :type (sb 32)))
   (:documentation "Subframe with FIR linear predictor"))
 
 (defclass subframe-fixed (subframe)
@@ -262,7 +262,7 @@ frame number) or :VARIABLE (frame header contains the sample number)")
                        :initform #.(ash 1 36)
                        :documentation "Frame/sample number")
    (crc-8              :accessor frame-crc-8
-	               :type ub8
+	               :type (ub 8)
                        :documentation "CRC8 of a frame header (including the sync code)")
    (subframes          :accessor frame-subframes
 	               :type list

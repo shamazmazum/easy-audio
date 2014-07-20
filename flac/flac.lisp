@@ -31,7 +31,7 @@
                    (+ (metadata-start-position metadata)
                       4))
   (let ((chunk (make-array (list (metadata-length metadata))
-			   :element-type '(unsigned-byte 8))))
+			   :element-type '(ub 8))))
     (read-octet-vector chunk bitreader)
     (setf (slot-value metadata 'rawdata) chunk)))
 
@@ -84,5 +84,5 @@
     (if (= blocksize (streaminfo-maxblocksize streaminfo))
         (loop repeat (streaminfo-channels streaminfo)
            collect (make-array (list blocksize)
-                               :element-type '(signed-byte 32)))
+                               :element-type '(sb 32)))
         (error 'flac-error :message "Cannot make output buffers: variable block size in stream"))))

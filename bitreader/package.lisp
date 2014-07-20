@@ -22,18 +22,9 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-music.bitreader
-  (:use #:cl)
+  (:use #:cl #:easy-audio-early)
   (:nicknames #:bitreader)
-  (:export #:non-negative-fixnum ; Types
-           #:positive-fixnum
-           #:non-negative-int
-           #:positive-int
-           #:bit-counter
-           #:ub4
-           #:ub8
-           #:simple-ub8-vector
-
-           #:bitreader-eof       ; Conditions
+  (:export #:bitreader-eof       ; Conditions
 
            #:reader              ; Reader structure and accessors
            #:make-reader

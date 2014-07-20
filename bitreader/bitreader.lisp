@@ -29,16 +29,6 @@
 (declaim (optimize #+easy-audio-unsafe-code
                    (safety 0) (speed 3)))
 
-(deftype non-negative-fixnum () '(integer 0 #.most-positive-fixnum))
-(deftype positive-fixnum () '(integer 1 #.most-positive-fixnum))
-(deftype non-negative-int () '(integer 0))
-(deftype positive-int () '(integer 1))
-(deftype bit-counter () '(integer 0 8))
-(deftype ub8 () '(unsigned-byte 8))
-(deftype ub16 () '(unsigned-byte 16))
-(deftype simple-ub8-vector () '(simple-array ub8 (*)))
-(deftype simple-ub16-vector () '(simple-array ub16 (*)))
-
 (defparameter *buffer-size* 4096)
 
 (define-condition bitreader-eof ()
@@ -50,10 +40,10 @@
   (ibyte     0 :type non-negative-fixnum)
   (end       0 :type non-negative-fixnum)
   (buffer    (make-array (list *buffer-size*)
-		      :element-type 'ub8)
-	       :type simple-ub8-vector)
+		      :element-type '(ub 8))
+	       :type (sa-ub 8))
   #+easy-audio-check-crc
-  (crc       0 :type ub16)
+  (crc       0 :type (ub 16))
   #+easy-audio-check-crc
   (crc-start 0 :type non-negative-fixnum)
   stream)
@@ -61,16 +51,16 @@
 
 ;; Fixme: do not forget to fix the generator !!!
 #+easy-audio-check-crc
-(declaim (type simple-ub16-vector +crc-table+))
+(declaim (type (sa-ub 16) +crc-table+))
 #+easy-audio-check-crc
 (defparameter +crc-table+
   (make-array 256
-              :element-type 'ub16
+              :element-type '(ub 16)
               :initial-contents
               '#.(flet ((crc-for-byte (byte)
-                          (declare (type ub8 byte))
+                          (declare (type (ub 8) byte))
                           (let ((crc (ash byte 8)))
-                            (declare (type ub16 crc))
+                            (declare (type (ub 16) crc))
                             (loop for i fixnum below 8 do
                                  (setq crc
                                        (logand #xffff
@@ -81,15 +71,15 @@
                    (loop for i below 256 collect (crc-for-byte i)))))
 
 #+easy-audio-check-crc
-(declaim (ftype (function (simple-ub8-vector &optional ub16) ub16) crc))
+(declaim (ftype (function ((sa-ub 8) &optional ub16) ub16) crc))
 #+easy-audio-check-crc
 (defun crc (array &optional (start 0))
-  (declare (type (simple-array ub8) array)
+  (declare (type (sa-ub 8) array)
            (optimize (speed 3)))
 
   (flet ((accumulate-crc (crc x)
-                         (declare (type ub16 crc)
-                                  (type ub8 x))
+                         (declare (type (ub 16) crc)
+                                  (type (ub 8) x))
                          (logand #xffff
                                  (logxor (ash crc 8)
                                          (aref +crc-table+
@@ -161,7 +151,7 @@
 		 (reader-ibyte reader)))
     (move-forward reader)))
 
-(declaim (ftype (function (reader) ub8) read-octet))
+(declaim (ftype (function (reader) (ub 8)) read-octet))
 (defun read-octet (reader)
   "Reads current octet from reader
    Ignores ibit"
@@ -171,7 +161,7 @@
       (aref (reader-buffer reader) (reader-ibyte reader))
     (incf (reader-ibyte reader))))
 
-(declaim (ftype (function (simple-ub8-vector reader) positive-int) read-octet-vector))
+(declaim (ftype (function ((sa-ub 8) reader) positive-int) read-octet-vector))
 (defun read-octet-vector (array reader)
   ;; Stupid and maybe slow version.
   ;; Why not? I do not use this function often
@@ -217,10 +207,10 @@
          (- (reader-end reader))
          (reader-ibyte reader)))))
 
-(declaim (ftype (function (reader ub8) ub8) peek-octet))
+(declaim (ftype (function (reader (ub 8)) (ub 8)) peek-octet))
 (defun peek-octet (reader octet)
   "Sets input to the first octet found in stream"
-  (declare (type ub8 octet))
+  (declare (type (ub 8) octet))
   (setf (reader-ibyte reader)
 	(loop for pos = (position octet (reader-buffer reader)
 				  :start (reader-ibyte reader))
@@ -287,7 +277,7 @@
         (reader-ibyte reader)))
 
 #+easy-audio-check-crc
-(declaim (ftype (function (reader) ub16) get-crc))
+(declaim (ftype (function (reader) (ub 16)) get-crc))
 #+easy-audio-check-crc
 (defun get-crc (reader)
   (crc (subseq (reader-buffer reader)

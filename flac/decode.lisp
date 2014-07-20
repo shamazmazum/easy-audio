@@ -32,10 +32,10 @@
   (let ((wasted-bits (subframe-wasted-bps subframe))
 	(out-buf (subframe-out-buf subframe)))
     (declare (type non-negative-fixnum wasted-bits)
-	     (type (simple-array (signed-byte 32)) out-buf))
+	     (type (sa-sb 32) out-buf))
     (if (/= wasted-bits 0)
 	(map-into out-buf #'(lambda (sample)
-			      (declare (type (signed-byte 32) sample))
+			      (declare (type (sb 32) sample))
 			      (the fixnum (ash sample wasted-bits)))
 		  out-buf))))
 
@@ -43,8 +43,8 @@
   (declare (ignore frame))
   (let ((out-buf (subframe-out-buf subframe))
 	(constant (subframe-constant-value subframe)))
-    (declare (type (signed-byte 32) constant)
-	     (type (simple-array (signed-byte 32)) out-buf))
+    (declare (type (sb 32) constant)
+	     (type (sa-sb 32) out-buf))
     (dotimes (i (length out-buf))
       (setf (aref out-buf i) constant))
     out-buf))
@@ -59,7 +59,7 @@
   (let* ((out-buf (subframe-out-buf subframe))
 	 (order (subframe-order subframe))
 	 (len (length out-buf)))
-    (declare (type (simple-array (signed-byte 32)) out-buf)
+    (declare (type (sa-sb 32) out-buf)
 	     (type fixnum order len))
     (cond
      ;; 0 - out-buf contains decoded data
@@ -138,8 +138,8 @@
               (declare (optimize
                         #+easy-audio-unsafe-code
                         (safety 0) (speed 3) (space 2))
-                       (type (simple-array (signed-byte 32)) out-buf coeff)
-                       (type (signed-byte 32) shift))
+                       (type (sa-sb 32) out-buf coeff)
+                       (type (sb 32) shift))
                 
               (loop for i fixnum from ,n below (length out-buf)
                  for sum fixnum = 0 do
@@ -194,7 +194,7 @@ Returns list of decoded audio buffers (one buffer for each channel)."
         (error 'flac-error :message "Bad channel assignment/number of subframes"))
 
     (destructuring-bind (left right) decoded-subframes
-      (declare (type (simple-array (signed-byte 32)) left right))
+      (declare (type (sa-sb 32) left right))
       (cond
        ((= +left-side+ assignment)
 	;; Maybe just a loop?

@@ -75,7 +75,7 @@
 ;; Residual reader
 (defun residual-reader (bit-reader subframe frame out)
   (let ((coding-method (read-bits 2 bit-reader)))
-    (declare (type (unsigned-byte 2) coding-method))
+    (declare (type (ub 2) coding-method))
     (cond
      ((= coding-method 0) ; 00
       (residual-body-reader bit-reader subframe frame out
@@ -90,9 +90,9 @@
 
 (defun residual-body-reader (bit-reader subframe frame out &key param-len esc-code)
   (declare (type fixnum param-len esc-code)
-	   (type (simple-array (signed-byte 32)) out))
+	   (type (sa-sb 32) out))
 
-  (let* ((part-order (the (unsigned-byte 4)
+  (let* ((part-order (the (ub 4)
 		       (read-bits 4 bit-reader)))
 	 (sample-idx (subframe-order subframe))
 	 (blocksize (frame-block-size frame))
@@ -135,7 +135,7 @@
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (subframe-out-buf subframe))
 	 (coeff-buf (make-array (list warm-up-samples)
-				:element-type '(signed-byte 32))))
+				:element-type '(sb 32))))
     
     (read-bits-array bit-reader
 		     out-buf bps :signed t :len warm-up-samples)
@@ -214,13 +214,13 @@
 
             (subframe-out-buf subframe)
             (if (and *out-buffer*
-                     (= (length (the (simple-array (signed-byte 32))
+                     (= (length (the (sa-sb 32)
                                      *out-buffer*))
                         blocksize))
                 *out-buffer*
                 (make-array
                  (list blocksize)
-                 :element-type '(signed-byte 32))))
+                 :element-type '(sb 32))))
 
       (subframe-body-reader stream subframe frame)
       subframe))

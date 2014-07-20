@@ -25,7 +25,18 @@
   (:use :cl)
   (:export #:*current-condition*
            #:with-interactive-debug
-           #:defvar-unbound))
+           #:defvar-unbound
+
+           ;; Types
+           #:non-negative-fixnum
+           #:positive-fixnum
+           #:non-negative-int
+           #:positive-int
+           #:bit-counter
+           #:ub
+           #:sb
+           #:sa-ub
+           #:sa-sb))
 
 ;; Comment it out if you do not want restrictions
 (eval-when (:load-toplevel :compile-toplevel :execute)
@@ -46,6 +57,17 @@
   (set-dispatch-macro-character #\# #\f #'type-decl-func))
 
 (in-package :easy-audio-early)
+
+(deftype non-negative-fixnum () '(integer 0 #.most-positive-fixnum))
+(deftype positive-fixnum () '(integer 1 #.most-positive-fixnum))
+(deftype non-negative-int () '(integer 0))
+(deftype positive-int () '(integer 1))
+(deftype bit-counter () '(integer 0 8))
+(deftype ub (n) `(unsigned-byte ,n))
+(deftype sb (n) `(signed-byte ,n))
+(deftype sa-ub (n) `(simple-array (ub ,n) (*)))
+(deftype sa-sb (n) `(simple-array (sb ,n) (*)))
+
 ;; Definition of documented unbound variables
 (defmacro defvar-unbound (var &optional doc-string)
   "Defines special unbound variable with defvar,
