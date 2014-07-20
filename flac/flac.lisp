@@ -46,7 +46,8 @@
   "Reads flac file from STREAM and returns two values:
    list of metadata blocks and bitreader wrapper around stream"
   ;; Checking if stream is flac stream
-  (let ((bitreader (make-reader :stream stream)))
+  (let ((bitreader (make-reader :stream stream
+                                :crc-fun #'crc-0-8005)))
     (if (/= +flac-id+ (read-bits 32 bitreader))
         (error 'flac-error :message "Stream is not flac stream"))
 

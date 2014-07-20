@@ -10,6 +10,7 @@
 
                (:file "bitreader/package")
 	       (:file "bitreader/bitreader" :depends-on ("bitreader/package"))
+               (:file "bitreader/crc" :depends-on ("bitreader/package"))
 	       (:file "flac/package" :depends-on ("bitreader/package"))
 	       (:file "flac/definitions" :depends-on ("flac/package"))
 	       (:file "flac/flac-reader" :depends-on ("flac/package"))

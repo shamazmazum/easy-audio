@@ -43,10 +43,8 @@
   "Test low-level bitreader functions"
   (with-input-from-sequence (input #(1 2 3 128 129 4))
     ;; Set internal buffer size low to check buffer refill
-    (let* ((bitreader::*buffer-size* 3)
-           (reader (bitreader:make-reader :stream input)))
-      #+easy-audio-check-crc
-      (bitreader:init-crc reader)
+    (let ((bitreader::*buffer-size* 3)
+          (reader (bitreader:make-reader :stream input)))
       ;; "Not associated with file" blah-blah
       ;; (is (= (bitreader:reader-length reader) 6))
       (is (= (bitreader:read-octet reader) 1))
@@ -57,9 +55,22 @@
       (is (= (bitreader:read-to-byte-alignment reader) 0))
       (is (= (bitreader:read-bit reader) 1))
       (is (= (bitreader:read-to-byte-alignment reader) 1))
-      (is (= (bitreader:read-bits 8 reader) 4))
-      #+easy-audio-check-crc
-      (is (= (bitreader:get-crc reader) #x48e2)))))
+      (is (= (bitreader:read-bits 8 reader) 4)))))
+
+#+easy-audio-check-crc
+(test bitreader-check-crc
+  "Check CRC functions"
+  (let ((funcs-and-crcs (list (cons #'bitreader:crc-0-8005 #x0c1e))))
+    (loop for (func . crc) in funcs-and-crcs do
+         (with-input-from-sequence (input #(1 2 3))
+           ;; Set internal buffer size low to check buffer refill
+           (let ((reader (bitreader:make-reader :stream input
+                                                :crc-fun func)))
+             (bitreader:init-crc reader)
+             (bitreader:read-octet reader)
+             (bitreader:read-octet reader)
+             (bitreader:read-octet reader)
+             (is (= crc (bitreader:get-crc reader))))))))
 
 (in-suite flac)
 (test flac-bitreader-tests
@@ -74,7 +85,8 @@
   (is (= (flac::unsigned-to-signed 13 5) 13))
 
   (with-input-from-sequence (input #(#x00 #x8a))
-    (let ((reader (bitreader:make-reader :stream input)))
+    (let ((reader (bitreader:make-reader :stream input
+                                         :crc-fun #'bitreader:crc-0-8005)))
       (is (= (flac::read-unary-coded-integer reader) 8))
       (is (= (flac::read-rice-signed reader 3) 13))
       ;; Check is reading operations consumed right amount of input
@@ -92,7 +104,8 @@
                                       #x00 #x0a                               ; Constant subframe with 8-bit value 10
                                       #x02 ,@(loop repeat 192 collect #x0b) ; Verbatim subframe with 8-bit values
                                       #x4d #x6b))                             ; CRC-16
-    (let* ((reader (bitreader:make-reader :stream input))
+    (let* ((reader (bitreader:make-reader :stream input
+                                          :crc-fun #'bitreader:crc-0-8005))
            (frame  (flac:frame-reader reader nil)))
       (is (equalp (flac:frame-decode frame)
                   (list (make-array 192 :initial-element 10)

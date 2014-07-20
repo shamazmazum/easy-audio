@@ -46,45 +46,11 @@
   (crc       0 :type (ub 16))
   #+easy-audio-check-crc
   (crc-start 0 :type non-negative-fixnum)
+  #+easy-audio-check-crc
+  (crc-fun #'(lambda (array accum)
+               (declare (ignore array accum))
+               0) :type function)
   stream)
-
-
-;; Fixme: do not forget to fix the generator !!!
-#+easy-audio-check-crc
-(declaim (type (sa-ub 16) +crc-table+))
-#+easy-audio-check-crc
-(defparameter +crc-table+
-  (make-array 256
-              :element-type '(ub 16)
-              :initial-contents
-              '#.(flet ((crc-for-byte (byte)
-                          (declare (type (ub 8) byte))
-                          (let ((crc (ash byte 8)))
-                            (declare (type (ub 16) crc))
-                            (loop for i fixnum below 8 do
-                                 (setq crc
-                                       (logand #xffff
-                                               (if (/= 0 (logand #x8000 crc))
-                                                   (logxor #x8005 (ash crc 1))
-                                                   (ash crc 1))))
-                               finally (return crc)))))
-                   (loop for i below 256 collect (crc-for-byte i)))))
-
-#+easy-audio-check-crc
-(declaim (ftype (function ((sa-ub 8) &optional ub16) ub16) crc))
-#+easy-audio-check-crc
-(defun crc (array &optional (start 0))
-  (declare (type (sa-ub 8) array)
-           (optimize (speed 3)))
-
-  (flet ((accumulate-crc (crc x)
-                         (declare (type (ub 16) crc)
-                                  (type (ub 8) x))
-                         (logand #xffff
-                                 (logxor (ash crc 8)
-                                         (aref +crc-table+
-                                               (logxor x (ash crc -8)))))))
-    (reduce #'accumulate-crc array :initial-value start)))
 
 (declaim (inline reset-counters))
 (defun reset-counters (reader)
@@ -117,10 +83,11 @@
   (reset-counters reader)
   #+easy-audio-check-crc
   (setf (reader-crc reader)
-        (crc (subseq (reader-buffer reader)
-                     (reader-crc-start reader)
-                     (reader-end reader))
-             (reader-crc reader))
+        (funcall (reader-crc-fun reader)
+                 (subseq (reader-buffer reader)
+                         (reader-crc-start reader)
+                         (reader-end reader))
+                 (reader-crc reader))
         
         (reader-crc-start reader) 0)
 
@@ -280,7 +247,8 @@
 (declaim (ftype (function (reader) (ub 16)) get-crc))
 #+easy-audio-check-crc
 (defun get-crc (reader)
-  (crc (subseq (reader-buffer reader)
-               (reader-crc-start reader)
-               (reader-ibyte reader))
-       (reader-crc reader)))
+  (funcall (reader-crc-fun reader)
+           (subseq (reader-buffer reader)
+                   (reader-crc-start reader)
+                   (reader-ibyte reader))
+           (reader-crc reader)))
