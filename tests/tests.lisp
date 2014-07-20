@@ -60,7 +60,8 @@
 #+easy-audio-check-crc
 (test bitreader-check-crc
   "Check CRC functions"
-  (let ((funcs-and-crcs (list (cons #'bitreader:crc-0-8005 #x0c1e))))
+  (let ((funcs-and-crcs (list (cons #'bitreader:crc-0-8005 #x0c1e)
+                              (cons #'bitreader:crc-0-04c11db7 #xac691451))))
     (loop for (func . crc) in funcs-and-crcs do
          (with-input-from-sequence (input #(1 2 3))
            ;; Set internal buffer size low to check buffer refill

@@ -30,6 +30,7 @@
                    (safety 0) (speed 3)))
 
 ;; Contains CRC functions used by easy-audio
+;; Flac
 #+easy-audio-check-crc
 (declaim (type (sa-ub 16) +crc-table-0-8005+))
 #+easy-audio-check-crc
@@ -41,7 +42,7 @@
                           (declare (type (ub 8) byte))
                           (let ((crc (ash byte 8)))
                             (declare (type (ub 16) crc))
-                            (loop for i fixnum below 8 do
+                            (loop repeat 8 do
                                  (setq crc
                                        (logand #xffff
                                                (if (/= 0 (logand #x8000 crc))
@@ -58,7 +59,6 @@
 (defun crc-0-8005 (array accum)
   "CRC checksum used in FLAC frames"
   (declare (type (sa-ub 8) array))
-
   (flet ((accumulate-crc (crc x)
                          (declare (type (ub 16) crc)
                                   (type (ub 8) x))
@@ -66,4 +66,43 @@
                                  (logxor (ash crc 8)
                                          (aref +crc-table-0-8005+
                                                (logxor x (ash crc -8)))))))
+    (reduce #'accumulate-crc array :initial-value accum)))
+
+;; OGG
+#+easy-audio-check-crc
+(declaim (type (sa-ub 32) +crc-table-0-04c11db7+))
+#+easy-audio-check-crc
+(defparameter +crc-table-0-04c11db7+
+  (make-array 256
+              :element-type '(ub 32)
+              :initial-contents
+              '#.(flet ((crc-for-byte (byte)
+                          (declare (type (ub 8) byte))
+                          (let ((crc (ash byte 24)))
+                            (declare (type (ub 32) crc))
+                            (loop repeat 8 do
+                                 (setq crc
+                                       (logand #xffffffff
+                                               (if (/= 0 (logand #x80000000 crc))
+                                                   (logxor #x04c11db7 (ash crc 1))
+                                                   (ash crc 1))))
+                                 finally (return crc)))))
+
+                   (loop for i below 256 collect (crc-for-byte i))))
+  "Precalculated CRC-32 table, starting with 0, polynomial generator #x04c11db7.
+   Used for OGG container")
+
+#+easy-audio-check-crc
+(declaim (ftype (function ((sa-ub 8) (ub 32)) (ub 32)) crc-0-04c11db7))
+#+easy-audio-check-crc
+(defun crc-0-04c11db7 (array accum)
+  "CRC checksum used in FLAC frames"
+  (declare (type (sa-ub 8) array))
+  (flet ((accumulate-crc (crc x)
+                         (declare (type (ub 32) crc)
+                                  (type (ub 8) x))
+                         (logand #xffffffff
+                                 (logxor (ash crc 8)
+                                         (aref +crc-table-0-04c11db7+
+                                               (logxor x (logand #xff (ash crc -24))))))))
     (reduce #'accumulate-crc array :initial-value accum)))

@@ -315,6 +315,7 @@
 						      :message "Padding to byte-alignment is not zero"))
     #+easy-audio-check-crc
     (let ((crc (get-crc stream)))
+      (declare (type (ub 16) crc))
       (setf (frame-crc-16 frame) crc)
       (if (/= crc (read-bits 16 stream))
           (error 'flac-bad-frame

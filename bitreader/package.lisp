@@ -54,4 +54,6 @@
            #+easy-audio-check-crc
            #:get-crc
            #+easy-audio-check-crc
-           #:crc-0-8005))
+           #:crc-0-8005
+           #+easy-audio-check-crc
+           #:crc-0-04c11db7))
