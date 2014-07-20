@@ -31,9 +31,7 @@
 
 ;; Contains CRC functions used by easy-audio
 ;; Flac
-#+easy-audio-check-crc
 (declaim (type (sa-ub 16) +crc-table-0-8005+))
-#+easy-audio-check-crc
 (defparameter +crc-table-0-8005+
   (make-array 256
               :element-type '(ub 16)
@@ -53,9 +51,7 @@
   "Precalculated CRC-16 table, starting with 0, polynomial generator #x8005.
    Used for FLAC")
 
-#+easy-audio-check-crc
 (declaim (ftype (function ((sa-ub 8) (ub 16)) (ub 16)) crc-0-8005))
-#+easy-audio-check-crc
 (defun crc-0-8005 (array accum)
   "CRC checksum used in FLAC frames"
   (declare (type (sa-ub 8) array))
@@ -69,9 +65,7 @@
     (reduce #'accumulate-crc array :initial-value accum)))
 
 ;; OGG
-#+easy-audio-check-crc
 (declaim (type (sa-ub 32) +crc-table-0-04c11db7+))
-#+easy-audio-check-crc
 (defparameter +crc-table-0-04c11db7+
   (make-array 256
               :element-type '(ub 32)
@@ -92,9 +86,7 @@
   "Precalculated CRC-32 table, starting with 0, polynomial generator #x04c11db7.
    Used for OGG container")
 
-#+easy-audio-check-crc
 (declaim (ftype (function ((sa-ub 8) (ub 32)) (ub 32)) crc-0-04c11db7))
-#+easy-audio-check-crc
 (defun crc-0-04c11db7 (array accum)
   "CRC checksum used in FLAC frames"
   (declare (type (sa-ub 8) array))

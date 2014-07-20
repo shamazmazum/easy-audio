@@ -1,3 +1,10 @@
+;; Comment it out if you do not want restrictions
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (pushnew :easy-audio-use-fixnums *features*)
+  (pushnew :easy-audio-unsafe-code *features*)
+  #+nil
+  (pushnew :easy-audio-check-crc   *features*))
+
 (defsystem :easy-audio
   :name :easy-audio
   :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
@@ -10,6 +17,7 @@
 
                (:file "bitreader/package")
 	       (:file "bitreader/bitreader" :depends-on ("bitreader/package"))
+               #+easy-audio-check-crc
                (:file "bitreader/crc" :depends-on ("bitreader/package"))
 	       (:file "flac/package" :depends-on ("bitreader/package"))
 	       (:file "flac/definitions" :depends-on ("flac/package"))

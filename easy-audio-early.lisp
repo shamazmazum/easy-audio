@@ -38,13 +38,6 @@
            #:sa-ub
            #:sa-sb))
 
-;; Comment it out if you do not want restrictions
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (pushnew :easy-audio-use-fixnums *features*)
-  (pushnew :easy-audio-unsafe-code *features*)
-  #+nil
-  (pushnew :easy-audio-check-crc   *features*))
-
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defun type-decl-func (stream sub-char num)
     (declare (ignore sub-char num))
