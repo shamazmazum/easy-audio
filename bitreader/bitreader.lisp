@@ -43,7 +43,7 @@
 		      :element-type '(ub 8))
 	       :type (sa-ub 8))
   #+easy-audio-check-crc
-  (crc       0 :type (ub 16))
+  (crc       0 :type unsigned-byte)
   #+easy-audio-check-crc
   (crc-start 0 :type non-negative-fixnum)
   #+easy-audio-check-crc
@@ -243,8 +243,6 @@
         (reader-crc-start reader)
         (reader-ibyte reader)))
 
-#+easy-audio-check-crc
-(declaim (ftype (function (reader) (ub 16)) get-crc))
 #+easy-audio-check-crc
 (defun get-crc (reader)
   (funcall (reader-crc-fun reader)
