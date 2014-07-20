@@ -86,7 +86,10 @@
 
   (with-input-from-sequence (input #(#x00 #x8a))
     (let ((reader (bitreader:make-reader :stream input
-                                         :crc-fun #'bitreader:crc-0-8005)))
+                                         #+easy-audio-check-crc
+                                         :crc-fun
+                                         #+easy-audio-check-crc
+                                         #'bitreader:crc-0-8005)))
       (is (= (flac::read-unary-coded-integer reader) 8))
       (is (= (flac::read-rice-signed reader 3) 13))
       ;; Check is reading operations consumed right amount of input
@@ -105,7 +108,10 @@
                                       #x02 ,@(loop repeat 192 collect #x0b) ; Verbatim subframe with 8-bit values
                                       #x4d #x6b))                             ; CRC-16
     (let* ((reader (bitreader:make-reader :stream input
-                                          :crc-fun #'bitreader:crc-0-8005))
+                                          #+easy-audio-check-crc
+                                          :crc-fun
+                                          #+easy-audio-check-crc
+                                          #'bitreader:crc-0-8005))
            (frame  (flac:frame-reader reader nil)))
       (is (equalp (flac:frame-decode frame)
                   (list (make-array 192 :initial-element 10)
