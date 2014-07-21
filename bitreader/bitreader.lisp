@@ -238,15 +238,15 @@
     result))
 
 #+easy-audio-check-crc
-(defun init-crc (reader)
-  (setf (reader-crc reader) 0
-        (reader-crc-start reader)
-        (reader-ibyte reader)))
+(progn
+  (defun init-crc (reader)
+    (setf (reader-crc reader) 0
+          (reader-crc-start reader)
+          (reader-ibyte reader)))
 
-#+easy-audio-check-crc
-(defun get-crc (reader)
-  (funcall (reader-crc-fun reader)
-           (subseq (reader-buffer reader)
-                   (reader-crc-start reader)
-                   (reader-ibyte reader))
-           (reader-crc reader)))
+  (defun get-crc (reader)
+    (funcall (reader-crc-fun reader)
+             (subseq (reader-buffer reader)
+                     (reader-crc-start reader)
+                     (reader-ibyte reader))
+             (reader-crc reader))))
