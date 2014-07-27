@@ -52,12 +52,6 @@
                0) :type function)
   stream)
 
-(declaim (inline reset-counters))
-(defun reset-counters (reader)
-  "Resets ibit and ibyte in reader struct"
-  (setf (reader-ibit reader) 0
-        (reader-ibyte reader) 0))
-
 (declaim (inline move-forward))
 (defun move-forward (reader &optional (bits 1))
   "Moves position in READER bit reader in range [0; 8-ibit] BITS.
@@ -80,7 +74,6 @@
 (declaim (inline fill-buffer))
 (defun fill-buffer (reader)
   "Fills internal buffer of READER"
-  (reset-counters reader)
   #+easy-audio-check-crc
   (setf (reader-crc reader)
         (funcall (reader-crc-fun reader)
@@ -91,7 +84,9 @@
         
         (reader-crc-start reader) 0)
 
-  (setf (reader-end reader)
+  (setf (reader-ibit reader) 0
+        (reader-ibyte reader) 0
+        (reader-end reader)
         (read-sequence (reader-buffer reader)
                        (reader-stream reader)))
   
@@ -100,8 +95,6 @@
 (declaim (inline can-not-read))
 (defun can-not-read (reader)
   "Checks if READER can be read without calling fill-buffer"
-  (declare (type reader reader))
-
   (= (reader-ibyte reader)
      (reader-end reader)))
 
@@ -109,7 +102,6 @@
 (declaim (ftype (function (reader) (integer 0 1)) read-bit))
 (defun read-bit (reader)
   "Read a single bit from READER"
-  (declare (type reader reader))
   (if (can-not-read reader) (fill-buffer reader))
 
   (prog1
@@ -192,7 +184,6 @@
 (defun reader-length (reader)
   "Returns length of stream in octets or zero
    if the value is unknown"
-  (declare (type reader reader))
   (let ((len (file-length (reader-stream reader))))
     (if len len 0)))
 
