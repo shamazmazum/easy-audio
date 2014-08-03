@@ -113,7 +113,7 @@
                                           :crc-fun
                                           #+easy-audio-check-crc
                                           #'bitreader:crc-0-8005))
-           (frame  (flac:frame-reader reader nil)))
+           (frame  (flac:frame-reader reader)))
       (is (equalp (flac:frame-decode frame)
                   (list (make-array 192 :initial-element 10)
                         (make-array 192 :initial-element 11)))))))

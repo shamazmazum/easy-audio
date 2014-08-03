@@ -52,7 +52,8 @@
 (defun get-sample-rate (streaminfo val)
   (declare (type non-negative-fixnum val))
   (cond
-    ((= val 0) (streaminfo-samplerate streaminfo))
+    ((and (= val 0)
+          streaminfo) (streaminfo-samplerate streaminfo))
     ((< val 15) (nth (1- val) +coded-sample-rates+))
     (t
      (error 'flac-bad-frame
@@ -66,7 +67,7 @@
 
 (defun get-sample-size (streaminfo val)
   (declare (type non-negative-fixnum val))
-  (if (= val 0)
+  (if (and (= val 0) streaminfo)
       (streaminfo-bitspersample streaminfo)
       (or (cdr (assoc val +coded-sample-sizes+))
           (error 'flac-bad-frame
@@ -225,18 +226,18 @@
       (subframe-body-reader stream subframe frame)
       subframe))
 
-(defmethod frame-reader :around (stream streaminfo &optional out-buffers)
+(defmethod frame-reader :around (stream &optional streaminfo out-buffers)
   (restart-case
       (call-next-method)
       (skip-malformed-frame ()
         :report "Skip this frame and read the next one"
-        (restore-sync stream streaminfo)
+        (restore-sync stream)
         (frame-reader stream streaminfo out-buffers))
       (stop-reading-frame ()
         :report "Do nothing and return dummy frame"
         (make-instance 'frame))))
 
-(defmethod frame-reader (stream streaminfo &optional out-buffers)
+(defmethod frame-reader (stream &optional streaminfo out-buffers)
   (let ((frame (make-instance 'frame)))
     #+easy-audio-check-crc
     (init-crc stream)
