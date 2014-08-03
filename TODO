@@ -1,2 +1,8 @@
 1. The low-level bitreader definitely is a bottleneck and have big 
    potential for optimizations.
+
+2. There is no good "container" abstraction. For FLAC we do not need one
+   (just bit reader -> frame reader -> decoder is enough), but for ogg we
+   need a facility which allows transparent work with logical bitstreams.
+   Maybe use of CLOS (building containers atop of bitreader class) is
+   justified here.
