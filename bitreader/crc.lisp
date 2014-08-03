@@ -88,7 +88,7 @@
 
 (declaim (ftype (function ((sa-ub 8) (ub 32)) (ub 32)) crc-0-04c11db7))
 (defun crc-0-04c11db7 (array accum)
-  "CRC checksum used in FLAC frames"
+  "CRC checksum used in OGG container"
   (declare (type (sa-ub 8) array))
   (flet ((accumulate-crc (crc x)
                          (declare (type (ub 32) crc)

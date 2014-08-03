@@ -1,4 +1,4 @@
-;; Copyright (c) 2012-2013, Vasily Postnicov
+;; Copyright (c) 2012-2014, Vasily Postnicov
 ;; All rights reserved.
 
 ;; Redistribution and use in source and binary forms, with or without
@@ -21,44 +21,6 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage easy-music.bitreader
-  (:use #:cl #:easy-audio-early)
-  (:nicknames #:bitreader)
-  (:export #:bitreader-eof       ; Conditions
-
-           #:reader              ; Reader structure and accessors
-           #:make-reader ; Obsolete
-           #:make-reader-from-stream
-           #:make-reader-from-buffer
-           #:reader-ibit
-           #:reader-ibyte
-           #:reader-end
-           #:reader-stream
-           #:reader-buffer
-           
-           #:reset-counters      ; Helper functions & macros
-           #:move-forward
-           #:fill-buffer
-           #:can-not-read
-           #:read-bits-loop
-
-           #:read-bit            ; "End user" functions
-           #:read-bits
-           #:read-octet
-           #:read-octet-vector
-           #:read-octets
-           #:read-to-byte-alignment
-           #:reader-position
-           #:peek-octet
-           #:reader-length
-
-           #:*read-with-zeroing*
-
-           #+easy-audio-check-crc
-           #:init-crc
-           #+easy-audio-check-crc
-           #:get-crc
-           #+easy-audio-check-crc
-           #:crc-0-8005
-           #+easy-audio-check-crc
-           #:crc-0-04c11db7))
+(defpackage easy-audio.ogg
+  (:nicknames :ogg)
+  (:use #:cl #:easy-audio-early #:bitreader))

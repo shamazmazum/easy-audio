@@ -41,7 +41,7 @@
 (in-suite bitreader)
 (test bitreader-tests
   "Test low-level bitreader functions"
-  (with-input-from-sequence (input #(1 2 3 128 129 4))
+  (with-input-from-sequence (input #(1 2 3 128 129 4 1 2))
     ;; Set internal buffer size low to check buffer refill
     (let ((bitreader::*buffer-size* 3)
           (reader (bitreader:make-reader :stream input)))
@@ -55,7 +55,19 @@
       (is (= (bitreader:read-to-byte-alignment reader) 0))
       (is (= (bitreader:read-bit reader) 1))
       (is (= (bitreader:read-to-byte-alignment reader) 1))
-      (is (= (bitreader:read-bits 8 reader) 4)))))
+      (is (= (bitreader:read-bits 8 reader) 4))
+      (is (= (bitreader:read-octets 2 reader) 258)))))
+
+(test bitreader-little-endian
+  "Test low-level bitreader functions"
+  (with-input-from-sequence (input #(2 1 3 128))
+    ;; Set internal buffer size low to check buffer refill
+    (let ((bitreader::*buffer-size* 3)
+          (reader (bitreader:make-reader :stream input)))
+      ;; "Not associated with file" blah-blah
+      ;; (is (= (bitreader:reader-length reader) 6))
+      (is (= (bitreader:read-octets 2 reader :endianness :little) 258))
+      (is (= (bitreader:read-bits 16 reader :endianness :little) 32771)))))
 
 #+easy-audio-check-crc
 (test bitreader-check-crc
