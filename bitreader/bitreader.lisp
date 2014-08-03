@@ -288,14 +288,34 @@
 
 #+easy-audio-check-crc
 (progn
-  (defun init-crc (reader)
-    (setf (reader-crc reader) 0
+  (defun init-crc (reader &optional (start 0))
+    "Initialize CRC calculation with the value start (0 by default)"
+    (setf (reader-crc reader) start
           (reader-crc-start reader)
           (reader-ibyte reader)))
 
   (defun get-crc (reader)
+    "Return calculated CRC"
     (funcall (reader-crc-fun reader)
              (subseq (reader-buffer reader)
                      (reader-crc-start reader)
                      (reader-ibyte reader))
-             (reader-crc reader))))
+             (reader-crc reader)))
+
+  (defmacro with-skipping-crc ((reader) &body body)
+    "All input operations within this macro will not affect CRC computation.
+     Acts as if body forms is being computed in progn"
+    (let ((crc-val (gensym))
+          (result (gensym)))
+      `(let ((,crc-val (get-crc ,reader))
+             (,result (progn ,@body)))
+         (init-crc ,reader ,crc-val)
+         ,result)))
+
+  (defmacro with-crc ((reader) &body body)
+    "Execute body with enabled CRC computation and
+     return CRC"
+    `(progn
+       (init-crc ,reader)
+       ,@body
+       (get-crc ,reader))))

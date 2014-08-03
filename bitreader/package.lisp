@@ -53,6 +53,8 @@
            #:reader-length
 
            #:*read-with-zeroing*
+           #:with-crc
+           #:with-skipping-crc
 
            #+easy-audio-check-crc
            #:init-crc
