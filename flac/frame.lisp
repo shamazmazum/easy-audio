@@ -231,7 +231,7 @@
       (call-next-method)
       (skip-malformed-frame ()
         :report "Skip this frame and read the next one"
-        (restore-sync stream)
+        (restore-sync stream streaminfo)
         (frame-reader stream streaminfo out-buffers))
       (stop-reading-frame ()
         :report "Do nothing and return dummy frame"
