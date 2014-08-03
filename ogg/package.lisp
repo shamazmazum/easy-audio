@@ -23,4 +23,16 @@
 
 (defpackage easy-audio.ogg
   (:nicknames :ogg)
-  (:use #:cl #:easy-audio-early #:bitreader))
+  (:use #:cl #:easy-audio-early #:bitreader)
+  (:export #:read-packet
+           #:fresh-page
+           #:open-ogg
+           #:restore-sync
+
+           #:ogg-is-continued
+           #:ogg-bos
+           #:ogg-eos
+           #:ogg-granule-position
+           #:ogg-stream-serial
+           #:ogg-page-number
+           #:ogg-will-be-continued))
