@@ -148,7 +148,13 @@
   "Reads a packet from OGG stream"
   (let ((segments (read-packet-pages reader)))
     (if (= (length segments) 1) (car segments)
-        (error 'ogg-error :message "Cannot read packets which span many pages"))))
+        (let ((packet (make-array (reduce #'+ (mapcar #'length segments))
+                                  :element-type '(ub 8))))
+          (loop with start = 0
+                for segment in segments do
+                (setq packet (replace packet segment :start1 start)
+                      start (+ start (length segment))))
+          packet))))
 
 (defun fresh-page (reader)
   "Returns T if no packets were read on this page yet"

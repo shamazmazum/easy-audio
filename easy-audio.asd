@@ -19,6 +19,10 @@
 	       (:file "bitreader/bitreader" :depends-on ("bitreader/package"))
                #+easy-audio-check-crc
                (:file "bitreader/crc" :depends-on ("bitreader/package"))
+
+               (:file "ogg/package" :depends-on ("bitreader/package"))
+	       (:file "ogg/ogg" :depends-on ("ogg/package"))
+
 	       (:file "flac/package" :depends-on ("bitreader/package"))
 	       (:file "flac/definitions" :depends-on ("flac/package"))
 	       (:file "flac/flac-reader" :depends-on ("flac/package"))
@@ -26,9 +30,7 @@
 	       (:file "flac/frame" :depends-on ("flac/package"))
 	       (:file "flac/decode" :depends-on ("flac/package"))
 	       (:file "flac/flac" :depends-on ("flac/package"))
-
-               (:file "ogg/package" :depends-on ("bitreader/package"))
-	       (:file "ogg/ogg" :depends-on ("ogg/package"))
+               (:file "flac/flac-ogg" :depends-on ("flac/package"))
 
                (:file "wav/package" :depends-on ("bitreader/package"))
                (:file "wav/definitions" :depends-on ("wav/package"))
