@@ -112,7 +112,6 @@
   (let ((segments (read-octet reader)))
     (multiple-value-bind (segment-table will-be-continued)
         (read-ogg-segment-table reader segments)
-      (format t "OLOLO ~A ~A~%" segment-table will-be-continued)
       (setf (ogg-segment-table reader) segment-table
             (ogg-will-be-continued reader) will-be-continued))))
 
