@@ -153,28 +153,28 @@
     (incf (reader-ibyte reader))))
 
 #+easy-audio-use-fixnums
-(declaim (ftype (function (non-negative-int reader &key (:endianness symbol)) non-negative-fixnum) read-octets))
+(declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol)) non-negative-fixnum) read-octets))
 #-easy-audio-use-fixnums
-(declaim (ftype (function (non-negative-int reader &key (:endianness symbol)) non-negative-int) read-octets))
+(declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol)) non-negative-int) read-octets))
 (defun read-octets (n reader &key (endianness :big))
   "Reads n octets in integer value"
-  (let ((res 0)
-        (j 0))
+  (let ((res 0))
     (declare #+easy-audio-use-fixnums
              (type non-negative-fixnum res)
-             (type fixnum j)
+             (type fixnum n)
              (type (member :big :little) endianness))
     (dotimes (i n)
+      (declare (type fixnum i))
       (if (can-not-read reader) (fill-buffer reader))
       (let ((octet (aref (reader-buffer reader) (reader-ibyte reader))))
         (declare (type (ub 8) octet))
         (setq res
               (if (eq endianness :big)
-                  (logior (ash res 8) octet)
-                  (logior (ash octet j) res))))
+                  (logior #f non-negative-fixnum (ash res 8) octet)
+                  (logior #f non-negative-fixnum
+                          (ash octet #f non-negative-fixnum (ash i 3)) res))))
       (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
-      (incf (reader-ibyte reader))
-      (incf j 8))
+      (incf (reader-ibyte reader)))
     res))
 
 (declaim (ftype (function ((sa-ub 8) reader) positive-int) read-octet-vector))
@@ -213,16 +213,22 @@
   "Returns or sets number of readed octets.
    Similar to file-position
    Sets ibit to zero if val is specified"
-  (cond
-   (val
-    (file-position (reader-stream reader) val)
-    (fill-buffer reader)
-    val)
-   (t #f non-negative-fixnum
-      (+ #f non-negative-fixnum
-         (file-position (reader-stream reader))
-         (- (reader-end reader))
-         (reader-ibyte reader)))))
+  (let ((stream (reader-stream reader)))
+    (cond
+      (val
+       (cond
+         (stream
+          (file-position stream val)
+          (fill-buffer reader))
+         (t (setf (reader-ibyte reader) val)))
+       val)
+      (t #f non-negative-fixnum
+         (if stream
+             (+ #f non-negative-fixnum
+                (file-position (reader-stream reader))
+                (- (reader-end reader))
+                (reader-ibyte reader))
+             (reader-ibyte reader))))))
 
 (declaim (ftype (function (reader (ub 8)) (ub 8)) peek-octet))
 (defun peek-octet (reader octet)

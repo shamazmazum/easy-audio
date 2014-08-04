@@ -58,22 +58,22 @@
   (will-be-continued nil :type boolean)
   (reader-position   0   :type (ub 8)))
 
+
 (defun read-ogg-segment-table (reader segments)
   "Read an OGG page segment table and return two values:
    lengths of packets on this page and a boolean value.
    If this value is T the last packet will be continued on
    the next page"
-  (loop with continued = nil
-        with segment = 0
-        while (< segment segments)
-        collect
-        (loop for lacing-val = (read-octet reader)
-              for continued-packet = (= lacing-val 255)
-              sum lacing-val
-              do (incf segment)
-              while continued-packet
-              finally (setq continued continued-packet)) into packet-sizes
-       finally (return (values packet-sizes continued))))
+  (loop for segment below segments
+        for lacing-val = (read-octet reader)
+        sum lacing-val into segment-len
+        when (< lacing-val 255) collect (prog1
+                                            segment-len
+                                          (setq segment-len 0)) into packet-sizes
+        finally (return
+                  (if (= lacing-val 255)
+                      (values (append packet-sizes (list 255)) t)
+                      (values packet-sizes nil)))))
 
 (defun read-page-header (reader)
   "Read OGG page header"
@@ -112,6 +112,7 @@
   (let ((segments (read-octet reader)))
     (multiple-value-bind (segment-table will-be-continued)
         (read-ogg-segment-table reader segments)
+      (format t "OLOLO ~A ~A~%" segment-table will-be-continued)
       (setf (ogg-segment-table reader) segment-table
             (ogg-will-be-continued reader) will-be-continued))))
 
