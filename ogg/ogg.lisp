@@ -72,7 +72,7 @@
                                           (setq segment-len 0)) into packet-sizes
         finally (return
                   (if (= lacing-val 255)
-                      (values (append packet-sizes (list 255)) t)
+                      (values (append packet-sizes (list segment-len)) t)
                       (values packet-sizes nil)))))
 
 (defun read-page-header (reader)
@@ -124,9 +124,10 @@
       (read-page-header reader))
 
     (if (and previous-page-num
-             (= (- (ogg-page-number reader)
-                   previous-page-num) 1)
-             (ogg-is-continued reader))
+             (or
+              (/= (- (ogg-page-number reader)
+                     previous-page-num) 1)
+              (not (ogg-is-continued reader))))
         (error 'ogg-error :message "Lost sync"))
 
     (let ((packet (make-array (nth position segment-table) :element-type '(ub 8))))
@@ -136,13 +137,12 @@
       (if (and (= position (length segment-table))
                (/= (ogg-page-crc reader) (get-crc reader)))
           (error 'ogg-error :message "CRC mismatch"))
-      (if (or (not (ogg-will-be-continued reader))
-              (< position
-                 (1- (length segment-table))))
-          (cons packet pages)
+      (if (and (ogg-will-be-continued reader)
+               (= position (length segment-table)))
           (read-packet-pages reader
                              (ogg-page-number reader)
-                             (cons packet pages))))))
+                             (cons packet pages))
+          (cons packet pages)))))
 
 (defun read-packet (reader)
   "Reads a packet from OGG stream"
@@ -151,7 +151,7 @@
         (let ((packet (make-array (reduce #'+ (mapcar #'length segments))
                                   :element-type '(ub 8))))
           (loop with start = 0
-                for segment in segments do
+                for segment in (nreverse segments) do
                 (setq packet (replace packet segment :start1 start)
                       start (+ start (length segment))))
           packet))))
