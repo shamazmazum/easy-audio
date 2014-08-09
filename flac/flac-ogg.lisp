@@ -46,8 +46,12 @@
     (if (not (ogg:fresh-page reader))
         (error 'flac-error :message "There are other packets on the first page"))
 
-    ;; FIXME: skip headers for now
-    (loop repeat non-audio-packets do (ogg:read-packet reader))
+    (setq metadata
+          (nconc metadata
+                 (loop repeat non-audio-packets collect
+                      (let* ((packet (ogg:read-packet reader))
+                             (packet-reader (make-reader-from-buffer packet)))
+                        (metadata-reader packet-reader)))))
 
     (if (not (ogg:fresh-page reader))
         (error 'flac-error :message "Audio data must begin with a fresh page"))
