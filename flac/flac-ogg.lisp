@@ -54,7 +54,7 @@
     
     (values metadata reader)))
 
-(defun ogg-frame-reader (reader &optional streaminfo out-buffer)
+(defun ogg-frame-reader (reader &rest args)
   "Read flac frame from ogg container"
   (let* ((packet (ogg:read-packet reader))
          (packet-reader (make-reader-from-buffer packet
@@ -62,4 +62,4 @@
                                                  :crc-fun
                                                  #+easy-audio-check-crc
                                                  #'crc-0-8005)))
-    (frame-reader packet-reader streaminfo out-buffer)))
+    (apply #'frame-reader packet-reader args)))
