@@ -21,12 +21,11 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-;; Comment it out if you do not want restrictions
-
 (in-package :easy-audio-tests)
 
 (def-suite bitreader :description "Bitreader tests")
 (def-suite flac      :description "Flac decoder tests")
+(def-suite ogg      :description "ogg container tests")
 (def-suite decoders  :description "General decoders tests")
 
 ;; Can it be done with FiveAM itself?
@@ -35,13 +34,14 @@
   "Run all tests"
   (explain! (run 'bitreader))
   (explain! (run 'flac))
+  (explain! (run 'ogg))
   (explain! (run 'decoders)))
 (export 'run-tests)
 
 (in-suite bitreader)
 (test bitreader-tests
   "Test low-level bitreader functions"
-  (with-input-from-sequence (input #(1 2 3 128 129 4))
+  (with-input-from-sequence (input #(1 2 3 128 129 4 1 2))
     ;; Set internal buffer size low to check buffer refill
     (let ((bitreader::*buffer-size* 3)
           (reader (bitreader:make-reader :stream input)))
@@ -55,7 +55,19 @@
       (is (= (bitreader:read-to-byte-alignment reader) 0))
       (is (= (bitreader:read-bit reader) 1))
       (is (= (bitreader:read-to-byte-alignment reader) 1))
-      (is (= (bitreader:read-bits 8 reader) 4)))))
+      (is (= (bitreader:read-bits 8 reader) 4))
+      (is (= (bitreader:read-octets 2 reader) 258)))))
+
+(test bitreader-little-endian
+  "Test low-level bitreader functions"
+  (with-input-from-sequence (input #(2 1 3 128))
+    ;; Set internal buffer size low to check buffer refill
+    (let ((bitreader::*buffer-size* 3)
+          (reader (bitreader:make-reader :stream input)))
+      ;; "Not associated with file" blah-blah
+      ;; (is (= (bitreader:reader-length reader) 6))
+      (is (= (bitreader:read-octets 2 reader :endianness :little) 258))
+      (is (= (bitreader:read-bits 16 reader :endianness :little) 32771)))))
 
 #+easy-audio-check-crc
 (test bitreader-check-crc
@@ -117,6 +129,47 @@
       (is (equalp (flac:frame-decode frame)
                   (list (make-array 192 :initial-element 10)
                         (make-array 192 :initial-element 11)))))))
+
+(in-suite ogg)
+(test ogg-packets
+  "Test ogg packet reader"
+  (with-input-from-sequence (input `#(#x4f #x67 #x67 #x53 ; OggS
+                                      #x00 #x02           ; First page of logical bitstream
+                                      #x00 #x00 #x00 #x00
+                                      #x00 #x00 #x00 #x00 ; 0 absolute granule position
+                                      #xbe #xba #xfe #xca ; Stream serial number
+                                      #x00 #x00 #x00 #x00 ; Page number
+                                      #x93 #x11 #xba #x36 ; CRC
+                                      #x02                ; 2 segments
+                                      #xff #x00           ; 1 255-bytes packet
+                                      ,@(loop repeat 256 collect 1)))
+    (let* ((reader (ogg:open-ogg input))
+           (packet (ogg:read-packet reader)))
+      (is (not (ogg:ogg-is-continued reader)))
+      (is (ogg:ogg-bos reader))
+      (is (not (ogg:ogg-eos reader)))
+      (is (= 0 (ogg:ogg-granule-position reader)))
+      (is (= #xcafebabe (ogg:ogg-stream-serial reader)))
+      (is (= 0 (ogg:ogg-page-number reader)))
+      (is (= 255 (reduce #'+ packet)))
+      (is (ogg:fresh-page reader)))))
+
+(test ogg-restore-sync
+  "Test restore sync ability"
+  (with-input-from-sequence (input `#(1 #x4f 3            ; Junk
+                                      #x4f #x67 #x67 #x53 ; OggS
+                                      #x00 #x02           ; First page of logical bitstream
+                                      #x00 #x00 #x00 #x00
+                                      #x00 #x00 #x00 #x00 ; 0 absolute granule position
+                                      #xbe #xba #xfe #xca ; Stream serial number
+                                      #x00 #x00 #x00 #x00 ; Page number
+                                      #x13 #x98 #x76 #xae ; CRC
+                                      #x01                ; 1 segment
+                                      #x01                ; with length of 1 byte
+                                      #x01))              ; Content
+    (let ((reader (ogg:open-ogg input)))
+      (ogg:restore-sync reader)
+      (is (ogg:read-packet reader)))))
 
 (in-suite decoders)
 (test g.711-ulaw

@@ -30,6 +30,11 @@
                    (safety 0) (speed 3)))
 
 (defparameter *buffer-size* 4096)
+(defparameter *read-with-zeroing* nil
+  "Affects some functions (currently only READ-OCTETS, READ-OCTET
+   and READ-OCTET-VECTORS) making them not only read stuff from
+   input buffer, but also zero read parts in the buffer. Useful
+   for CRC calculation in some containers")
 
 (define-condition bitreader-eof ()
   ((bitreader :initarg :bitreader
@@ -42,6 +47,9 @@
   (buffer    (make-array (list *buffer-size*)
 		      :element-type '(ub 8))
 	       :type (sa-ub 8))
+  (fill-buffer-fun
+             #'read-buffer-from-stream
+               :type function)
   #+easy-audio-check-crc
   (crc       0 :type unsigned-byte)
   #+easy-audio-check-crc
@@ -69,6 +77,33 @@
       (setf ibit 0)
       (incf ibyte)))))
 
+(defun read-buffer-from-stream (reader)
+  "Read internal buffer from stream"
+  (setf (reader-end reader)
+        (read-sequence (reader-buffer reader)
+                       (reader-stream reader)))
+  (if (= (reader-end reader) 0) (error 'bitreader-eof :bitreader reader)))
+
+(defun read-buffer-dummy (reader)
+  "Read internal buffer from stream"
+  (error 'bitreader-eof :bitreader reader))
+
+(defun make-reader-from-stream (stream &rest args)
+  "Make bitreader from stream"
+  (apply #'make-reader
+         :stream stream
+         :fill-buffer-fun #'read-buffer-from-stream
+         args))
+
+(defun make-reader-from-buffer (buffer &rest args)
+  "Make bitreader from buffer"
+  (declare (type (sa-sb 8) buffer))
+  (apply #'make-reader
+         :buffer buffer
+         :end (length buffer)
+         :fill-buffer-fun #'read-buffer-dummy
+         args))
+
 ;; If stream is 300 Mb, there are (ceiling (* 300 10^6) 4096) =
 ;; 73243 calls to fill-buffer. Not many, but inline it anyway
 (declaim (inline fill-buffer))
@@ -85,12 +120,8 @@
         (reader-crc-start reader) 0)
 
   (setf (reader-ibit reader) 0
-        (reader-ibyte reader) 0
-        (reader-end reader)
-        (read-sequence (reader-buffer reader)
-                       (reader-stream reader)))
-  
-  (if (= (reader-end reader) 0) (error 'bitreader-eof :bitreader reader)))
+        (reader-ibyte reader) 0)
+  (funcall (reader-fill-buffer-fun reader) reader))
 
 (declaim (inline can-not-read))
 (defun can-not-read (reader)
@@ -118,7 +149,33 @@
   
   (prog1
       (aref (reader-buffer reader) (reader-ibyte reader))
+    (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
     (incf (reader-ibyte reader))))
+
+#+easy-audio-use-fixnums
+(declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol)) non-negative-fixnum) read-octets))
+#-easy-audio-use-fixnums
+(declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol)) non-negative-int) read-octets))
+(defun read-octets (n reader &key (endianness :big))
+  "Reads n octets in integer value"
+  (let ((res 0))
+    (declare #+easy-audio-use-fixnums
+             (type non-negative-fixnum res)
+             (type fixnum n)
+             (type (member :big :little) endianness))
+    (dotimes (i n)
+      (declare (type fixnum i))
+      (if (can-not-read reader) (fill-buffer reader))
+      (let ((octet (aref (reader-buffer reader) (reader-ibyte reader))))
+        (declare (type (ub 8) octet))
+        (setq res
+              (if (eq endianness :big)
+                  (logior #f non-negative-fixnum (ash res 8) octet)
+                  (logior #f non-negative-fixnum
+                          (ash octet #f non-negative-fixnum (ash i 3)) res))))
+      (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
+      (incf (reader-ibyte reader)))
+    res))
 
 (declaim (ftype (function ((sa-ub 8) reader) positive-int) read-octet-vector))
 (defun read-octet-vector (array reader)
@@ -128,6 +185,7 @@
     (if (can-not-read reader) (fill-buffer reader))
     (setf (aref array i)
           (aref (reader-buffer reader) (reader-ibyte reader)))
+    (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
     (incf (reader-ibyte reader)))
   (length array))
 
@@ -155,16 +213,22 @@
   "Returns or sets number of readed octets.
    Similar to file-position
    Sets ibit to zero if val is specified"
-  (cond
-   (val
-    (file-position (reader-stream reader) val)
-    (fill-buffer reader)
-    val)
-   (t #f non-negative-fixnum
-      (+ #f non-negative-fixnum
-         (file-position (reader-stream reader))
-         (- (reader-end reader))
-         (reader-ibyte reader)))))
+  (let ((stream (reader-stream reader)))
+    (cond
+      (val
+       (cond
+         (stream
+          (file-position stream val)
+          (fill-buffer reader))
+         (t (setf (reader-ibyte reader) val)))
+       val)
+      (t #f non-negative-fixnum
+         (if stream
+             (+ #f non-negative-fixnum
+                (file-position (reader-stream reader))
+                (- (reader-end reader))
+                (reader-ibyte reader))
+             (reader-ibyte reader))))))
 
 (declaim (ftype (function (reader (ub 8)) (ub 8)) peek-octet))
 (defun peek-octet (reader octet)
@@ -230,14 +294,34 @@
 
 #+easy-audio-check-crc
 (progn
-  (defun init-crc (reader)
-    (setf (reader-crc reader) 0
+  (defun init-crc (reader &optional (start 0))
+    "Initialize CRC calculation with the value start (0 by default)"
+    (setf (reader-crc reader) start
           (reader-crc-start reader)
           (reader-ibyte reader)))
 
   (defun get-crc (reader)
+    "Return calculated CRC"
     (funcall (reader-crc-fun reader)
              (subseq (reader-buffer reader)
                      (reader-crc-start reader)
                      (reader-ibyte reader))
-             (reader-crc reader))))
+             (reader-crc reader)))
+
+  (defmacro with-skipping-crc ((reader) &body body)
+    "All input operations within this macro will not affect CRC computation.
+     Acts as if body forms is being computed in progn"
+    (let ((crc-val (gensym))
+          (result (gensym)))
+      `(let ((,crc-val (get-crc ,reader))
+             (,result (progn ,@body)))
+         (init-crc ,reader ,crc-val)
+         ,result)))
+
+  (defmacro with-crc ((reader) &body body)
+    "Execute body with enabled CRC computation and
+     return CRC"
+    `(progn
+       (init-crc ,reader)
+       ,@body
+       (get-crc ,reader))))
