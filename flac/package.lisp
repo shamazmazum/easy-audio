@@ -91,9 +91,9 @@
 
 	   ;; Functions
 	   #:open-flac
-	   #:frame-reader
+	   #:read-frame
            #:open-ogg-flac
-	   #:ogg-frame-reader
+	   #:read-ogg-frame
 	   #:frame-decode
 	   #:seek-sample
 	   #:metadata-summar-length

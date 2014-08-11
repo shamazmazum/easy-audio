@@ -41,7 +41,7 @@
       (setq non-audio-packets (read-octets 2 packet-reader))
       (if (/= +flac-id+ (read-octets 4 packet-reader))
           (error 'flac-error :message "The stream is not a flac stream"))
-      (push (metadata-reader packet-reader) metadata))
+      (push (read-metadata packet-reader) metadata))
 
     (if (not (ogg:fresh-page reader))
         (error 'flac-error :message "There are other packets on the first page"))
@@ -51,14 +51,14 @@
                  (loop repeat non-audio-packets collect
                       (let* ((packet (ogg:read-packet reader))
                              (packet-reader (make-reader-from-buffer packet)))
-                        (metadata-reader packet-reader)))))
+                        (read-metadata packet-reader)))))
 
     (if (not (ogg:fresh-page reader))
         (error 'flac-error :message "Audio data must begin with a fresh page"))
     
     (values metadata reader)))
 
-(defun ogg-frame-reader (reader &rest args)
+(defun read-ogg-frame (reader &rest args)
   "Read flac frame from ogg container"
   (let* ((packet (ogg:read-packet reader))
          (packet-reader (make-reader-from-buffer packet
@@ -66,4 +66,4 @@
                                                  :crc-fun
                                                  #+easy-audio-check-crc
                                                  #'crc-0-8005)))
-    (apply #'frame-reader packet-reader args)))
+    (apply #'read-frame packet-reader args)))

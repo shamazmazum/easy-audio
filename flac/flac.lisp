@@ -61,7 +61,7 @@
        (setq last-block
              (easy-audio-early:with-interactive-debug
                  (restart-case
-                     (let ((metadata (metadata-reader bitreader)))
+                     (let ((metadata (read-metadata bitreader)))
                        (push metadata metadata-list)
                        (metadata-last-block-p metadata))
                    

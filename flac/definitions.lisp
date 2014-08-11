@@ -179,7 +179,7 @@ metadata type"))
   (:documentation "PICTURE metadata block"))
                    
 
-(defgeneric metadata-body-reader (stream data)
+(defgeneric read-metadata-body (stream data)
   (:documentation "Reads a body of the metadata block DATA from STREAM. Can depend on slots
   common to all metadata blocks (which are in the header)."))
 
@@ -225,7 +225,7 @@ metadata type"))
           :documentation "The predictor's order"))
   (:documentation "Subframe with fixed linear predictor"))
 
-(defgeneric subframe-body-reader (bit-reader subframe frame)
+(defgeneric read-subframe-body (bit-reader subframe frame)
   (:documentation "Read a SUBFRAME within given FRAME from BIT-READER. Can depend on slots
 common to all subframes (which are in the header)."))
 (defgeneric subframe-decode (subframe frame)
@@ -273,7 +273,7 @@ frame number) or :VARIABLE (frame header contains the sample number)")
 code)"))
   (:documentation "Audio frame class"))
 
-(defgeneric frame-reader (stream &optional streaminfo out-buffers)
+(defgeneric read-frame (stream &optional streaminfo out-buffers)
   (:documentation "Read a frame from a stream"))
 
 (defparameter +block-name+ '((0 . streaminfo)

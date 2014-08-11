@@ -79,5 +79,5 @@
 			
            (loop for i below totalsamples
                  by blocksize do
-                 (write-sequence (mixchannels buf (frame-decode (frame-reader in-reader streaminfo flac-out-data)))
+                 (write-sequence (mixchannels buf (frame-decode (read-frame in-reader streaminfo flac-out-data)))
                                  out-stream))))))))

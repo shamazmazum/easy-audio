@@ -26,7 +26,7 @@
 ;; For signaling errors from functions called from body-readers
 ;; (they usual requires just a stream, so no need pass data object as argument)
 (easy-audio-early:defvar-unbound *data*
-    "METADATA-BODY-READER bounds this var to metadata block
+    "READ-METADATA-BODY bounds this var to metadata block
      it is reading at the moment")
 
 (defun metadata-summar-length (blocks)
@@ -34,27 +34,27 @@
   (declare (type list blocks))
   (reduce #'+ (mapcar #'(lambda (data) (metadata-length data)) blocks)))
 
-(defun metadata-header-reader (stream)
+(defun read-metadata-header (stream)
   "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
   (values (reader-position stream)
           (/= 0 (read-bit stream))
           (read-bits 7 stream)
           (read-bits 24 stream)))
 
-(defun metadata-reader (stream)
+(defun read-metadata (stream)
   "Read one metadata block from STREAM"
   (multiple-value-bind (start-position last-block-p type length)
-      (metadata-header-reader stream)
+      (read-metadata-header stream)
     
     (let* ((mtype (get-metadata-type type))
            (data (make-instance mtype
                                 :last-block-p last-block-p
                                 :length length
                                 :start-position start-position)))
-      (metadata-body-reader stream data)
+      (read-metadata-body stream data)
       data)))
 
-(defmethod metadata-body-reader (stream (data padding))
+(defmethod read-metadata-body (stream (data padding))
   ;; Read zero padding bytes
   (let ((chunk (make-array (list (metadata-length data))
 			   :element-type '(ub 8))))
@@ -65,7 +65,7 @@
                :message "Padding bytes is not zero"
                :metadata data))))
 
-(defmethod metadata-body-reader (stream (data vorbis-comment))
+(defmethod read-metadata-body (stream (data vorbis-comment))
   (flet ((read-comment-string (stream)
 	  (let ((buffer (make-array (list (read-bits 32 stream :endianness :little))
 					   :element-type '(unsigned-byte 8))))
@@ -82,7 +82,7 @@
 		  (read-comment-string stream))))))
 			    
 
-(defmethod metadata-body-reader (stream (data seektable))
+(defmethod read-metadata-body (stream (data seektable))
   (flet ((read-seekpoint (stream)
 			 (let ((samplenum (read-bits 64 stream)))
 			   (if (/= samplenum +seekpoint-placeholder+)
@@ -100,7 +100,7 @@
 	    (loop for i below seekpoints-num collect
 		  (read-seekpoint stream))))))
 
-(defmethod metadata-body-reader (stream (data streaminfo))
+(defmethod read-metadata-body (stream (data streaminfo))
   (setf (streaminfo-minblocksize data) (read-bits 16 stream)
 	(streaminfo-maxblocksize data) (read-bits 16 stream))
 	      
@@ -159,7 +159,7 @@
 
     track))
 
-(defmethod metadata-body-reader (stream (data cuesheet))
+(defmethod read-metadata-body (stream (data cuesheet))
   (let ((*data* data))
     (setf (cuesheet-catalog-id data) (read-cuesheet-string stream 128))
     (setf (cuesheet-lead-in data) (read-bits 64 stream))
@@ -176,7 +176,7 @@
 		  (read-cuesheet-track stream))))
   data))
 
-(defmethod metadata-body-reader (stream (data picture))
+(defmethod read-metadata-body (stream (data picture))
   (let ((picture-type (nth (read-bits 32 stream) +picture-types+)))
     (if (not (typep picture-type 'picture-type-id))
         (error 'flac-bad-metadata
@@ -217,7 +217,7 @@
                :metadata data))
     (setf (picture-picture data) (read-octet-vector picture-seq stream))))
 
-(defmethod metadata-body-reader (stream (data metadata-header))
+(defmethod read-metadata-body (stream (data metadata-header))
   (error 'flac-bad-metadata
          :message "Unknown metadata block"
          :metadata data))

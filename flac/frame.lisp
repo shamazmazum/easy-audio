@@ -74,22 +74,22 @@
                  :message "Invalid sample size"))))
 
 ;; Residual reader
-(defun residual-reader (bit-reader subframe frame out)
+(defun read-residual (bit-reader subframe frame out)
   (let ((coding-method (read-bits 2 bit-reader)))
     (declare (type (ub 2) coding-method))
     (cond
      ((= coding-method 0) ; 00
-      (residual-body-reader bit-reader subframe frame out
-			    :param-len 4
-			    :esc-code #b1111))
+      (read-residual-body bit-reader subframe frame out
+                          :param-len 4
+                          :esc-code #b1111))
      ((= coding-method 1) ; 01
-      (residual-body-reader bit-reader subframe frame out
-			    :param-len 5
-			    :esc-code #b11111))
+      (read-residual-body bit-reader subframe frame out
+                          :param-len 5
+                          :esc-code #b11111))
      (t (error 'flac-bad-frame
 	       :message "Invalid residual coding method")))))
 
-(defun residual-body-reader (bit-reader subframe frame out &key param-len esc-code)
+(defun read-residual-body (bit-reader subframe frame out &key param-len esc-code)
   (declare (type fixnum param-len esc-code)
 	   (type (sa-sb 32) out))
 
@@ -131,7 +131,7 @@
 
 ;; Subframe reader
 
-(defmethod subframe-body-reader (bit-reader (subframe subframe-lpc) frame)
+(defmethod read-subframe-body (bit-reader (subframe subframe-lpc) frame)
   (let* ((bps (subframe-actual-bps subframe))
 	 (warm-up-samples (subframe-order subframe))
 	 (out-buf (subframe-out-buf subframe))
@@ -155,18 +155,18 @@
 	    (read-bits-array bit-reader
 			     coeff-buf precision :signed t)))
 
-    (residual-reader bit-reader subframe frame out-buf)))
+    (read-residual bit-reader subframe frame out-buf)))
 
-(defmethod subframe-body-reader (bit-reader (subframe subframe-fixed) frame)
+(defmethod read-subframe-body (bit-reader (subframe subframe-fixed) frame)
   (let ((bps (subframe-actual-bps subframe))
 	(warm-up-samples (subframe-order subframe))
 	(out-buf (subframe-out-buf subframe)))
     
     (read-bits-array bit-reader out-buf bps :signed t :len warm-up-samples)
 
-    (residual-reader bit-reader subframe frame out-buf)))
+    (read-residual bit-reader subframe frame out-buf)))
 
-(defmethod subframe-body-reader (bit-reader (subframe subframe-constant) frame)
+(defmethod read-subframe-body (bit-reader (subframe subframe-constant) frame)
   (declare (ignore frame))
   (with-slots (actual-bps) subframe
 	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
@@ -174,7 +174,7 @@
 		     (read-bits actual-bps bit-reader)
 		     actual-bps))))
 
-(defmethod subframe-body-reader (bit-reader (subframe subframe-verbatim) frame)
+(defmethod read-subframe-body (bit-reader (subframe subframe-verbatim) frame)
   (declare (ignore frame))
   (let ((bps (subframe-actual-bps subframe)))
 
@@ -182,7 +182,7 @@
 		(setf out-buf
 		      (read-bits-array bit-reader out-buf bps :signed t)))))
 
-(defun subframe-reader (stream frame actual-bps)
+(defun read-subframe (stream frame actual-bps)
   (declare (type (integer 4 33) actual-bps))
   (if (/= (read-bit stream) 0) (error 'flac-bad-frame
 				      :message "Error reading subframe"))
@@ -223,21 +223,21 @@
                  (list blocksize)
                  :element-type '(sb 32))))
 
-      (subframe-body-reader stream subframe frame)
+      (read-subframe-body stream subframe frame)
       subframe))
 
-(defmethod frame-reader :around (stream &optional streaminfo out-buffers)
+(defmethod read-frame :around (stream &optional streaminfo out-buffers)
   (restart-case
       (call-next-method)
       (skip-malformed-frame ()
         :report "Skip this frame and read the next one"
         (restore-sync stream streaminfo)
-        (frame-reader stream streaminfo out-buffers))
+        (read-frame stream streaminfo out-buffers))
       (stop-reading-frame ()
         :report "Do nothing and return dummy frame"
         (make-instance 'frame))))
 
-(defmethod frame-reader (stream &optional streaminfo out-buffers)
+(defmethod read-frame (stream &optional streaminfo out-buffers)
   (let ((frame (make-instance 'frame)))
     #+easy-audio-check-crc
     (init-crc stream)
@@ -297,7 +297,7 @@
       (setf (frame-subframes frame)
             (loop for sf fixnum below (if (<= assignment +max-channels+) assignment 2)
                   collect (let ((*out-buffer* (nth sf out-buffers)))
-                            (subframe-reader
+                            (read-subframe
                              stream frame
                              ;; Do bps correction
                              (cond

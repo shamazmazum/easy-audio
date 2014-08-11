@@ -143,7 +143,7 @@
   (let ((pos (reader-position bitreader)))
     (handler-case
         (prog1
-            (frame-number (frame-reader bitreader streaminfo))
+            (frame-number (read-frame bitreader streaminfo))
           (reader-position bitreader pos))
       (flac-bad-frame ()
         (reader-position bitreader (1+ pos))
