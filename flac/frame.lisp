@@ -326,63 +326,59 @@
   frame))
 
 ;; Rather slow (and buggy) absolute sample seek
-(defun seek-sample (bitreader streaminfo sample start
-			      &optional seektable)
-  "Seeks to interchannel sample.
-   Sets input to new frame, which contains this sample
-   Returns position of this sample in the frame"
+(defun seek-sample (bitreader sample audio-start blocksize &key seektable streaminfo)
+  "Seeks to an interchannel sample.
+   Sets input to new frame, which contains this sample.
+   Returns position of this sample in the frame.
+   AUDIO-START is a position in stream of the first audio sample.
+   BLOCKSIZE is a frame size in samples. This implementation supports
+   only fixed block size.
+   SEEKTABLE and STREAMINFO are optional. Providing STREAMINFO enables
+   additional sanity checks"
   (declare (type reader bitreader)
-	   (type streaminfo streaminfo)
+	   (type (or null streaminfo) streaminfo)
 	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note)) ; Since we have bignum arithmetic here
 
-  ;; Init the bounds where desired sample must be
-  (let ((start-pos start)
-	(totalsamples (streaminfo-totalsamples streaminfo))
+  (with-accessors ((totalsamples streaminfo-totalsamples)) streaminfo
+    (if (and streaminfo
+             (> sample totalsamples)
+             (/= totalsamples 0))
+        (error 'flac-error
+               :message "Seek error. Desired sample number is bigger than
+                         number of samples in stream")))
+
+  ;; Init the boundaries where desired sample must be
+  (let ((start-pos audio-start)
 	(end-pos (reader-length bitreader)))
 
-    (if (and (> sample totalsamples)
-	     (/= totalsamples 0))
-	(error 'flac-error
-	       :message "Seek error. Desired sample number is bigger than
-                         number of samples in stream"))
-    
-    ;; Now, if seektable is present, correct the bounds
+    ;; Now, if seektable is present, correct the boundaries
     (if seektable
-	(flet ((find-bounding-seekpoints (points)
-	    "Returns bounding seekpoints, samplenum of one is less or equal
-             than desired sample, samplenum of another is greater or equal.
-             Second value is t if bounding seekpoints is equal"
-            (let* ((pos (position-if #'(lambda (point)
-					 (>= (seekpoint-samplenum point)
-					     sample))
-				     points))
-		   (point (nth pos points)))
-	      (if (= sample (seekpoint-samplenum point))
-		  (values point point t)
-		(values (nth (1- pos) points) point nil)))))
+        (let* ((points (seektable-seekpoints seektable))
+               (pos (position-if #'(lambda (samplenum) (>= samplenum sample))
+                                 points
+                                 :key #'seekpoint-samplenum))
+               (upperpoint (seekpoint-offset (nth pos points)))
+               (lowerpoint (if (= pos 0) 0 (seekpoint-offset (nth (1- pos) points)))))
 
-	  (multiple-value-bind (lowerpoint upperpoint pointseq)
-	      (find-bounding-seekpoints (seektable-seekpoints seektable))
-	    (if pointseq
-		;; We are extremely lucky
-		;; All we need to do is set input to new frame
-		(progn
-		  (reader-position bitreader
-				   (+ start (seekpoint-offset lowerpoint)))
-		  (return-from seek-sample 0)))
-	    
-	    (setq start-pos (+ start (seekpoint-offset lowerpoint))
-		  end-pos (+ start (seekpoint-offset upperpoint))))))
-      
+          (cond
+            ((= sample lowerpoint)
+             ;; We are extremely lucky
+             ;; All we need to do is set input to a new frame
+             (reader-position bitreader (+ audio-start lowerpoint))
+             (return-from seek-sample 0))
+            (t
+             (setq start-pos (+ audio-start lowerpoint)
+                   end-pos (+ audio-start upperpoint))))))
+
     ;; Check implementation limitations
-
-    (if (/= (the non-negative-fixnum (streaminfo-minblocksize streaminfo))
-	    (the non-negative-fixnum (streaminfo-maxblocksize streaminfo)))
+    (if (and streaminfo
+             (/= (the non-negative-fixnum (streaminfo-minblocksize streaminfo))
+                 (the non-negative-fixnum (streaminfo-maxblocksize streaminfo))))
 	(error 'flac-bad-metadata
 	       :message "Cannot seek with variable blocksize"))
 
     (multiple-value-bind (needed-num remainder)
-	(floor sample (streaminfo-maxblocksize streaminfo))
+	(floor sample blocksize)
       (declare (type non-negative-fixnum needed-num remainder))
 
       (labels ((dichotomy-search (start end)
@@ -405,8 +401,7 @@
 				     (dichotomy-search second-half end))
 				    ((> secondnum needed-num)
 				     (dichotomy-search start second-half))
-				    (t
-				     (values start end))))))
+				    (t t)))))
 	
 	(dichotomy-search start-pos end-pos)
 	remainder))))

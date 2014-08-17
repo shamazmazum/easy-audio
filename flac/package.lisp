@@ -96,7 +96,6 @@
 	   #:read-ogg-frame
 	   #:frame-decode
 	   #:seek-sample
-	   #:metadata-summar-length
 	   #:metadata-find-seektable
            #:make-output-buffers
 

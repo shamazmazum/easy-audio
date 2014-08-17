@@ -29,11 +29,6 @@
     "READ-METADATA-BODY bounds this var to metadata block
      it is reading at the moment")
 
-(defun metadata-summar-length (blocks)
-  "Returns length of metadata blocks given in bytes"
-  (declare (type list blocks))
-  (reduce #'+ (mapcar #'(lambda (data) (metadata-length data)) blocks)))
-
 (defun read-metadata-header (stream)
   "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
   (values (reader-position stream)
@@ -223,4 +218,5 @@
          :metadata data))
 
 (defun metadata-find-seektable (metadata)
-  (find-if #'(lambda (x) (typep x 'seektable)) metadata))
+  (find 'seektable metadata
+        :key #'type-of))
