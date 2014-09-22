@@ -142,7 +142,7 @@
                                       #x93 #x11 #xba #x36 ; CRC
                                       #x02                ; 2 segments
                                       #xff #x00           ; 1 255-bytes packet
-                                      ,@(loop repeat 256 collect 1)))
+                                      ,@(loop repeat 255 collect 1)))
     (let* ((reader (ogg:open-ogg input))
            (packet (ogg:read-packet reader)))
       (is (not (ogg:ogg-is-continued reader)))
