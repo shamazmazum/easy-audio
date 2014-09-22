@@ -43,17 +43,16 @@
                       4)))
 
 (defun open-flac (stream)
-  "Reads flac file from STREAM and returns three values:
+  "Reads flac file from STREAM and returns two values:
    1) A list of metadata blocks
-   2) Bitreader wrapper around the stream
-   3) Position of the first audio sample in the stream"
-  ;; Checking if stream is flac stream
+   2) Bitreader wrapper around the stream"
   (let ((bitreader (make-reader :stream stream
                                 #+easy-audio-check-crc
                                 :crc-fun
                                 #+easy-audio-check-crc
                                 #'crc-0-8005)))
-    (if (/= +flac-id+ (read-bits 32 bitreader))
+    ;; Checking if stream is flac stream
+    (if (/= +flac-id+ (read-octets 4 bitreader))
         (error 'flac-error :message "Stream is not flac stream"))
 
     (let (metadata-list)
@@ -83,8 +82,7 @@
                        (metadata-last-block-p metadata)))))))
      (values
       (reverse metadata-list)
-      bitreader
-      (reader-position bitreader)))))
+      bitreader))))
 
 (defun make-output-buffers (streaminfo)
   (let ((blocksize (streaminfo-minblocksize streaminfo)))
