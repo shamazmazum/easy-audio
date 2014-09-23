@@ -142,8 +142,8 @@
     (read-bits-array bit-reader
 		     out-buf bps :signed t :len warm-up-samples)
     
-    (let ((precision (the fixnum
-		       (1+ (read-bits 4 bit-reader)))))
+    (let ((precision (1+ (read-bits 4 bit-reader))))
+      (declare (type (integer 1 16) precision))
       (if (= #b10000 precision)
 	  (error 'flac-bad-frame
 		 :message "lpc coefficients precision cannot be 16")
