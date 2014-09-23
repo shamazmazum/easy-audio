@@ -52,9 +52,10 @@
 (defun get-sample-rate (streaminfo val)
   (declare (type non-negative-fixnum val))
   (cond
+    ((and (/= val 0)
+          (< val 15)) (nth (1- val) +coded-sample-rates+))
     ((and (= val 0)
           streaminfo) (streaminfo-samplerate streaminfo))
-    ((< val 15) (nth (1- val) +coded-sample-rates+))
     (t
      (error 'flac-bad-frame
             :message "Frame sample rate is invalid"))))
