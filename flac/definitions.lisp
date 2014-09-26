@@ -295,10 +295,8 @@ code)"))
     32000   ; 1000
     44100   ; 1001
     48000   ; 1010
-    96000   ; 1011
-    :get-8-bit-from-end-khz
-    :get-16-bit-from-end-hz
-    :get-16-bit-from-end-tenshz))
+    96000)) ; 1011
+
 (defparameter +coded-sample-sizes+
   '((#b001 . 8)
     (#b010 . 12)
