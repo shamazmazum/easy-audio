@@ -29,7 +29,7 @@
     "Output buffer for exactly one subframe")
 
 (defun get-blocking-strategy (val)
-  (declare (type fixnum val))
+  (declare (type non-negative-fixnum val))
   (cond
     ((= val 0) :fixed)
     ((= val 1) :variable)
@@ -37,14 +37,16 @@
               :message "Blocking strategy must be 0 or 1"))))
 
 (defun get-block-size (val &optional reader)
-  (declare (type positive-fixnum val))
+  (declare (type non-negative-fixnum val))
   (cond
     ((= val 1) 192)               ; 0001
-    ((<= val 5)                   ; 0010-0101
+    ((and (<= val 5)              ; 0010-0101
+          (/= val 0))
      (ash 576 (- val 2)))
     ((= val 6) (1+ (read-octet (the reader reader))))   ; 0110
     ((= val 7) (1+ (read-octets 2 (the reader reader))))   ; 0111
-    ((<= val 15)            ; 1000-1111
+    ((and (<= val 15)             ; 1000-1111
+          (/= val 0))
      (ash 1 val))
     (t (error 'flac-bad-frame
               :message "Frame block size is invalid"))))
