@@ -51,8 +51,9 @@
   "Precalculated CRC-16 table, starting with 0, polynomial generator #x8005.
    Used for FLAC")
 
-(declaim (ftype (function ((sa-ub 8) (ub 16)) (ub 16)) crc-0-8005))
-(defun crc-0-8005 (array accum)
+(declaim (ftype (function ((sa-ub 8) (ub 16)
+                           &key (:start t) (:end t)) (ub 16)) crc-0-8005))
+(defun crc-0-8005 (array accum &key (start 0) end)
   "CRC checksum used in FLAC frames"
   (declare (type (sa-ub 8) array))
   (flet ((accumulate-crc (crc x)
@@ -62,7 +63,7 @@
                                  (logxor (ash crc 8)
                                          (aref +crc-table-0-8005+
                                                (logxor x (ash crc -8)))))))
-    (reduce #'accumulate-crc array :initial-value accum)))
+    (reduce #'accumulate-crc array :initial-value accum :start start :end end)))
 
 ;; OGG
 (declaim (type (sa-ub 32) +crc-table-0-04c11db7+))
@@ -86,8 +87,9 @@
   "Precalculated CRC-32 table, starting with 0, polynomial generator #x04c11db7.
    Used for OGG container")
 
-(declaim (ftype (function ((sa-ub 8) (ub 32)) (ub 32)) crc-0-04c11db7))
-(defun crc-0-04c11db7 (array accum)
+(declaim (ftype (function ((sa-ub 8) (ub 32)
+                           &key (:start t) (:end t)) (ub 32)) crc-0-04c11db7))
+(defun crc-0-04c11db7 (array accum &key (start 0) end)
   "CRC checksum used in OGG container"
   (declare (type (sa-ub 8) array))
   (flet ((accumulate-crc (crc x)
@@ -97,4 +99,4 @@
                                  (logxor (ash crc 8)
                                          (aref +crc-table-0-04c11db7+
                                                (logxor x (logand #xff (ash crc -24))))))))
-    (reduce #'accumulate-crc array :initial-value accum)))
+    (reduce #'accumulate-crc array :initial-value accum :start start :end end)))

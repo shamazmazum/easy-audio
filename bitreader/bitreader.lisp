@@ -112,10 +112,10 @@
   #+easy-audio-check-crc
   (setf (reader-crc reader)
         (funcall (reader-crc-fun reader)
-                 (subseq (reader-buffer reader)
-                         (reader-crc-start reader)
-                         (reader-end reader))
-                 (reader-crc reader))
+                 (reader-buffer reader)
+                 (reader-crc reader)
+                 :start (reader-crc-start reader)
+                 :end (reader-end reader))
         
         (reader-crc-start reader) 0)
 
@@ -303,10 +303,10 @@
   (defun get-crc (reader)
     "Return calculated CRC"
     (funcall (reader-crc-fun reader)
-             (subseq (reader-buffer reader)
-                     (reader-crc-start reader)
-                     (reader-ibyte reader))
-             (reader-crc reader)))
+             (reader-buffer reader)
+             (reader-crc reader)
+             :start (reader-crc-start reader)
+             :end (reader-ibyte reader)))
 
   (defmacro with-skipping-crc ((reader) &body body)
     "All input operations within this macro will not affect CRC computation.
