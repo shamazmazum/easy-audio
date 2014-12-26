@@ -75,3 +75,40 @@
     ;; Subchunk 2
     (write-sequence (integer-to-array-be wav:+data-subchunk+ buf4) out-stream)
     (write-sequence (integer-to-array size buf4) out-stream)))
+
+(defmacro defreader (name &rest slots)
+  "Generate a reader function to read data from bit-reader into
+  an arbitrary object with accessor-like interface. NAME is the
+  name of such function. The new function will accept two
+  arguments: a bit-reader and an object to be modified. Each
+  slot from SLOTS is a list. It has the following syntax:
+
+  (ACCESSOR [:OCTETS n]|[:BITS n] [:ENDIANNESS :BIG|:LITTLE]
+            [:FUNCTION FUNC-NAME])
+
+  (ACCESSOR object) must be a 'place' understandable for setf.
+  Either BITS or OCTETS must be supplied, but not
+  both. Endianness may be supplied and will be passed to
+  low-level bitreader function. if FUNC-NAME is supplied,
+  readed value will be passed to this function and then
+  assigned to the slot."
+  `(defun ,name (reader obj)
+     ,@(loop for slot-spec in slots
+             for accessor = (car slot-spec)
+             for options = (cdr slot-spec) collect
+            `(setf (,accessor obj)
+                   ,(let ((function-name
+                           (cond
+                             ((and (getf options :octets)
+                                   (getf options :bits))
+                              (error "DEFREADER: Both OCTETS and BITS were specified"))
+                             ((getf options :octets) 'bitreader:read-octets)
+                             ((getf options :bits) 'bitreader:read-bits)))
+                          (n (or (getf options :octets)
+                                 (getf options :bits)))
+                          (endianness (getf options :endianness))
+                          (aux-function (getf options :function)))
+
+                         (if (not n) (error "Either OCTETS or BITS must be specified"))
+                         (let ((call `(,function-name ,n ,@(if endianness (list :endianness endianness)))))
+                           (if aux-function (list aux-function call) call)))))))

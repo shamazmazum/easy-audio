@@ -2,4 +2,5 @@
   (:nicknames #:utils)
   (:use #:cl)
   (:export #:mixchannels
-           #:write-pcm-wav-header))
+           #:write-pcm-wav-header
+           #:defreader))
