@@ -44,6 +44,28 @@
 (defconstant +meta-id-data-length--1+      #x40)
 (defconstant +meta-id-large-block+         #x80)
 
+;; Assigned metadata ids
+(defconstant +meta-id-dummy+               #x0)
+(defconstant +meta-id-decorr-terms+        #x2)
+(defconstant +meta-id-decorr-weights+      #x3)
+(defconstant +meta-id-decorr-samples+      #x4)
+(defconstant +meta-id-entropy-vars+        #x5)
+(defconstant +meta-id-hybrid-profile+      #x6)
+(defconstant +meta-id-shaping-weights+     #x7)
+(defconstant +meta-id-float-info+          #x8)
+(defconstant +meta-id-int32-info+          #x9)
+(defconstant +meta-id-wv-bitstream+        #xa)
+(defconstant +meta-id-wvc-bitstream+       #xb)
+(defconstant +meta-id-wvx-bitstream+       #xc)
+(defconstant +meta-id-channel-info+        #xd)
+
+;; Metadata ids of metadata needless for decoder
+(defconstant +meta-id-riff-header+         #x21)
+(defconstant +meta-id-riff-trailer+        #x22)
+(defconstant +meta-id-config-block+        #x25)
+(defconstant +meta-id-md5-checksum+        #x26)
+(defconstant +meta-id-samplerate+          #x27)
+
 (defun large-meta-p (metadata)
   (= (logand (wv-metadata-id metadata)
              +meta-id-large-block+)
@@ -103,6 +125,22 @@ typedef struct {
   ;; is in there?
   metadata)
 
+(defmacro define-get-value/shift+mask (name-spec)
+  "Define value-getting function. This function will accept an integer
+   number and extract a value using defined mask and shift values like
+   so: (ash (logand number mask) shift).
+
+   NAME-SPEC can be a list (NAME SYM) or just a symbol NAME. NAME is the
+   name of the function to be defined. Mask and shift values used must
+   have names +FLAGS-NAME-MASK+ and +FLAGS-NAME-SHIFT+ or
+   +FLAGS-SYM-MASK+ and +FLAGS-SYM-SHIFT+ if SYM is supplied."
+  (let* ((name (if (atom name-spec) name-spec (first name-spec)))
+         (sym  (if (atom name-spec) name-spec (second name-spec)))
+         (mask  (intern (concatenate 'string "+FLAGS-" (symbol-name sym) "-MASK+")))
+         (shift (intern (concatenate 'string "+FLAGS-" (symbol-name sym) "-SHIFT+"))))
+    `(defun ,name (flags)
+       (ash (logand flags ,mask) ,shift))))
+
 (defconstant +flags-1-byte/sample+     #x00000000)
 (defconstant +flags-2-byte/sample+     #x00000001)
 (defconstant +flags-3-byte/sample+     #x00000002)
@@ -150,24 +188,31 @@ typedef struct {
 (defconstant +flags-left-shift-amount-mask+ #x0003e000)
 (defconstant +flags-left-shift-amount-shift+ -13)
 
-(defconstant +flags-max-magnitude-mask+     #x007c0000)
+(defconstant +flags-max-magnitude-mask+ #x007c0000)
 (defconstant +flags-max-magnitude-shift+ -18)
 
-(defmacro define-get-value/shift+mask (name)
-  (let ((mask  (intern (concatenate 'string "+FLAGS-" (symbol-name name) "-MASK+")))
-        (shift (intern (concatenate 'string "+FLAGS-" (symbol-name name) "-SHIFT+"))))
-    `(defun ,name (flags)
-       (ash (logand flags ,mask) ,shift))))
+(defconstant +flags-samplerate-mask+ #x07800000)
+(defconstant +flags-samplerate-shift+ -23)
 
-(define-get-value/shift+mask left-shift-amount)
-(define-get-value/shift+mask max-magnitude)
-
-;; Skip sample rate by now. I belive it is tricky.
 ;; Bits 27-28 are ignored
 
 (defconstant +flags-use-iir+       #x20000000)
 (defconstant +flags-false-stereo+  #x40000000)
 (defconstant +flags-reserved-zero+ #x80000000)
+
+(define-get-value/shift+mask left-shift-amount)
+(define-get-value/shift+mask max-magnitude)
+(define-get-value/shift+mask (samplerate% samplerate))
+(defun samplerate (flags)
+  ;; Maybe I should use (cond ...) instead generating a whole list
+  (let ((samplerate% (samplerate% flags))
+        (samplerate-list (list 6000  8000  9600
+                               11025 12000 16000
+                               22050 24000 32000
+                               44100 48000 64000
+                               88200 96000 192000)))
+    (declare (dynamic-extent samplerate-list))
+    (nth samplerate% samplerate-list)))
 
 ;; Coding guide to myself:
 
