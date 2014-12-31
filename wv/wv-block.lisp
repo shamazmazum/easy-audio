@@ -23,20 +23,43 @@
 
 (in-package :easy-audio.wv)
 
-(define-condition wv-error ()
-  ((message :reader wv-error-message
+(define-condition wv-condition ()
+  ((message :reader wv-condition-message
             :initarg :message))
   (:report (lambda (c s)
-	     (format s "WavPack error: ~A"
-		     (wv-error-message c))))
-  (:documentation "General (unspecified) WavPack error"))
-(define-condition wv-block-error (wv-error) ())
+	     (format s "WavPack: ~A"
+		     (wv-condition-message c))))
+  (:documentation "General (unspecified) WavPack condition"))
+(define-condition wv-block-error (wv-condition) ())
 
-(defstruct wv-metadata
-  (id   0 :type (ub 8))
-  (size 0 :type (ub 24)) ; I do not like 'word-size' name in the
-                         ; specification
-  data)
+(defvar-unbound *current-block*
+    "Bound to block currently being readed by block reader")
+
+(defclass wv-metadata ()
+  ((id   :accessor wv-metadata-id
+         :type (ub 8))
+   (size :accessor wv-metadata-size
+         :type (ub 24)) ; I do not like 'word-size' name in the
+                        ; specification
+   (data :accessor wv-metadata-data))) ; Usually it is unbound
+
+(define-condition wv-unknown-metadata (wv-condition warning)
+  ((metadata :reader unknown-metadata
+             :initarg :metadata))
+  (:report (lambda (c s)
+	     (format s "WavPack: cannot understand metadata (id=~d)"
+                     (wv-metadata-id (unknown-metadata c))))))
+
+(defgeneric read-wv-metadata-body (metadata reader)
+  (:method ((metadata wv-metadata) reader)
+    (let* ((data-size (ash (wv-metadata-size metadata) 1))
+           (data (make-array (list data-size)
+                            :element-type '(ub 8))))
+      (read-octet-vector data reader)
+      (setf (wv-metadata-data metadata) data))
+
+    (warn 'wv-unknown-metadata :metadata metadata)
+    metadata))
 
 ;; Metadata id masks
 (defconstant +meta-id-function+            #x1f)
@@ -71,18 +94,14 @@
              +meta-id-large-block+)
      +meta-id-large-block+))
 
-(defreader read-wv-metadata% ((make-wv-metadata) metadata)
+(defreader read-wv-metadata% ((make-instance 'wv-metadata) metadata)
   (wv-metadata-id (:octets 1))
   (wv-metadata-size (:octets (if (large-meta-p metadata) 3 1)) :endianness :little))
 
 (defun read-wv-metadata (reader)
-  (let* ((metadata (read-wv-metadata% reader))
-         (data-size (wv-metadata-size metadata))
-         (data (make-array (list data-size)
-                           :element-type '(ub 16))))
-    (loop for i below data-size do
-         (setf (aref data i) (read-octets 2 reader :endianness :little)))
-    metadata))
+  (let ((metadata (read-wv-metadata% reader)))
+    ;; FIXME: promote to needed type
+    (read-wv-metadata-body metadata reader)))
 
 ;; WavPack format specs:
 #|Here is the 32-byte little-endian header at the front of every WavPack block:
@@ -248,7 +267,8 @@ typedef struct {
         ;; Specification says we should "refuse to decode if set"
         (error 'wv-block-error :message "Reserved flag is set to 1"))
 
-    (let ((sub-blocks-size (- (wv-block-size wv-block) 24)))
+    (let ((sub-blocks-size (- (wv-block-size wv-block) 24))
+          (*current-block* wv-block))
       (if (< sub-blocks-size 0)
           (error 'wv-block-error :message "Sub-blocks size is less than 0"))
       (setf (wv-block-metadata wv-block)
