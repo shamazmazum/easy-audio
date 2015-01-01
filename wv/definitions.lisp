@@ -57,6 +57,7 @@
 
 (defclass metadata-decorr-terms (metadata-decorr) ())
 (defclass metadata-decorr-weights (metadata-decorr) ())
+(defclass metadata-decorr-samples (metadata-decorr) ())
 
 (defgeneric read-metadata-body (metadata reader))
 
@@ -97,13 +98,18 @@
 (defstruct decorr-pass
   (term      0 :type (sb 32)) ; FIXME: these fields are signed
   (delta     0 :type (sb 32))
-  (weight-A  0 :type (sb 32))
-  (weight-B  0 :type (sb 32))
-  samples-A samples-B ; Do we need early initialization as in WavPack library?
-  (aweight-A 0 :type (sb 32))
-  (aweight-B 0 :type (sb 32))
-  (sum-A     0 :type (sb 32))
-  (sum-B     0 :type (sb 32)))
+  (weight    (make-array 2 :element-type '(sb 32)
+                           :initial-element 0)
+               :type (sa-sb 32))
+  (samples   (make-array 16 :element-type '(sb 32)
+                            :initial-element 0)
+               :type (sa-sb 32)) ; ch11 ch12 ch21 ch22 ... ch81 ch82
+  (aweight   (make-array 2 :element-type '(sb 32)
+                           :initial-element 0)
+               :type (sa-sb 32))
+  (sum       (make-array 2 :element-type '(sb 32)
+                           :initial-element 0)
+               :type (sa-sb 32)))
 
 (defstruct (wv-block (:conc-name block-))
   (id            0 :type (ub 32))
@@ -204,3 +210,6 @@
 (define-get-value/shift+mask left-shift-amount)
 (define-get-value/shift+mask max-magnitude)
 (define-get-value/shift+mask (samplerate% samplerate))
+
+(defun bit-set-p (value mask)
+  (/= (logand value mask) 0))

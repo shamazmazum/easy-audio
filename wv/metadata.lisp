@@ -71,10 +71,9 @@
 
 (defmethod read-metadata-body ((metadata metadata-decorr-weights) reader)
   (let* ((data-size (metadata-actual-size metadata))
-         (stereo (= (logand (block-flags *current-block*)
-                            +flags-output-mask+)
-                    +flags-stereo-output+))
-         (term-number (if stereo (ash data-size -1) data-size)))
+         (mono (bit-set-p (block-flags *current-block*) +flags-mono-output+))
+         (term-number (if mono data-size (ash data-size -1)))
+         (channels (if mono 1 2)))
 
     (if (> term-number
            (length (metadata-decorr-passes metadata)))
@@ -86,21 +85,55 @@
                (if (> res 0) (+ res (ash (+ res 64) -7)) res))))
       (loop for decorr-pass in (metadata-decorr-passes metadata)
             repeat term-number do
-           (setf (decorr-pass-weight-A decorr-pass)
-                 (restore-weight (read-octet reader)))
-           (if stereo (setf (decorr-pass-weight-b decorr-pass)
-                            (restore-weight (read-octet reader)))))))
+           (loop for channel below channels do
+                (setf (aref (decorr-pass-weight decorr-pass) channel)
+                      (restore-weight (read-octet reader)))))))
+  metadata)
+
+(defmethod read-metadata-body ((metadata metadata-decorr-samples) reader)
+  (let* ((data-size (metadata-actual-size metadata))
+         (mono (bit-set-p (block-flags *current-block*) +flags-mono-output+))
+         (channels (if mono 1 2))
+         (bytes-read 0))
+
+    (if (and (= (block-version *current-block*) #x402)
+             (bit-set-p (block-flags *current-block*) +flags-hybrid-mode+))
+        (error 'block-error "Hybrid encoding is not supported"))
+
+    (loop for decorr-pass in (metadata-decorr-passes metadata)
+          for term = (decorr-pass-term decorr-pass)
+          while (< bytes-read data-size)
+          do
+         (cond
+           ((> term 8)
+            (loop repeat channels
+                  for i from 0 by 1 do
+                 (setf (aref (decorr-pass-samples decorr-pass) i)
+                       (exp2s (unsigned-to-signed (read-octets 2 reader :endianness :little) 16))
+                       (aref (decorr-pass-samples decorr-pass) (+ i 2))
+                       (exp2s (unsigned-to-signed (read-octets 2 reader :endianness :little) 16)))
+                 (incf bytes-read 4)))
+
+           (t
+            (if (and (< term 0) mono)
+                (error 'block-error :message "decorrelation term < 0 and mono audio"))
+            (loop repeat (if (< term 0) 1 term)
+                  for i from 0 by 2 do
+                 (loop for j below channels do
+                      (setf (aref (decorr-pass-samples decorr-pass) (+ i j))
+                            (exp2s (unsigned-to-signed (read-octets 2 reader :endianness :little) 16)))
+                      (incf bytes-read 2))))))
+
+    (if (/= bytes-read data-size)
+        (error 'block-error :message
+               (format nil "Size of metadata sub-block ~a is invalid" metadata))))
   metadata)
 
 ;; Metadata reader
-(defun large-meta-p (metadata)
-  (= (logand (metadata-id metadata)
-             +meta-id-large-block+)
-     +meta-id-large-block+))
-
 (defreader read-metadata% ((make-instance 'metadata) metadata)
   (metadata-id (:octets 1))
-  (metadata-size (:octets (if (large-meta-p metadata) 3 1))
+  (metadata-size (:octets (if (bit-set-p (metadata-id metadata)
+                                         +meta-id-large-block+) 3 1))
                  :endianness :little
                  :function (lambda (x) (ash x 1))))
 
@@ -108,7 +141,7 @@
   (let ((metadata (read-metadata% reader)))
     (setf (metadata-actual-size metadata)
           (let ((size (metadata-size metadata)))
-            (if (/= (logand (metadata-id metadata) +meta-id-data-length--1+) 0)
+            (if (bit-set-p (metadata-id metadata) +meta-id-data-length--1+)
                 (1- size) size)))
 
     (change-class
@@ -117,5 +150,6 @@
        (cond
          ((= function +meta-id-decorr-terms+) 'metadata-decorr-terms)
          ((= function +meta-id-decorr-weights+) 'metadata-decorr-weights)
+         ((= function +meta-id-decorr-samples+) 'metadata-decorr-samples)
          (t 'metadata))))
     (read-metadata-body metadata reader)))

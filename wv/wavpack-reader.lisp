@@ -46,3 +46,18 @@
                        #x100))
             (exp (ash val -8)))
         (ash m (- exp 9)))))
+
+
+;; From flac reader
+(declaim (inline unsigned-to-signed)
+	 (ftype (function ((ub 32)
+			   (integer 0 32))
+			  (sb 32))
+		unsigned-to-signed))
+(defun unsigned-to-signed (byte len)
+  (declare (type (integer 0 32) len)
+	   (type (ub 32) byte))
+  (let ((sign-mask (ash 1 (1- len))))
+    (if (< byte sign-mask)
+        byte
+        (- byte (ash sign-mask 1)))))

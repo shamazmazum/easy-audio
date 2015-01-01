@@ -35,7 +35,7 @@
 
 ;; Coding guide to myself:
 
-;; 1) When I need to check if flag (bit) is set, use (logand x flag)
+;; 1) When I need to check if flag (bit) is set, use bit-set-p function
 ;; 2) When I need to choose which flag in the set is set, use cond
 ;;    macro with (logand x mask)
 ;; 3) When I need to get a value from flags using masks and shifts, use
@@ -63,7 +63,7 @@
               (> version #x410))
           (error 'block-error :message "Unsupported WavPack block version")))
 
-    (if (/= (logand (block-flags wv-block) +flags-reserved-zero+) 0)
+    (if (bit-set-p (block-flags wv-block) +flags-reserved-zero+)
         ;; Specification says we should "refuse to decode if set"
         (error 'block-error :message "Reserved flag is set to 1"))
 
@@ -75,7 +75,8 @@
             (loop with bytes-read = 0
                while (< bytes-read sub-blocks-size)
                for metadata = (read-metadata reader)
-               do (incf bytes-read (+ 1 (if (large-meta-p metadata) 3 1)
+               do (incf bytes-read (+ 1 (if (bit-set-p (metadata-id metadata)
+                                                       +meta-id-large-block+) 3 1)
                                       (metadata-size metadata)))
                collect metadata
                finally (if (> bytes-read sub-blocks-size)
