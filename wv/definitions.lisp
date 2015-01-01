@@ -59,6 +59,10 @@
 (defclass metadata-decorr-weights (metadata-decorr) ())
 (defclass metadata-decorr-samples (metadata-decorr) ())
 
+(defclass metadata-entropy (metadata)
+  ((entropy-median :accessor metadata-entropy-median
+                   :type (simple-array (ub 32) (* *)))))
+
 (defgeneric read-metadata-body (metadata reader))
 
 ;; Metadata id masks
@@ -101,9 +105,9 @@
   (weight    (make-array 2 :element-type '(sb 32)
                            :initial-element 0)
                :type (sa-sb 32))
-  (samples   (make-array 16 :element-type '(sb 32)
-                            :initial-element 0)
-               :type (sa-sb 32)) ; ch11 ch12 ch21 ch22 ... ch81 ch82
+  (samples   (make-array (list 8 2) :element-type '(sb 32)
+                                    :initial-element 0)
+             :type (simple-array (sb 32) (* *)))
   (aweight   (make-array 2 :element-type '(sb 32)
                            :initial-element 0)
                :type (sa-sb 32))
@@ -127,7 +131,8 @@
   ;; a series of "metadata" sub-blocks". Does it mean that audio data
   ;; is in there?
   metadata
-  decorr-passes)
+  decorr-passes
+  entropy-median)
 
 (defvar-unbound *current-block*
     "Bound to block currently being readed by block reader")
