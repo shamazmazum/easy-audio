@@ -37,7 +37,13 @@
                (:file "wav/wav" :depends-on ("wav/package"))
 
                (:file "utils/package" :depends-on ("wav/package"))
-               (:file "utils/utils" :depends-on ("utils/package")))
+               (:file "utils/utils" :depends-on ("utils/package"))
+
+               (:file "wv/package" :depends-on ("utils/package"))
+               (:file "wv/definitions" :depends-on ("wv/package"))
+               (:file "wv/wavpack-reader" :depends-on ("wv/package"))
+               (:file "wv/metadata" :depends-on ("utils/package"))
+               (:file "wv/wv-block" :depends-on ("utils/package")))
   :perform (test-op (op system)
                     (declare (ignore op system))
                     (asdf:load-system :easy-audio-tests)
