@@ -108,9 +108,9 @@
            ((> term 8)
             (loop for i below channels do
                  (setf (aref (decorr-pass-samples decorr-pass) 0 i)
-                       (exp2s (unsigned-to-signed (read-octets 2 reader :endianness :little) 16))
+                       (exp2s (read-octets 2 reader :endianness :little))
                        (aref (decorr-pass-samples decorr-pass) 1 i)
-                       (exp2s (unsigned-to-signed (read-octets 2 reader :endianness :little) 16)))
+                       (exp2s (read-octets 2 reader :endianness :little)))
                  (incf bytes-read 4)))
 
            (t
@@ -119,7 +119,7 @@
             (loop for i below (if (< term 0) 1 term) do
                  (loop for j below channels do
                       (setf (aref (decorr-pass-samples decorr-pass) i j)
-                            (exp2s (unsigned-to-signed (read-octets 2 reader :endianness :little) 16)))
+                            (exp2s (read-octets 2 reader :endianness :little)))
                       (incf bytes-read 2))))))
 
     (if (/= bytes-read data-size)
@@ -127,15 +127,11 @@
                (format nil "Size of metadata sub-block ~a is invalid" metadata))))
   metadata)
 
-(defmethod read-metadata-body :before ((metadata metadata-entropy) reader)
-  (setf (metadata-entropy-median metadata)
-        (setf (block-entropy-median *current-block*)
-              (make-array (list 3 2) :element-type '(ub 32)))))
-
 (defmethod read-metadata-body ((metadata metadata-entropy) reader)
   (let ((data-size (metadata-actual-size metadata))
         (mono (bit-set-p (block-flags *current-block*)
-                         +flags-mono-output+)))
+                         +flags-mono-output+))
+        (entropy-median (make-array (list 3 2) :element-type '(ub 32))))
 
     (if (/= data-size (if mono 6 12))
         (error 'block-error :message
@@ -143,8 +139,11 @@
 
     (loop for i below (if mono 1 2) do
          (loop for j below 3 do
-              (setf (aref (metadata-entropy-median metadata) j i)
-                    (exp2s (unsigned-to-signed (read-octets 2 reader :endianness :little) 16))))))
+              (setf (aref entropy-median j i)
+                    (exp2s (read-octets 2 reader :endianness :little)))))
+
+    (setf (metadata-entropy-median metadata) entropy-median
+          (block-entropy-median *current-block*) entropy-median))
   metadata)
 
 ;; Metadata reader

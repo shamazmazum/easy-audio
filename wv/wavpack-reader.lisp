@@ -35,17 +35,17 @@
                                                       *compile-file-truename*))
                    (read in))))
 
-(declaim (ftype (function ((sb 16)) (sb 32)) exp2s))
+(declaim (ftype (function ((ub 16)) (sb 32)) exp2s))
 (defun exp2s (val)
   (declare (optimize (speed 3))
-           (type (sb 16)))
-  (if (< val 0)
-      (- (exp2s (- val)))
+           (type (ub 16) val))
+  (if (< val #x8000)
       (let ((m (logior (aref +exp2-table+
                              (logand val #xff))
                        #x100))
             (exp (ash val -8)))
-        (ash m (- exp 9)))))
+        (ash m (- exp 9)))
+      (- (exp2s (1+ (logxor #xffff val))))))
 
 
 ;; From flac reader
