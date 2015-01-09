@@ -91,47 +91,53 @@
   metadata)
 
 (defmethod read-metadata-body ((metadata metadata-decorr-samples) reader)
-  (let* ((data-size (metadata-actual-size metadata))
-         (mono (bit-set-p (block-flags *current-block*) +flags-mono-output+))
-         (channels (if mono 1 2))
-         (bytes-read 0))
+  (if (and (= (block-version *current-block*) #x402)
+           (bit-set-p (block-flags *current-block*) +flags-hybrid-mode+))
+      (error 'block-error "Hybrid encoding is not supported"))
 
-    (if (and (= (block-version *current-block*) #x402)
-             (bit-set-p (block-flags *current-block*) +flags-hybrid-mode+))
-        (error 'block-error "Hybrid encoding is not supported"))
+  (let ((channels (if (bit-set-p (block-flags *current-block*) +flags-mono-output+) 1 2))
+        (first-term (decorr-pass-term (first (metadata-decorr-passes metadata))))
+        (bytes-read 0)
+        decorr-samples)
 
-    (loop for decorr-pass in (metadata-decorr-passes metadata)
-          for term = (decorr-pass-term decorr-pass)
-          while (< bytes-read data-size)
-          do
-         (cond
-           ((> term 8)
-            (loop for i below channels do
-                 (setf (aref (decorr-pass-samples decorr-pass) 0 i)
-                       (exp2s (read-octets 2 reader :endianness :little))
-                       (aref (decorr-pass-samples decorr-pass) 1 i)
-                       (exp2s (read-octets 2 reader :endianness :little)))
-                 (incf bytes-read 4)))
+    (cond
+      ((> first-term 8)
+       (setq decorr-samples (make-array (list 2 2) :element-type '(sb 32)))
+       (loop for i below channels do
+            (setf (aref decorr-samples 0 i)
+                  (exp2s (read-octets 2 reader :endianness :little))
+                  (aref decorr-samples 1 i)
+                  (exp2s (read-octets 2 reader :endianness :little)))
+            (incf bytes-read 4)))
 
-           (t
-            (if (and (< term 0) mono)
-                (error 'block-error :message "decorrelation term < 0 and mono audio"))
-            (loop for i below (if (< term 0) 1 term) do
-                 (loop for j below channels do
-                      (setf (aref (decorr-pass-samples decorr-pass) i j)
-                            (exp2s (read-octets 2 reader :endianness :little)))
-                      (incf bytes-read 2))))))
+      ((< first-term 0)
+       (if (= channels 1)
+           (error 'block-error :message "decorrelation term < 0 and mono audio"))
+       (setq decorr-samples (make-array (list 1 2) :element-type '(sb 32)))
+       (loop for i below channels do
+            (setf (aref decorr-samples 0 i) (exp2s (read-octets 2 reader :endianness :little)))
+            (incf bytes-read 2)))
 
-    (if (/= bytes-read data-size)
+      (t
+       (setq decorr-samples (make-array (list first-term 2) :element-type '(sb 32)))
+       (loop for i below first-term do
+            (loop for j below channels do
+                 (setf (aref decorr-samples i j) (exp2s (read-octets 2 reader :endianness :little)))
+                 (incf bytes-read 2)))))
+
+    (if (/= bytes-read (metadata-actual-size metadata))
         (error 'block-error :message
-               (format nil "Size of metadata sub-block ~a is invalid" metadata))))
+               (format nil "Size of metadata sub-block ~a is invalid" metadata)))
+
+    (setf (metadata-decorr-samples metadata) decorr-samples
+          (block-decorr-samples *current-block*) decorr-samples))
   metadata)
 
 (defmethod read-metadata-body ((metadata metadata-entropy) reader)
   (let ((data-size (metadata-actual-size metadata))
         (mono (bit-set-p (block-flags *current-block*)
                          +flags-mono-output+))
-        (entropy-median (make-array (list 3 2) :element-type '(ub 32))))
+        (entropy-median (block-entropy-median *current-block*)))
 
     (if (/= data-size (if mono 6 12))
         (error 'block-error :message
@@ -142,8 +148,7 @@
               (setf (aref entropy-median j i)
                     (exp2s (read-octets 2 reader :endianness :little)))))
 
-    (setf (metadata-entropy-median metadata) entropy-median
-          (block-entropy-median *current-block*) entropy-median))
+    (setf (metadata-entropy-median metadata) entropy-median))
   metadata)
 
 ;; Metadata reader

@@ -57,7 +57,9 @@
 
 (defclass metadata-decorr-terms (metadata-decorr) ())
 (defclass metadata-decorr-weights (metadata-decorr) ())
-(defclass metadata-decorr-samples (metadata-decorr) ())
+(defclass metadata-decorr-samples (metadata-decorr)
+  ((decorr-samples :type (simple-array (sb 32) (* *))
+                   :accessor metadata-decorr-samples)))
 
 (defclass metadata-entropy (metadata)
   ((entropy-median :accessor metadata-entropy-median
@@ -105,9 +107,6 @@
   (weight    (make-array 2 :element-type '(sb 32)
                            :initial-element 0)
                :type (sa-sb 32))
-  (samples   (make-array (list 8 2) :element-type '(sb 32)
-                                    :initial-element 0)
-             :type (simple-array (sb 32) (* *)))
   (aweight   (make-array 2 :element-type '(sb 32)
                            :initial-element 0)
                :type (sa-sb 32))
@@ -132,7 +131,9 @@
   ;; is in there?
   metadata
   decorr-passes
-  entropy-median)
+  decorr-samples
+  (entropy-median (make-array (list 3 2) :element-type '(sb 32))
+                  :type (simple-array (sb 32) (3 2))))
 
 (defvar-unbound *current-block*
     "Bound to block currently being readed by block reader")
