@@ -119,7 +119,16 @@
                            :initial-element 0)
                :type (sa-sb 32)))
 
-(defstruct (wv-block (:conc-name block-))
+(defstruct (wv-block (:conc-name block-)
+                     (:print-function
+                      (lambda (struct stream k)
+                        (declare (ignore k))
+                        (print-unreadable-object (struct stream
+                                                  :type t :identity t)
+                          (format stream "samples ~d..~d"
+                                  (block-block-index struct)
+                                  (+ (block-block-index struct)
+                                     (block-block-samples struct)))))))
   (id            0 :type (ub 32))
   (size          0 :type (ub 32))
 
