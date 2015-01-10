@@ -130,7 +130,7 @@
      (reader-end reader)))
 
 
-(declaim (ftype (function (reader) (integer 0 1)) read-bit))
+(declaim (ftype (function (reader) bit-value) read-bit))
 (defun read-bit (reader)
   "Read a single bit from READER"
   (if (can-not-read reader) (fill-buffer reader))

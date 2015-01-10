@@ -36,7 +36,8 @@
            #:ub
            #:sb
            #:sa-ub
-           #:sa-sb))
+           #:sa-sb
+           #:bit-value))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defun type-decl-func (stream sub-char num)
@@ -60,6 +61,7 @@
 (deftype sb (n) `(signed-byte ,n))
 (deftype sa-ub (n) `(simple-array (ub ,n) (*)))
 (deftype sa-sb (n) `(simple-array (sb ,n) (*)))
+(deftype bit-value () '(integer 0 1))
 
 ;; Definition of documented unbound variables
 (defmacro defvar-unbound (var &optional doc-string)

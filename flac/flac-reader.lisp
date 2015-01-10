@@ -102,14 +102,14 @@
         byte
         (- byte (ash sign-mask 1)))))
 
-(declaim (ftype (function (t &optional (integer 0 1)) fixnum)
+(declaim (ftype (function (t &optional bit-value) fixnum)
 		read-unary-coded-integer)
 	 (inline read-unary-coded-integer))
 (defun read-unary-coded-integer (bitreader &optional (one 0))
   "Read unary coded integer from bitreader
    By default zero bit is considered as arithmetical 1,
    1 bit is terminator"
-  (declare (type (integer 0 1) one))
+  (declare (type bit-value one))
   (let ((sum 0))
     (declare (type (ub 32) sum))
   (tagbody reader-loop
