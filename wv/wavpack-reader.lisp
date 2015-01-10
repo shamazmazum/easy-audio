@@ -46,9 +46,14 @@
             (exp (ash val -8)))
         (ash m (- exp 9)))
       (- (exp2s (1+ (logxor #xffff val))))))
+
+
 ;; Next two functions are just a KLUDGE and almost copy functionality of the bitreader.
 ;; Try to develop more flexible bitreader instead
+(declaim (ftype (function (reader) bit-value) residual-read-bit))
 (defun residual-read-bit (reader)
+  (declare (optimize #+easy-audio-unsafe-code
+                     (safety 0) (speed 3)))
   (with-accessors ((ibyte bitreader::reader-ibyte)
                    (ibit  bitreader::reader-ibit)
                    (end   bitreader::reader-end)) reader
@@ -62,19 +67,29 @@
             (incf ibit)))
       (error 'bitreader-eof :bitreader reader))))
 
+;; Will always return fixnum on x86-64
+(declaim (ftype (function (non-negative-int reader) non-negative-fixnum) residual-read-bits))
 (defun residual-read-bits (bits reader)
+  (declare (optimize #+easy-audio-unsafe-code
+                     (safety 0) (speed 3))
+           (type non-negative-fixnum bits))
+
   (let ((result 0)
         (already-read 0))
+    (declare (type non-negative-fixnum result already-read))
+
     (with-accessors ((ibit  bitreader::reader-ibit)
                      (ibyte bitreader::reader-ibyte)
                      (end   bitreader::reader-end)) reader
       (dotimes (i (ceiling (+ bits ibit) 8))
         (if (= ibyte end) (error 'bitreader-eof :bitreader reader))
         (let ((bits-to-add (min bits (- 8 ibit))))
-          (setq result (logior result (ash (ldb
-                                            (byte bits-to-add ibit)
-                                            (aref (bitreader::reader-buffer reader) ibyte))
-                                           already-read))
+          (declare (type bit-counter bits-to-add))
+          (setq result (logior result (the non-negative-fixnum
+                                           (ash (ldb
+                                                 (byte bits-to-add ibit)
+                                                 (aref (bitreader::reader-buffer reader) ibyte))
+                                                already-read)))
                 bits (- bits bits-to-add)
                 already-read (+ already-read bits-to-add))
 
@@ -84,12 +99,25 @@
                     ibyte (1+ ibyte))))))
     result))
 
+;; From flac reader
+(declaim (ftype (function (t) non-negative-fixnum)
+		read-unary-coded-integer)
+	 (inline read-unary-coded-integer))
+(defun read-unary-coded-integer (bitreader)
+  "Read an unary coded integer from bitreader
+   1 bit is considered as arithmetical 1,
+   0 bit signals termination"
+  (do ((res 0 (1+ res)))
+      ((= (residual-read-bit bitreader) 0) res)
+    (declare (type (ub 32) res)) ()))
+
+(declaim (ftype (function (t) non-negative-fixnum) read-zero-run-length))
 (defun read-zero-run-length (reader)
-  (let ((ones-num
-         (loop for one = (residual-read-bit reader)
-               while (= one 1) count one)))
+  (declare (optimize (speed 3)))
+  (let ((ones-num (read-unary-coded-integer reader)))
     (if (/= ones-num 0)
-        (let ((shift (1- ones-num)))
+        (let ((shift (the (integer 0 32) ; as to format limits
+                          (1- ones-num))))
           (logior (ash 1 shift)
                   (residual-read-bits shift reader))) 0)))
 
