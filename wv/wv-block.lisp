@@ -68,13 +68,17 @@
 
     (do ((i 0))
         ((= i (block-block-samples wv-block)))
-      (dotimes (j channels)
-        (cond
-          ((and (< (aref median 0 0) 2) ; FIXME: hold_one && hold_zero
-                (< (aref median 0 1) 2))
-           ;; Run of zeros - do nothing
-           (incf i (read-zero-run-length coded-residual-reader))) ; FIXME: 'Forgot' to erase median
-          (t
+      (cond
+        ((and (< (aref median 0 0) 2) ; FIXME: hold_one && hold_zero
+              (< (aref median 0 1) 2))
+         ;; Run of zeros - do nothing
+         ;; FIXME: We hope, that read-zero-run-length returns number of INTERCHANNEL samples
+         (incf i (the non-negative-int
+                      (/ (read-zero-run-length coded-residual-reader) channels)))
+         ;; FIXME: 'Forgot' to erase median
+         )
+        (t
+         (dotimes (j channels)
            ;; FIXME: Do not know what to do yet - return
            (return-from decode-residual i))))))
   wv-block)
