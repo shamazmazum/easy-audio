@@ -95,42 +95,44 @@
            (bit-set-p (block-flags *current-block*) +flags-hybrid-mode+))
       (error 'block-error "Hybrid encoding is not supported"))
 
-  (let ((channels (if (bit-set-p (block-flags *current-block*) +flags-mono-output+) 1 2))
-        (first-term (decorr-pass-term (first (metadata-decorr-passes metadata))))
-        (bytes-read 0)
-        decorr-samples)
+  (let ((first-pass (first (metadata-decorr-passes metadata))))
+    (if first-pass
+        (let ((channels (if (bit-set-p (block-flags *current-block*) +flags-mono-output+) 1 2))
+              (first-term (decorr-pass-term first-pass))
+              (bytes-read 0)
+              decorr-samples)
 
-    (cond
-      ((> first-term 8)
-       (setq decorr-samples (make-array (list 2 2) :element-type '(sb 32)))
-       (loop for i below channels do
-            (setf (aref decorr-samples 0 i)
-                  (exp2s (read-octets 2 reader :endianness :little))
-                  (aref decorr-samples 1 i)
-                  (exp2s (read-octets 2 reader :endianness :little)))
-            (incf bytes-read 4)))
+          (cond
+            ((> first-term 8)
+             (setq decorr-samples (make-array (list 2 2) :element-type '(sb 32)))
+             (loop for i below channels do
+                  (setf (aref decorr-samples 0 i)
+                        (exp2s (read-octets 2 reader :endianness :little))
+                        (aref decorr-samples 1 i)
+                        (exp2s (read-octets 2 reader :endianness :little)))
+                  (incf bytes-read 4)))
 
-      ((< first-term 0)
-       (if (= channels 1)
-           (error 'block-error :message "decorrelation term < 0 and mono audio"))
-       (setq decorr-samples (make-array (list 1 2) :element-type '(sb 32)))
-       (loop for i below channels do
-            (setf (aref decorr-samples 0 i) (exp2s (read-octets 2 reader :endianness :little)))
-            (incf bytes-read 2)))
+            ((< first-term 0)
+             (if (= channels 1)
+                 (error 'block-error :message "decorrelation term < 0 and mono audio"))
+             (setq decorr-samples (make-array (list 1 2) :element-type '(sb 32)))
+             (loop for i below channels do
+                  (setf (aref decorr-samples 0 i) (exp2s (read-octets 2 reader :endianness :little)))
+                  (incf bytes-read 2)))
 
-      (t
-       (setq decorr-samples (make-array (list first-term 2) :element-type '(sb 32)))
-       (loop for i below first-term do
-            (loop for j below channels do
-                 (setf (aref decorr-samples i j) (exp2s (read-octets 2 reader :endianness :little)))
-                 (incf bytes-read 2)))))
+            (t
+             (setq decorr-samples (make-array (list first-term 2) :element-type '(sb 32)))
+             (loop for i below first-term do
+                  (loop for j below channels do
+                       (setf (aref decorr-samples i j) (exp2s (read-octets 2 reader :endianness :little)))
+                       (incf bytes-read 2)))))
 
-    (if (/= bytes-read (metadata-actual-size metadata))
-        (error 'block-error :message
-               (format nil "Size of metadata sub-block ~a is invalid" metadata)))
+          (if (/= bytes-read (metadata-actual-size metadata))
+              (error 'block-error :message
+                     (format nil "Size of metadata sub-block ~a is invalid" metadata)))
 
-    (setf (metadata-decorr-samples metadata) decorr-samples
-          (block-decorr-samples *current-block*) decorr-samples))
+          (setf (metadata-decorr-samples metadata) decorr-samples
+                (block-decorr-samples *current-block*) decorr-samples))))
   metadata)
 
 (defmethod read-metadata-body ((metadata metadata-entropy) reader)
