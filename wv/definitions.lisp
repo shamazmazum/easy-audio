@@ -65,6 +65,11 @@
   ((entropy-median :accessor metadata-entropy-median
                    :type (simple-array (ub 32) (* *)))))
 
+(defclass metadata-residual (metadata)
+  ((reader :type reader
+           :accessor metadata-residual-reader)))
+(defclass metadata-wv-residual (metadata-residual) ())
+
 (defgeneric read-metadata-body (metadata reader))
 
 ;; Metadata id masks
@@ -133,7 +138,8 @@
   decorr-passes
   decorr-samples
   (entropy-median (make-array (list 3 2) :element-type '(sb 32))
-                  :type (simple-array (sb 32) (3 2))))
+                  :type (simple-array (sb 32) (3 2)))
+  residual)
 
 (defvar-unbound *current-block*
     "Bound to block currently being readed by block reader")

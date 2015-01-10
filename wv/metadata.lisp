@@ -151,6 +151,17 @@
     (setf (metadata-entropy-median metadata) entropy-median))
   metadata)
 
+;; There is nothing we can do with residuals at this moment
+;; as they can be decoded all at once, so just silence warning
+;; and assign buffer reader to data
+(defmethod read-metadata-body :around ((metadata metadata-residual) reader)
+  (handler-bind
+      ((unknown-metadata #'muffle-warning))
+    (call-next-method))
+  (setf (metadata-residual-reader metadata)
+        (make-reader-from-buffer (metadata-data metadata)))
+  metadata)
+
 ;; Metadata reader
 (defreader read-metadata% ((make-instance 'metadata) metadata)
   (metadata-id (:octets 1))
@@ -175,5 +186,6 @@
              ((= function +meta-id-decorr-weights+) 'metadata-decorr-weights)
              ((= function +meta-id-decorr-samples+) 'metadata-decorr-samples)
              ((= function +meta-id-entropy-vars+) 'metadata-entropy)
+             ((= function +meta-id-wv-bitstream+) 'metadata-wv-residual)
              (t 'metadata)))))
     (read-metadata-body metadata reader)))

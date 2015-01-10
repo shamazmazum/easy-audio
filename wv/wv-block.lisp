@@ -53,6 +53,34 @@
     (block-flags         (:octets 4) :endianness :little)
     (block-crc           (:octets 4) :endianness :little))
 
+;; In development
+#+nil
+(defun decode-residual (wv-block)
+  (if (bit-set-p (block-flags wv-block) +flags-hybrid-mode+)
+      (error 'block-error :message "Cannot works with hybrid mode"))
+  (let ((residual (block-residual wv-block))
+        (coded-residual-reader (metadata-residual-reader
+                                (find 'metadata-wv-residual (block-metadata wv-block)
+                                      :key #'type-of)))
+        (channels (if (bit-set-p (block-flags wv-block) +flags-mono-output+) 1 2))
+        (median (block-entropy-median wv-block)))
+    (declare (ignorable residual))
+
+    (do ((i 0))
+        ((= i (block-block-samples wv-block)))
+      (dotimes (j channels)
+        (cond
+          ((and (< (aref median 0 0) 2) ; FIXME: hold_one && hold_zero
+                (< (aref median 0 1) 2))
+           ;; Run of zeros - do nothing
+           (incf i (read-zero-run-length coded-residual-reader))) ; FIXME: 'Forgot' to erase median
+          (t
+           ;; FIXME: Do not know what to do yet - return
+           (return-from decode-residual i))))))
+  wv-block)
+
+(defun decode-residual (wv-block) wv-block)
+
 (defun read-wv-block (reader)
   (let ((wv-block (read-wv-block% reader)))
     (if (/= (block-id wv-block) +wv-id+)
@@ -81,6 +109,11 @@
                collect metadata
                finally (if (> bytes-read sub-blocks-size)
                            (error 'block-error :message "Read more sub-block bytes than needed")))))
+
+    (setf (block-residual wv-block) (make-array (list (block-block-samples wv-block) 2)
+                                                :element-type '(sb 32)
+                                                :initial-element 0))
+    (decode-residual wv-block)
 
     wv-block))
 
