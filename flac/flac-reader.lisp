@@ -110,7 +110,7 @@
    By default zero bit is considered as arithmetical 1,
    1 bit signals termination"
   (do ((res 0 (1+ res)))
-      ((= (read-bit bitreader) 0) res)
+      ((= (read-bit bitreader) 1) res)
     (declare (type (ub 32) res)) ()))
 
 (declaim (ftype (function (t (integer 0 30))
