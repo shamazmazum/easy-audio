@@ -100,19 +100,23 @@
     result))
 
 ;; From flac reader
-(declaim (ftype (function (t) non-negative-fixnum)
-		read-unary-coded-integer)
-	 (inline read-unary-coded-integer))
-(defun read-unary-coded-integer (bitreader)
+(declaim (ftype (function (t &optional (or non-negative-fixnum null))
+                          non-negative-fixnum)
+		read-unary-coded-integer))
+(defun read-unary-coded-integer (bitreader &optional limit)
   "Read an unary coded integer from bitreader
    1 bit is considered as arithmetical 1,
    0 bit signals termination"
-  (do ((res 0 (1+ res)))
-      ((= (residual-read-bit bitreader) 0) res)
-    (declare (type (ub 32) res)) ()))
+  (declare (optimize (speed 3))
+           (type (or non-negative-fixnum null) limit))
+  (do ((res   0 (1+ res))
+       (count 0 (1+ count)))
+      ((or (= (residual-read-bit bitreader) 0)
+           (and limit (= count limit))) res)
+    (declare (type non-negative-fixnum res count)) ()))
 
-(declaim (ftype (function (t) non-negative-fixnum) read-zero-run-length))
-(defun read-zero-run-length (reader)
+(declaim (ftype (function (t) non-negative-fixnum) read-elias-code))
+(defun read-elias-code (reader)
   (declare (optimize (speed 3)))
   (let ((ones-num (read-unary-coded-integer reader)))
     (if (/= ones-num 0)
@@ -120,6 +124,20 @@
                           (1- ones-num))))
           (logior (ash 1 shift)
                   (residual-read-bits shift reader))) 0)))
+
+(defun count-bits (n)
+  (do ((bits 0 (1+ bits))
+       (i n (ash i -1)))
+      ((= i 0) bits) ()))
+
+(defun read-code (reader maxvalue)
+  (if (< maxvalue 2)
+      (if (/= maxvalue 0) (residual-read-bit reader) 0)
+      (let* ((bits (count-bits maxvalue))
+             (extra (- (ash 1 bits) maxvalue 1))
+             (res (residual-read-bits (1- bits) reader)))
+        (if (< res extra) res
+            (+ (ash res 1) (residual-read-bit reader) (- extra))))))
 
 ;; From flac reader
 #|(declaim (inline unsigned-to-signed)

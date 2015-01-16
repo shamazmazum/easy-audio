@@ -53,6 +53,31 @@
     (block-flags         (:octets 4) :endianness :little)
     (block-crc           (:octets 4) :endianness :little))
 
+(declaim (inline get-med))
+(defun get-med (median i j)
+  (1+ (ash (aref median i j) -4)))
+
+(macrolet ((define-median-inc/dec (divs)
+             `(progn
+                ,@(loop for div in divs
+                        for i from 0 by 1 collect
+                       (let ((inc-name (intern (format nil "INC-MED~d" i)))
+                             (dec-name (intern (format nil "DEC-MED~d" i))))
+                         `(progn
+                            (declaim (inline ,inc-name)
+                                     (inline ,dec-name))
+
+                            (defun ,inc-name (median ch)
+                              (incf (aref median ,i ch)
+                                    (* 5 (floor (+ ,div (aref median ,i ch)) ,div)))
+                              median)
+
+                            (defun ,dec-name (median ch)
+                              (decf (aref median ,i ch)
+                                    (* 2 (floor (+ ,div (aref median ,i ch) -2) ,div)))
+                              median)))))))
+  (define-median-inc/dec (128 64 32)))
+
 ;; In development
 #+nil
 (defun decode-residual (wv-block)
@@ -63,24 +88,73 @@
                                 (find 'metadata-wv-residual (block-metadata wv-block)
                                       :key #'type-of)))
         (channels (if (bit-set-p (block-flags wv-block) +flags-mono-output+) 1 2))
-        (median (block-entropy-median wv-block)))
-    (declare (ignorable residual))
+        (median (block-entropy-median wv-block))
+        (current-channel 0)
+        holding-one holding-zero zero-run-met)
 
     (do ((i 0))
         ((= i (block-block-samples wv-block)))
       (cond
-        ((and (< (aref median 0 0) 2) ; FIXME: hold_one && hold_zero
-              (< (aref median 0 1) 2))
+        ((and (< (aref median 0 0) 2)
+              (< (aref median 0 1) 2)
+              (not holding-one)
+              (not holding-zero)
+              (not zero-run-met))
          ;; Run of zeros - do nothing
-         ;; FIXME: We hope, that read-zero-run-length returns number of INTERCHANNEL samples
-         (incf i (the non-negative-int
-                      (/ (read-zero-run-length coded-residual-reader) channels)))
-         ;; FIXME: 'Forgot' to erase median
-         )
+         (multiple-value-bind (samples channel)
+             (floor (read-elias-code coded-residual-reader) channels)
+           (incf i samples)
+           (setq current-channel channel))
+         (setq median (make-array (list 3 2) :element-type '(ub 32) :initial-element 0)
+               zero-run-met t))
+
         (t
-         (dotimes (j channels)
-           ;; FIXME: Do not know what to do yet - return
-           (return-from decode-residual i))))))
+         (setq zero-run-met nil)
+         (loop for j from current-channel below channels do
+           (setq current-channel 0)
+           (let ((ones-count 0)
+                 low high)
+             (cond
+               (holding-zero (setq holding-zero nil))
+               (t
+                (setq ones-count (read-unary-coded-integer coded-residual-reader #.(1+ 16)))
+                (when (>= ones-count 16)
+                  (if (= ones-count 17) (error 'block-error :message "Invalid residual code"))
+                  (incf ones-count (read-elias-code coded-residual-reader)))
+                (psetq
+                 holding-one (/= (logand ones-count 1) 0)
+                 ones-count (+ (ash ones-count -1) (if holding-one 1 0)))
+                (setq holding-zero (not holding-one))))
+
+             (cond
+               ((= ones-count 0)
+                (setq low 0
+                      high (1- (get-med median 0 j)))
+                (dec-med0 median j))
+               (t
+                (setq low (get-med median 0 j))
+                (inc-med0 median j)
+                (cond
+                  ((= ones-count 1)
+                   (setq high (+ low (get-med median 1 j) -1))
+                   (dec-med1 median j))
+                  (t
+                   (setq low (+ low (get-med median 1 j)))
+                   (inc-med1 median j)
+                   (cond
+                     ((= ones-count 2)
+                      (setq high (+ low (get-med median 2 j) -1))
+                      (dec-med2 median j))
+                     (t
+                      (setq low (+ low (* (get-med median 2 j)
+                                          (- ones-count 2)))
+                            high (+ low (get-med median 2 j) -1))
+                      (inc-med2 median j)))))))
+             (incf low (read-code coded-residual-reader (- high low)))
+             (setf (aref residual i j)
+                   (if (= (residual-read-bit coded-residual-reader) 1)
+                       (lognot low) low))))
+         (incf i)))))
   wv-block)
 
 (defun decode-residual (wv-block) wv-block)
