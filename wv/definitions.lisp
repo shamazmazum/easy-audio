@@ -58,12 +58,10 @@
 (defclass metadata-decorr-terms (metadata-decorr) ())
 (defclass metadata-decorr-weights (metadata-decorr) ())
 (defclass metadata-decorr-samples (metadata-decorr)
-  ((decorr-samples :type (simple-array (sb 32) (* *))
-                   :accessor metadata-decorr-samples)))
+  ((decorr-samples :accessor metadata-decorr-samples)))
 
 (defclass metadata-entropy (metadata)
-  ((entropy-median :accessor metadata-entropy-median
-                   :type (simple-array (ub 32) (* *)))))
+  ((entropy-median :accessor metadata-entropy-median)))
 
 (defclass metadata-residual (metadata)
   ((reader :type reader
@@ -109,15 +107,7 @@
 (defstruct decorr-pass
   (term      0 :type (sb 32)) ; FIXME: these fields are signed
   (delta     0 :type (sb 32))
-  (weight    (make-array 2 :element-type '(sb 32)
-                           :initial-element 0)
-               :type (sa-sb 32))
-  (aweight   (make-array 2 :element-type '(sb 32)
-                           :initial-element 0)
-               :type (sa-sb 32))
-  (sum       (make-array 2 :element-type '(sb 32)
-                           :initial-element 0)
-               :type (sa-sb 32)))
+  weight aweight sum)
 
 (defstruct (wv-block (:conc-name block-)
                      (:print-function
@@ -146,8 +136,7 @@
   metadata
   decorr-passes
   decorr-samples
-  (entropy-median (make-array (list 3 2) :element-type '(sb 32))
-                  :type (simple-array (sb 32) (3 2)))
+  entropy-median
   residual)
 
 (defvar-unbound *current-block*

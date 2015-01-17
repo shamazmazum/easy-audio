@@ -81,12 +81,15 @@
                (format nil "Size of metadata sub-block ~a is too big" metadata)))
 
     (flet ((restore-weight (weight)
-             (let ((res (ash weight 3)))
-               (if (> res 0) (+ res (ash (+ res 64) -7)) res))))
+             (if (< weight #x80)
+                 (let ((val (ash weight 3)))
+                   (+ val (ash (+ val 64) -7)))
+                 (- (ash (- #x100 weight) 3)))))
+
       (loop for decorr-pass in (metadata-decorr-passes metadata)
             repeat term-number do
-           (loop for channel below channels do
-                (setf (aref (decorr-pass-weight decorr-pass) channel)
+           (setf (decorr-pass-weight decorr-pass)
+                 (loop for channel below channels collect
                       (restore-weight (read-octet reader)))))))
   metadata)
 
@@ -99,58 +102,65 @@
     (if first-pass
         (let ((channels (if (bit-set-p (block-flags *current-block*) +flags-mono-output+) 1 2))
               (first-term (decorr-pass-term first-pass))
-              (bytes-read 0)
-              decorr-samples)
+              (bytes-read 0))
 
-          (cond
-            ((> first-term 8)
-             (setq decorr-samples (make-array (list 2 2) :element-type '(sb 32)))
-             (loop for i below channels do
-                  (setf (aref decorr-samples 0 i)
-                        (exp2s (read-octets 2 reader :endianness :little))
-                        (aref decorr-samples 1 i)
-                        (exp2s (read-octets 2 reader :endianness :little)))
-                  (incf bytes-read 4)))
+          (if (and (< first-term 0)
+                   (= channels 1))
+              (error 'block-error :message "decorrelation term < 0 and mono audio"))
 
-            ((< first-term 0)
-             (if (= channels 1)
-                 (error 'block-error :message "decorrelation term < 0 and mono audio"))
-             (setq decorr-samples (make-array (list 1 2) :element-type '(sb 32)))
-             (loop for i below channels do
-                  (setf (aref decorr-samples 0 i) (exp2s (read-octets 2 reader :endianness :little)))
-                  (incf bytes-read 2)))
+          (let ((decorr-samples
+                 (cond
+                   ((> first-term 8)
+                    (let ((decorr-samples% (loop repeat channels collect
+                                                (make-array (list 2) :element-type '(sb 32)))))
+                      (loop for samples in decorr-samples% do
+                           (setf (aref samples 0)
+                                 (exp2s (read-octets 2 reader :endianness :little))
+                                 (aref samples 1)
+                                 (exp2s (read-octets 2 reader :endianness :little)))
+                           (incf bytes-read 4))
+                      decorr-samples%))
 
-            (t
-             (setq decorr-samples (make-array (list first-term 2) :element-type '(sb 32)))
-             (loop for i below first-term do
-                  (loop for j below channels do
-                       (setf (aref decorr-samples i j) (exp2s (read-octets 2 reader :endianness :little)))
-                       (incf bytes-read 2)))))
+                   ((< first-term 0)
+                    (loop for i below channels do (incf bytes-read 2) collect
+                         (exp2s (read-octets 2 reader :endianness :little))))
 
-          (if (/= bytes-read (metadata-actual-size metadata))
-              (error 'block-error :message
-                     (format nil "Size of metadata sub-block ~a is invalid" metadata)))
+                   (t
+                    (let ((decorr-samples% (loop repeat channels collect
+                                                (make-array (list first-term) :element-type '(sb 32)))))
+                      (loop for i below first-term do
+                           (loop for samples in decorr-samples% do
+                                (setf (aref samples i) (exp2s (read-octets 2 reader :endianness :little)))
+                                (incf bytes-read 2)))
+                      decorr-samples%)))))
 
-          (setf (metadata-decorr-samples metadata) decorr-samples
-                (block-decorr-samples *current-block*) decorr-samples))))
+            (if (/= bytes-read (metadata-actual-size metadata))
+                (error 'block-error :message
+                       (format nil "Size of metadata sub-block ~a is invalid" metadata)))
+
+            (setf (metadata-decorr-samples metadata) decorr-samples
+                  (block-decorr-samples *current-block*) decorr-samples)))))
   metadata)
 
 (defmethod read-metadata-body ((metadata metadata-entropy) reader)
   (let ((data-size (metadata-actual-size metadata))
         (mono (bit-set-p (block-flags *current-block*)
-                         +flags-mono-output+))
-        (entropy-median (block-entropy-median *current-block*)))
+                         +flags-mono-output+)))
 
     (if (/= data-size (if mono 6 12))
         (error 'block-error :message
                (format nil "Size of metadata sub-block ~a is invalid" metadata)))
 
-    (loop for i below (if mono 1 2) do
-         (loop for j below 3 do
-              (setf (aref entropy-median j i)
-                    (exp2s (read-octets 2 reader :endianness :little)))))
+    (setf (metadata-entropy-median metadata)
+          (loop repeat (if mono 1 2) collect
+               (let ((median (make-array 3 :element-type '(sb 32)))) ; FIXME: Why entropy is signed?
+                 (loop for i below 3 do
+                      (setf (aref median i)
+                            (exp2s (read-octets 2 reader :endianness :little))))
+                 median))
 
-    (setf (metadata-entropy-median metadata) entropy-median))
+          (block-entropy-median *current-block*)
+          (metadata-entropy-median metadata)))
   metadata)
 
 ;; There is nothing we can do with residuals at this moment
