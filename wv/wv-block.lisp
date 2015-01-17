@@ -78,8 +78,6 @@
                               median)))))))
   (define-median-inc/dec (128 64 32)))
 
-;; In development
-#+nil
 (defun decode-residual (wv-block)
   (if (bit-set-p (block-flags wv-block) +flags-hybrid-mode+)
       (error 'block-error :message "Cannot works with hybrid mode"))
@@ -156,8 +154,6 @@
                        (lognot low) low))))
          (incf i)))))
   wv-block)
-
-(defun decode-residual (wv-block) wv-block)
 
 (defun read-wv-block (reader)
   (let ((wv-block (read-wv-block% reader)))

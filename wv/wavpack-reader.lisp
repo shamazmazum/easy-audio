@@ -125,30 +125,25 @@
           (logior (ash 1 shift)
                   (residual-read-bits shift reader))) 0)))
 
+(declaim (ftype (function (non-negative-fixnum) non-negative-fixnum) count-bits)
+         (inline count-bits))
 (defun count-bits (n)
+  (declare (optimize (speed 3))
+           (type non-negative-fixnum n))
   (do ((bits 0 (1+ bits))
        (i n (ash i -1)))
-      ((= i 0) bits) ()))
+      ((= i 0) bits)
+    (declare (type non-negative-fixnum i bits)) ()))
 
+(declaim (ftype (function (t non-negative-fixnum) non-negative-fixnum) read-code))
 (defun read-code (reader maxvalue)
+  (declare (optimize (speed 3))
+           (type non-negative-fixnum maxvalue))
   (if (< maxvalue 2)
       (if (/= maxvalue 0) (residual-read-bit reader) 0)
       (let* ((bits (count-bits maxvalue))
-             (extra (- (ash 1 bits) maxvalue 1))
+             (extra (- (the non-negative-fixnum (ash 1 bits)) maxvalue 1))
              (res (residual-read-bits (1- bits) reader)))
+        (declare (type non-negative-fixnum bits extra res))
         (if (< res extra) res
             (+ (ash res 1) (residual-read-bit reader) (- extra))))))
-
-;; From flac reader
-#|(declaim (inline unsigned-to-signed)
-	 (ftype (function ((ub 32)
-			   (integer 0 32))
-			  (sb 32))
-		unsigned-to-signed))
-(defun unsigned-to-signed (byte len)
-  (declare (type (integer 0 32) len)
-	   (type (ub 32) byte))
-  (let ((sign-mask (ash 1 (1- len))))
-    (if (< byte sign-mask)
-        byte
-        (- byte (ash sign-mask 1)))))|#
