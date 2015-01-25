@@ -119,6 +119,7 @@
 (defun read-elias-code (reader)
   (declare (optimize (speed 3)))
   (let ((ones-num (read-unary-coded-integer reader)))
+    (declare (type (integer 0 32) ones-num))
     (if (/= ones-num 0)
         (let ((shift (the (integer 0 32) ; as to format limits
                           (1- ones-num))))
@@ -142,8 +143,9 @@
   (if (< maxvalue 2)
       (if (/= maxvalue 0) (residual-read-bit reader) 0)
       (let* ((bits (count-bits maxvalue))
-             (extra (- (the non-negative-fixnum (ash 1 bits)) maxvalue 1))
+             (extra (- (ash 1 bits) maxvalue 1))
              (res (residual-read-bits (1- bits) reader)))
-        (declare (type non-negative-fixnum bits extra res))
+        (declare (type non-negative-fixnum bits extra res)
+                 (type (integer 0 32) bits))
         (if (< res extra) res
             (+ (ash res 1) (residual-read-bit reader) (- extra))))))
