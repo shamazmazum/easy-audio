@@ -35,7 +35,7 @@
 
 (defun get-med (median i)
   (declare (optimize (speed 3))
-           (type (sa-sb 32) median))
+           (type (sa-ub 32) median))
   (1+ (ash (aref median i) -4)))
 
 (macrolet ((define-median-inc/dec (divs)
@@ -47,14 +47,14 @@
                          `(progn
                             (defun ,inc-name (median)
                               (declare (optimize (speed 3))
-                                       (type (sa-sb 32) median))
+                                       (type (sa-ub 32) median))
                               (incf (aref median ,i)
                                     (* 5 (floor (+ ,div (aref median ,i)) ,div)))
                               median)
 
                             (defun ,dec-name (median)
                               (declare (optimize (speed 3))
-                                       (type (sa-sb 32) median))
+                                       (type (sa-ub 32) median))
                               (decf (aref median ,i)
                                     (* 2 (floor (+ ,div (aref median ,i) -2) ,div)))
                               median)))))))
@@ -91,7 +91,7 @@
            (when (/= zero-length 0)
              (incf i zero-length)
              (setq medians (loop repeat channels collect
-                                (make-array 3 :element-type '(sb 32) :initial-element 0)))))
+                                (make-array 3 :element-type '(ub 32) :initial-element 0)))))
          (setq zero-run-met t))
 
         (t

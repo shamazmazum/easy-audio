@@ -153,7 +153,7 @@
 
     (setf (metadata-entropy-median metadata)
           (loop repeat (if mono 1 2) collect
-               (let ((median (make-array 3 :element-type '(sb 32)))) ; FIXME: Why entropy is signed?
+               (let ((median (make-array 3 :element-type '(ub 32))))
                  (loop for i below 3 do
                       (setf (aref median i)
                             (exp2s (read-octets 2 reader :endianness :little))))
