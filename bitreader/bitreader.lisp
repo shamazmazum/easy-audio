@@ -246,10 +246,12 @@
 
 (declaim (ftype (function (reader) non-negative-int) reader-length))
 (defun reader-length (reader)
-  "Returns length of stream in octets or zero
-   if the value is unknown"
-  (let ((len (file-length (reader-stream reader))))
-    (if len len 0)))
+  "Returns length of a stream in octets.
+
+   Calls #'length on a buffer reader or #'file-length on
+   a stream reader"
+  (let ((stream (reader-stream reader)))
+    (if stream (file-length stream) (length (reader-buffer reader)))))
 
 #+easy-audio-use-fixnums
 (declaim (ftype (function (non-negative-int reader &key (:endianness symbol)) non-negative-fixnum) read-bits))
