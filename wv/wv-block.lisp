@@ -174,7 +174,7 @@
     (block-flags         (:octets 4) :endianness :little)
     (block-crc           (:octets 4) :endianness :little))
 
-(defun read-wv-block (reader)
+(defun read-wv-block (reader &optional residual-buffers)
   (declare (optimize (speed 3)))
   (let ((wv-block (read-wv-block% reader)))
     (if (/= (block-id wv-block) +wv-id+)
@@ -205,10 +205,15 @@
                            (error 'block-error :message "Read more sub-block bytes than needed")))))
 
     (setf (block-residual wv-block)
-          (loop repeat (if (bit-set-p (block-flags wv-block) +flags-mono-output+) 1 2) collect
-               (make-array (block-block-samples wv-block)
-                           :element-type '(sb 32)
-                           :initial-element 0)))
+          (loop for i below (if (bit-set-p (block-flags wv-block) +flags-mono-output+) 1 2) collect
+               (let ((residual-buffer (nth i residual-buffers)))
+                 (if (and residual-buffer
+                          (= (length (the (sa-sb 32) residual-buffer))
+                             (block-block-samples wv-block)))
+                     (map-into residual-buffer #'(lambda (x) (declare (ignore x)) 0) residual-buffer)
+                     (make-array (block-block-samples wv-block)
+                                 :element-type '(sb 32)
+                                 :initial-element 0)))))
     (decode-residual wv-block)
 
     wv-block))
@@ -224,3 +229,15 @@
       (block-error ()
         (reader-position reader (1+ position))
         (restore-sync reader)))))
+
+(defun make-wv-block-reader (reader)
+  (let* ((first-block
+          (let ((position (reader-position reader)))
+            (prog1
+                (read-wv-block reader)
+              (reader-position reader position))))
+         (buffers (loop repeat (if (bit-set-p (block-flags first-block) +flags-mono-output+) 1 2) collect
+                       (make-array (block-block-samples first-block) :element-type '(signed-byte 32)))))
+    (flet ((read-wv-block% (reader)
+             (read-wv-block reader buffers)))
+      #'read-wv-block%)))
