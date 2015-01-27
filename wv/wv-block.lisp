@@ -72,14 +72,22 @@
         (samples (block-block-samples wv-block)))
 
     (if metadata-residual
-        (let ((residual (loop for i below channels collect
+        (let (#|(residual (loop for i below channels collect
                              (let ((residual-buffer (nth i *residual-buffers*)))
                                (if (and residual-buffer
                                         (= (length (the (sa-sb 32) residual-buffer)) samples))
                                    (map-into residual-buffer (lambda (x) (declare (ignore x)) 0) residual-buffer)
                                    (make-array samples
                                                :element-type '(sb 32)
-                                               :initial-element 0)))))
+                                               :initial-element 0)))))|#
+              (residual (if *residual-buffers*
+                            (mapc (lambda (buffer)
+                                    (declare (type (sa-sb 32) buffer))
+                                    (map-into buffer (lambda (x) (declare (ignore x)) 0) buffer))
+                                  *residual-buffers*)
+                            (loop repeat channels collect (make-array samples
+                                                                      :element-type '(sb 32)
+                                                                      :initial-element 0))))
               (coded-residual-reader (metadata-residual-reader metadata-residual))
               (medians (block-entropy-median wv-block))
               holding-one holding-zero zero-run-met)
