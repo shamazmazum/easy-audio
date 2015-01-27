@@ -23,6 +23,8 @@
 
 (in-package :easy-audio.wv)
 
+(defvar *residual-buffers* nil)
+
 (defun samplerate (flags)
   (let ((samplerate% (samplerate% flags))
         (samplerate-list (list 6000  8000  9600
@@ -60,98 +62,108 @@
                               median)))))))
   (define-median-inc/dec (128 64 32)))
 
-;; This is very raw code. It's very slow and possibly contains lots of bugs
 (defun decode-residual (wv-block)
   (declare (optimize (speed 3)))
   (if (bit-set-p (block-flags wv-block) +flags-hybrid-mode+)
       (error 'block-error :message "Cannot work with hybrid mode"))
-  (let ((residual (block-residual wv-block))
-        (coded-residual-reader (metadata-residual-reader
-                                (find 'metadata-wv-residual (the list (block-metadata wv-block))
-                                      :key #'type-of)))
+  (let ((metadata-residual (find 'metadata-wv-residual (the list (block-metadata wv-block))
+                                 :key #'type-of))
         (channels (if (bit-set-p (block-flags wv-block) +flags-mono-output+) 1 2))
-        (medians (block-entropy-median wv-block))
-        holding-one holding-zero zero-run-met)
+        (samples (block-block-samples wv-block)))
 
-    (do* ((i       0)
-          (sample  0 (ash i -1))
-          (channel 0 (logand i 1)))
-         ((= sample (block-block-samples wv-block)) sample)
-      (declare (type (ub 32) i sample channel))
+    (if metadata-residual
+        (let ((residual (loop for i below channels collect
+                             (let ((residual-buffer (nth i *residual-buffers*)))
+                               (if (and residual-buffer
+                                        (= (length (the (sa-sb 32) residual-buffer)) samples))
+                                   (map-into residual-buffer (lambda (x) (declare (ignore x)) 0) residual-buffer)
+                                   (make-array samples
+                                               :element-type '(sb 32)
+                                               :initial-element 0)))))
+              (coded-residual-reader (metadata-residual-reader metadata-residual))
+              (medians (block-entropy-median wv-block))
+              holding-one holding-zero zero-run-met)
 
-      (if (> sample (block-block-samples wv-block))
-          (error 'block-error :message "Accidentally read too much samples"))
-      (cond
-        ((and (< (aref (the (sa-ub 32) (first medians)) 0) 2)
-              (or (null (second medians))
-                  (< (aref (the (sa-ub 32) (second medians)) 0) 2))
-              (not holding-one)
-              (not holding-zero)
-              (not zero-run-met))
-         ;; Run of zeros - do nothing
-         (let ((zero-length (read-elias-code coded-residual-reader)))
-           (when (/= zero-length 0)
-             (incf i zero-length)
-             (setq medians (loop repeat channels collect
-                                (make-array 3 :element-type '(ub 32) :initial-element 0)))))
-         (setq zero-run-met t))
+          (do* ((i       0)
+                (sample  0 (ash i -1))
+                (channel 0 (logand i 1)))
+               ((= sample samples) sample)
+            (declare (type (ub 32) i sample channel))
 
-        (t
-         (setq zero-run-met nil)
-         (let ((ones-count 0))
-           (declare (type non-negative-fixnum ones-count))
-           (cond
-             (holding-zero (setq holding-zero nil))
-             (t
-              (setq ones-count (read-unary-coded-integer coded-residual-reader #.(1+ 16)))
-              (when (>= ones-count 16)
-                (if (= ones-count 17) (error 'block-error :message "Invalid residual code"))
-                (incf ones-count (read-elias-code coded-residual-reader)))
-              (psetq
-               holding-one (/= (logand ones-count 1) 0)
-               ones-count (+ (ash ones-count -1) (if holding-one 1 0)))
-              (setq holding-zero (not holding-one))))
+            (if (> sample samples)
+                (error 'block-error :message "Accidentally read too much samples"))
+            (cond
+              ((and (< (aref (the (sa-ub 32) (first medians)) 0) 2)
+                    (or (null (second medians))
+                        (< (aref (the (sa-ub 32) (second medians)) 0) 2))
+                    (not holding-one)
+                    (not holding-zero)
+                    (not zero-run-met))
+               ;; Run of zeros - do nothing
+               (let ((zero-length (read-elias-code coded-residual-reader)))
+                 (when (/= zero-length 0)
+                   (incf i zero-length)
+                   (setq medians (loop repeat channels collect
+                                      (make-array 3 :element-type '(ub 32) :initial-element 0)))))
+               (setq zero-run-met t))
 
-           (let ((median (nth channel medians))
-                 (low 0)
-                 (high 0))
-             (declare (type (sb 32) low high)
-                      (type (sa-ub 32) median))
-             (cond
-               ((= ones-count 0)
-                (setq high (1- (get-med median 0)))
-                (dec-med0 median))
-               (t
-                (setq low (get-med median 0))
-                (inc-med0 median)
-                (cond
-                  ((= ones-count 1)
-                   (setq high (+ low (get-med median 1) -1))
-                   (dec-med1 median))
-                  (t
-                   (setq low (+ low (get-med median 1)))
-                   (inc-med1 median)
+              (t
+               (setq zero-run-met nil)
+               (let ((ones-count 0))
+                 (declare (type non-negative-fixnum ones-count))
+                 (cond
+                   (holding-zero (setq holding-zero nil))
+                   (t
+                    (setq ones-count (read-unary-coded-integer coded-residual-reader #.(1+ 16)))
+                    (when (>= ones-count 16)
+                      (if (= ones-count 17) (error 'block-error :message "Invalid residual code"))
+                      (incf ones-count (read-elias-code coded-residual-reader)))
+                    (psetq
+                     holding-one (/= (logand ones-count 1) 0)
+                     ones-count (+ (ash ones-count -1) (if holding-one 1 0)))
+                    (setq holding-zero (not holding-one))))
+
+                 (let ((median (nth channel medians))
+                       (low 0)
+                       (high 0))
+                   (declare (type (sb 32) low high)
+                            (type (sa-ub 32) median))
                    (cond
-                     ((= ones-count 2)
-                      (setq high (+ low (get-med median 2) -1))
-                      (dec-med2 median))
+                     ((= ones-count 0)
+                      (setq high (1- (get-med median 0)))
+                      (dec-med0 median))
                      (t
-                      (setq low (+ low (the (sb 32)
-                                            (* (get-med median 2)
-                                               (- ones-count 2))))
-                            high (+ low (get-med median 2) -1))
-                      (inc-med2 median)))))))
-             (incf low (read-code coded-residual-reader (- high low)))
-             (setf (aref (the (sa-sb 32) (nth channel residual)) sample)
-                   (if (= (residual-read-bit coded-residual-reader) 1)
-                       (lognot low) low))))
-         (incf i))))
-    (read-to-byte-alignment coded-residual-reader)
-    ;; For some reason residual reader looses some useful ("actual") data at the end
-    ;; and it seems to be OK. But check if we loose too much
-    (if (> (- (the (ub 24) (reader-length coded-residual-reader))
-              (the (ub 24) (reader-position coded-residual-reader))) 1)
-        (error 'block-error :message "Too much useful data is lost in residual reader")))
+                      (setq low (get-med median 0))
+                      (inc-med0 median)
+                      (cond
+                        ((= ones-count 1)
+                         (setq high (+ low (get-med median 1) -1))
+                         (dec-med1 median))
+                        (t
+                         (setq low (+ low (get-med median 1)))
+                         (inc-med1 median)
+                         (cond
+                           ((= ones-count 2)
+                            (setq high (+ low (get-med median 2) -1))
+                            (dec-med2 median))
+                           (t
+                            (setq low (+ low (the (sb 32)
+                                                  (* (get-med median 2)
+                                                     (- ones-count 2))))
+                                  high (+ low (get-med median 2) -1))
+                            (inc-med2 median)))))))
+                   (incf low (read-code coded-residual-reader (- high low)))
+                   (setf (aref (the (sa-sb 32) (nth channel residual)) sample)
+                         (if (= (residual-read-bit coded-residual-reader) 1)
+                             (lognot low) low))))
+               (incf i))))
+          (read-to-byte-alignment coded-residual-reader)
+          ;; For some reason residual reader looses some useful ("actual") data at the end
+          ;; and it seems to be OK. But check if we loose too much
+          (if (> (- (the (ub 24) (reader-length coded-residual-reader))
+                    (the (ub 24) (reader-position coded-residual-reader))) 1)
+              (error 'block-error :message "Too much useful data is lost in residual reader"))
+          (setf (block-residual wv-block) residual))))
   wv-block)
 
 ;; Coding guide to myself:
@@ -174,7 +186,7 @@
     (block-flags         (:octets 4) :endianness :little)
     (block-crc           (:octets 4) :endianness :little))
 
-(defun read-wv-block (reader &optional residual-buffers)
+(defun read-wv-block (reader)
   (declare (optimize (speed 3)))
   (let ((wv-block (read-wv-block% reader)))
     (if (/= (block-id wv-block) +wv-id+)
@@ -204,19 +216,7 @@
                finally (if (> bytes-read sub-blocks-size)
                            (error 'block-error :message "Read more sub-block bytes than needed")))))
 
-    (setf (block-residual wv-block)
-          (loop for i below (if (bit-set-p (block-flags wv-block) +flags-mono-output+) 1 2) collect
-               (let ((residual-buffer (nth i residual-buffers)))
-                 (if (and residual-buffer
-                          (= (length (the (sa-sb 32) residual-buffer))
-                             (block-block-samples wv-block)))
-                     (map-into residual-buffer #'(lambda (x) (declare (ignore x)) 0) residual-buffer)
-                     (make-array (block-block-samples wv-block)
-                                 :element-type '(sb 32)
-                                 :initial-element 0)))))
-    (decode-residual wv-block)
-
-    wv-block))
+    (decode-residual wv-block)))
 
 (defun restore-sync (reader)
   "Go to the first block in the stream"
@@ -239,5 +239,6 @@
          (buffers (loop repeat (if (bit-set-p (block-flags first-block) +flags-mono-output+) 1 2) collect
                        (make-array (block-block-samples first-block) :element-type '(signed-byte 32)))))
     (flet ((read-wv-block% (reader)
-             (read-wv-block reader buffers)))
+             (let ((*residual-buffers* buffers))
+               (read-wv-block reader))))
       #'read-wv-block%)))

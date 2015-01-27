@@ -221,5 +221,8 @@
 (define-get-value/shift+mask max-magnitude)
 (define-get-value/shift+mask (samplerate% samplerate))
 
+(declaim (inline bit-set-p))
 (defun bit-set-p (value mask)
+  (declare (optimize (speed 3))
+           (type fixnum value mask))
   (/= (logand value mask) 0))
