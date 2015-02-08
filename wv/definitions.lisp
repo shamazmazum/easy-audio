@@ -107,7 +107,9 @@
 (defstruct decorr-pass
   (term      0 :type (sb 32)) ; FIXME: these fields are signed
   (delta     0 :type (sb 32))
-  weight aweight sum)
+  (weight    (make-array 2 :element-type '(sb 32) :initial-element 0)
+               :type (sa-sb 32))
+  #|aweight sum|#)
 
 (defstruct (wv-block (:conc-name block-)
                      (:print-function

@@ -88,8 +88,8 @@
 
       (loop for decorr-pass in (metadata-decorr-passes metadata)
             repeat term-number do
-           (setf (decorr-pass-weight decorr-pass)
-                 (loop for channel below channels collect
+           (loop for channel below channels do
+                (setf (aref (decorr-pass-weight decorr-pass) channel)
                       (restore-weight (read-octet reader)))))))
   metadata)
 
