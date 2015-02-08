@@ -93,8 +93,8 @@
               holding-one holding-zero zero-run-met)
 
           (do* ((i       0)
-                (sample  0 (ash i -1))
-                (channel 0 (logand i 1)))
+                (sample  0 (ash i (- 1 channels)))
+                (channel 0 (logand i (1- channels))))
                ((= sample samples) sample)
             (declare (type (ub 32) i sample channel))
 
