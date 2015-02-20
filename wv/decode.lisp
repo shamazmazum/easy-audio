@@ -100,8 +100,31 @@
                    (t (error 'block-error :message "Negative terms are not supported yet"))))
                pass)
 
-             ;; Needs to be checked
-             (warmup (pass &key lastp)
+             ;; These two need to be checked
+             (warmup (pass)
+               (let ((term (decorr-pass-term pass))
+                     (delta (decorr-pass-delta pass))
+                     (weights (decorr-pass-weight pass)))
+
+                 (loop for out-i in residual
+                    for decorr-samples-i in decorr-samples
+                    for i from 0 by 1 do
+                      (cond
+                        ((= term 17)
+                         (correlate-sample (correlate-sample/w-term-17
+                                            (aref out-i 0)
+                                            0)
+                                           (aref out-i 1)
+                                           (aref weights i)))
+                        ((= term 18)
+                         (correlate-sample (correlate-sample/w-term-18
+                                            (aref out-i 0)
+                                            0)
+                                           (aref out-i 1)
+                                           (aref weights i))))))
+               pass)
+
+             (warmup-last (pass)
                (let ((term (decorr-pass-term pass))
                      (delta (decorr-pass-delta pass))
                      (weights (decorr-pass-weight pass)))
@@ -113,63 +136,46 @@
                        for i from 0 by 1 do
                          (cond
                            ((= term 17)
-                            (cond
-                              (lastp
-                               ;; The first sample in the block
-                               (correlate-sample (correlate-sample/w-term-17
-                                                  (aref decorr-samples-i 0)
-                                                  (aref decorr-samples-i 1))
-                                                 (aref out-i 0)
-                                                 (aref weights i))
+                            ;; The first sample in the block
+                            (correlate-sample (correlate-sample/w-term-17
+                                               (aref decorr-samples-i 0)
+                                               (aref decorr-samples-i 1))
+                                              (aref out-i 0)
+                                              (aref weights i))
 
-                               ;; The second sample in the block
-                               (correlate-sample (correlate-sample/w-term-17
-                                                  (aref out-i 0)
-                                                  (aref decorr-samples-i 0))
-                                                 (aref out-i 1)
-                                                 (aref weights i)))
-                              (t
-                               (correlate-sample (correlate-sample/w-term-17
-                                                  (aref out-i 0)
-                                                  0)
-                                                 (aref out-i 1)
-                                                 (aref weights i)))))
+                            ;; The second sample in the block
+                            (correlate-sample (correlate-sample/w-term-17
+                                               (aref out-i 0)
+                                               (aref decorr-samples-i 0))
+                                              (aref out-i 1)
+                                              (aref weights i)))
 
                            ((= term 18)
-                            (cond
-                              (lastp
-                               ;; The first sample in the block
-                               (correlate-sample (correlate-sample/w-term-18
-                                                  (aref decorr-samples-i 0)
-                                                  (aref decorr-samples-i 1))
-                                                 (aref out-i 0)
-                                                 (aref weights i))
+                            ;; The first sample in the block
+                            (correlate-sample (correlate-sample/w-term-18
+                                               (aref decorr-samples-i 0)
+                                               (aref decorr-samples-i 1))
+                                              (aref out-i 0)
+                                              (aref weights i))
 
-                               ;; The second sample in the block
-                               (correlate-sample (correlate-sample/w-term-18
-                                                  (aref out-i 0)
-                                                  (aref decorr-samples-i 0))
-                                                 (aref out-i 1)
-                                                 (aref weights i)))
-                              (t
-                               (correlate-sample (correlate-sample/w-term-18
-                                                  (aref out-i 0)
-                                                  0)
-                                                 (aref out-i 1)
-                                                 (aref weights i)))))
+                            ;; The second sample in the block
+                            (correlate-sample (correlate-sample/w-term-18
+                                               (aref out-i 0)
+                                               (aref decorr-samples-i 0))
+                                              (aref out-i 1)
+                                              (aref weights i)))
                            (t
-                            (if lastp
-                                (loop for j below (length decorr-samples-i) do
-                                     (correlate-sample (aref decorr-samples-i j)
-                                                       (aref out-i j)
-                                                       (aref weights i))))))))
+                            (loop for j below (length decorr-samples-i) do
+                                 (correlate-sample (aref decorr-samples-i j)
+                                                   (aref out-i j)
+                                                   (aref weights i)))))))
 
-                   (t (error 'block-error :message "Negative terms are not yet supported"))))
+                   (t (error 'block-error :message "Negative terms are not supported yet"))))
                pass))
 
         (destructuring-bind (last . first) decorr-passes
           (mapc (lambda (pass) (correlation-pass (warmup pass))) (reverse first))
-          (warmup last :lastp t)
+          (warmup-last last)
           (correlation-pass last))))
 
     (let ((shift (left-shift-amount (block-flags wv-block))))
