@@ -316,18 +316,15 @@
   frame))
 
 ;; Rather slow (and buggy) absolute sample seek
-(defun seek-sample (bitreader sample audio-start blocksize &key seektable streaminfo)
+(defun seek-sample (bitreader sample &key seektable streaminfo)
   "Seeks to an interchannel sample.
    Sets input to new frame, which contains this sample.
    Returns position of this sample in the frame.
-   AUDIO-START is a position in stream of the first audio sample.
-   BLOCKSIZE is a frame size in samples. This implementation supports
-   only fixed block size.
    SEEKTABLE and STREAMINFO are optional. Providing STREAMINFO enables
-   additional sanity checks"
+   additional sanity checks. Currently only fixed block size is supported."
   (declare (type reader bitreader)
 	   (type (or null streaminfo) streaminfo)
-	   #+sbcl (sb-ext:muffle-conditions sb-ext:compiler-note)) ; Since we have bignum arithmetic here
+	   (optimize (speed 0)))
 
   (with-accessors ((totalsamples streaminfo-totalsamples)) streaminfo
     (if (and streaminfo
@@ -337,8 +334,11 @@
                :message "Seek error. Desired sample number is bigger than
                          number of samples in stream")))
 
+  ;; Reset the reader
+  (reader-position bitreader 0)
+  (restore-sync bitreader)
   ;; Init the boundaries where desired sample must be
-  (let ((start-pos audio-start)
+  (let ((start-pos (reader-position bitreader))
 	(end-pos (reader-length bitreader)))
 
     ;; Now, if seektable is present, correct the boundaries
@@ -354,11 +354,11 @@
             ((= sample lowerpoint)
              ;; We are extremely lucky
              ;; All we need to do is set input to a new frame
-             (reader-position bitreader (+ audio-start lowerpoint))
+             (reader-position bitreader (+ start-pos lowerpoint))
              (return-from seek-sample 0))
             (t
-             (setq start-pos (+ audio-start lowerpoint)
-                   end-pos (+ audio-start upperpoint))))))
+             (psetq start-pos (+ start-pos lowerpoint)
+                    end-pos (+ start-pos upperpoint))))))
 
     ;; Check implementation limitations
     (if (and streaminfo
@@ -368,7 +368,9 @@
 	       :message "Cannot seek with variable blocksize"))
 
     (multiple-value-bind (needed-num remainder)
-	(floor sample blocksize)
+	(floor sample (if streaminfo
+                          (streaminfo-minblocksize streaminfo)
+                          (frame-block-size (read-frame bitreader))))
       (declare (type non-negative-fixnum needed-num remainder))
 
       (labels ((dichotomy-search (start end)
