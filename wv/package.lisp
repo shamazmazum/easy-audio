@@ -34,4 +34,5 @@
 
            #:read-wv-block ; Functions
            #:decode-wv-block
-           #:restore-sync))
+           #:restore-sync
+           #:make-wv-block-reader))
