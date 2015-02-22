@@ -41,7 +41,8 @@
 (defun update-weight-clip (weight delta source result)
   (declare (optimize (speed 3))
            (type (signed-byte 32) weight delta source result))
-  (if (/= (logior source result) 0)
+  (if (and (/= source 0)
+           (/= result 0))
       (let* ((sign (ash (logxor source result) -31))
              (weight% (+ (logxor weight sign) (- delta sign))))
         (if (> weight% 1024)
@@ -63,14 +64,14 @@
            (type (sb 32) i-1 i-2))
   (+ i-1 (ash (- i-1 i-2) -1)))
 
-(defmacro correlate-sample (sample-form result-place weight-place)
-  ;; Must be called with 'delta' in the scope
+(defmacro correlate-sample (sample-form result-place weight-place update-method)
+  ;; Must be called with 'delta'in the scope
   (let ((sample-sym (gensym)))
     `(let ((,sample-sym ,sample-form))
        (psetf ,result-place
               (+ (apply-weight ,weight-place ,sample-sym) ,result-place)
               ,weight-place
-              (update-weight ,weight-place delta ,sample-sym ,result-place)))))
+              (,update-method ,weight-place delta ,sample-sym ,result-place)))))
 
 (macrolet ((define-correlation-pass/w-term>8 (name correlate-sample-name)
              `(defun ,name (residual delta weight &key decorr-samples)
@@ -88,27 +89,27 @@
                                         (aref decorr-samples% 0)
                                         (aref decorr-samples% 1))
                                        (aref residual 0)
-                                       weight)
+                                       weight update-weight)
 
                      ;; The second sample in the block
                      (correlate-sample (,correlate-sample-name
                                         (aref residual 0)
                                         (aref decorr-samples% 0))
                                        (aref residual 1)
-                                       weight)))
+                                       weight update-weight)))
                   (t
                    (correlate-sample (,correlate-sample-name
                                       (aref residual 0)
                                       0)
                                      (aref residual 1)
-                                     weight)))
+                                     weight update-weight)))
 
                 (loop for j from 2 below (length residual) do
                      (correlate-sample (,correlate-sample-name
                                         (aref residual (- j 1))
                                         (aref residual (- j 2)))
                                        (aref residual j)
-                                       weight))
+                                       weight update-weight))
                 weight)))
 
   (define-correlation-pass/w-term>8 correlation-pass/w-term-17 correlate-sample/w-term-17)
@@ -126,14 +127,101 @@
         (loop for j below (length decorr-samples%) do
              (correlate-sample (aref decorr-samples% j)
                                (aref residual j)
-                               weight))))
+                               weight update-weight))))
 
   (loop for j from term below (length residual) do
        (correlate-sample (aref residual (- j term))
                          (aref residual j)
-                         weight))
+                         weight update-weight))
 
   weight)
+
+(defun correlation-pass/w-term--1 (residual delta weights &key decorr-samples)
+  (declare (optimize (speed 3) (safety 0)))
+  (let ((residual-1 (first  residual))
+        (residual-2 (second residual)))
+    (declare (type (sa-sb 32) residual-1 residual-2 weights)
+             (type (sb 32) delta))
+    (when decorr-samples
+      (correlate-sample (aref (the (sa-sb 32) (first decorr-samples)) 0)
+                        (aref residual-1 0)
+                        (aref weights 0)
+                        update-weight-clip))
+
+    (correlate-sample (aref residual-1 0)
+                      (aref residual-2 0)
+                      (aref weights 1)
+                      update-weight-clip)
+
+    (loop for i from 1 below (length residual-1) do
+         (correlate-sample
+          (aref residual-2 (1- i))
+          (aref residual-1 i)
+          (aref weights 0)
+          update-weight-clip)
+         (correlate-sample
+          (aref residual-1 i)
+          (aref residual-2 i)
+          (aref weights 1)
+          update-weight-clip))))
+
+(defun correlation-pass/w-term--2 (residual delta weights &key decorr-samples)
+  (declare (optimize (speed 3) (safety 0)))
+  (let ((residual-1 (first  residual))
+        (residual-2 (second residual)))
+    (declare (type (sa-sb 32) residual-1 residual-2 weights)
+             (type (sb 32) delta))
+    (when decorr-samples
+      (correlate-sample (aref (the (sa-sb 32) (second decorr-samples)) 0)
+                        (aref residual-2 0)
+                        (aref weights 1)
+                        update-weight-clip))
+
+    (correlate-sample-interchannel (aref residual-2 0)
+                                   (aref residual-1 0)
+                                   (aref weights 0))
+
+    (loop for i from 1 below (length residual-1) do
+         (correlate-sample
+          (aref residual-1 (1- i))
+          (aref residual-2 i)
+          (aref weights 1)
+          update-weight-clip)
+         (correlate-sample
+          (aref residual-2 i)
+          (aref residual-1 i)
+          (aref weights 0)
+          update-weight-clip))))
+
+(defun correlation-pass/w-term--3 (residual delta weights &key decorr-samples)
+  (declare (optimize (speed 3) (safety 0)))
+  (let ((residual-1 (first  residual))
+        (residual-2 (second residual)))
+    (declare (type (sa-sb 32) residual-1 residual-2 weights)
+             (type (sb 32) delta))
+    (when decorr-samples
+      (correlate-sample
+       (aref (the (sa-sb 32) (first decorr-samples)) 0)
+       (aref residual-1 0)
+       (aref weights 0)
+       update-weight-clip)
+      (correlate-sample
+       (aref (the (sa-sb 32) (second decorr-samples)) 0)
+       (aref residual-1 1)
+       (aref weights 1)
+       update-weight-clip))
+
+    (loop for i from 1 below (length residual-1) do
+         (correlate-sample
+          (aref residual-1 (1- i))
+          (aref residual-2 i)
+          (aref weights 1)
+          update-weight-clip)
+         (correlate-sample
+          (aref residual-2 (1- i))
+          (aref residual-1 i)
+          (aref weights 0)
+          update-weight-clip))))
 
 (defun decode-wv-block (wv-block)
   (declare (optimize (speed 3) (safety 0)))
@@ -166,7 +254,14 @@
                             (t           (correlation-pass/w-term-i
                                           (car residual%) delta (aref weights i) term
                                           :decorr-samples (car decorr-samples%)))))))
-                 (t (error 'block-error :message "Negative terms are not supported yet"))))
+                 (t
+                  (cond
+                    ((= term -1) (correlation-pass/w-term--1 residual delta weights
+                                                             :decorr-samples decorr-samples))
+                    ((= term -2) (correlation-pass/w-term--2 residual delta weights
+                                                             :decorr-samples decorr-samples))
+                    ((= term -3) (correlation-pass/w-term--3 residual delta weights
+                                                             :decorr-samples decorr-samples))))))
              t))
 
       (destructuring-bind (last . first) decorr-passes
