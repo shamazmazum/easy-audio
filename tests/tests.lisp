@@ -25,8 +25,9 @@
 
 (def-suite bitreader :description "Bitreader tests")
 (def-suite flac      :description "Flac decoder tests")
-(def-suite ogg      :description "ogg container tests")
+(def-suite ogg       :description "ogg container tests")
 (def-suite decoders  :description "General decoders tests")
+(def-suite wavpack   :description "Wavpack tests")
 
 ;; Can it be done with FiveAM itself?
 ;; Maybe it's good idea to create suite registry here?
@@ -35,7 +36,8 @@
   (explain! (run 'bitreader))
   (explain! (run 'flac))
   (explain! (run 'ogg))
-  (explain! (run 'decoders)))
+  (explain! (run 'decoders))
+  (explain! (run 'wavpack)))
 (export 'run-tests)
 
 (in-suite bitreader)
@@ -185,3 +187,28 @@
   (is (= (general-decoders:g.711-alaw-decode #x54) -24))
   (is (= (general-decoders:g.711-alaw-decode #x40) #x-158))
   (is (= (general-decoders:g.711-alaw-decode #x70) #x-2b0)))
+
+(in-suite wavpack)
+(test wavpack-reader
+      "Test wavpack residual reader"
+      ;; RESIDUAL- variants do not support reading from stream
+      (let ((reader (bitreader:make-reader-from-buffer
+                     (make-array 6
+                                 :element-type '(unsigned-byte 8)
+                                 :initial-contents '(#x55 #x01 #xff #xff #x32 #xee)))))
+        (is (= (wv::residual-read-bit reader) 1))
+        (is (= (wv::residual-read-bit reader) 0))
+        (is (= (wv::residual-read-bits 1 reader) 1))
+        (is (= (wv::residual-read-bits 1 reader) 0))
+
+        (is (= (wv::residual-read-bits 4 reader) 5))
+
+        (is (= (wv::residual-read-bit reader) 1))
+        (is (= (wv::residual-read-bits 15 reader) #.(ash #xff00 -1)))
+
+        (is (= (wv::read-elias-code reader) #b10011001))
+
+        (is (= (wv::read-code reader 5) 3))   ; Reading 3 bits   - 110
+        (is (= (wv::read-code reader 5) 1))   ; Reading 2 bits   -  01
+        (is (= (wv::residual-read-bits 3 reader) 7))))
+                                              ; Reading the rest - 111
