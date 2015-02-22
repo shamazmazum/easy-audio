@@ -24,7 +24,7 @@
 ;; Thanks to Love5an, author of trivial-bit-streams
 ;; Do the same thing trivial-bit-streams does but without CLOS
 
-(in-package :easy-music.bitreader)
+(in-package :easy-audio.bitreader)
 
 (declaim (optimize #+easy-audio-unsafe-code
                    (safety 0) (speed 3)))

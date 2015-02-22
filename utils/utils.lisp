@@ -74,7 +74,8 @@
                           
     ;; Subchunk 2
     (write-sequence (integer-to-array-be wav:+data-subchunk+ buf4) out-stream)
-    (write-sequence (integer-to-array size buf4) out-stream)))
+    (write-sequence (integer-to-array size buf4) out-stream))
+  t)
 
 (defmacro defreader (name (&optional make-form (obj-sym (gensym))) &rest slots)
   "Generate a reader function to read data from bit-reader into
