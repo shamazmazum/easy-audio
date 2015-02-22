@@ -233,3 +233,42 @@
              (let ((*residual-buffers* buffers))
                (read-wv-block reader))))
       #'read-wv-block%)))
+
+(defun seek-sample (reader number)
+  (declare (type (integer 0) number))
+  "Set reader position to beginning of the block
+   which contains a sample with the specified number.
+   Works for readers associated with files.
+   Return a position of the sample in the block"
+  (restore-sync reader)
+  (let* ((file-length (reader-length reader))
+         (test-block (read-wv-block reader))
+         (total-samples (block-total-samples test-block))
+         (block-samples (block-block-samples test-block)))
+
+    (if (> number total-samples)
+        (error 'wv-condition
+               :message "Requested sample number is too big"))
+
+    (multiple-value-bind (complete-blocks remainder)
+        (floor number block-samples)
+      (let ((block-starting-number (* block-samples complete-blocks)))
+        (labels ((binary-search (start end)
+                   (let* ((middle (+ start (floor (- end start) 2)))
+                          (first-half (progn
+                                        (reader-position reader start)
+                                        (restore-sync reader)))
+                          (second-half (progn
+                                         (reader-position reader (1- middle))
+                                         (restore-sync reader))))
+                     (if (< block-starting-number first-half)
+                         (error 'wv-condition
+                                :message "Seeking error: wrong half chosen"))
+                     (cond
+                       ((< block-starting-number second-half)
+                        (binary-search start middle))
+                       ((> block-starting-number second-half)
+                        (binary-search middle end))
+                       (t t)))))
+          (binary-search 0 file-length))
+        remainder))))
