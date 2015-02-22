@@ -24,18 +24,18 @@
 (in-package :easy-audio.wv)
 
 ;; Conditions
-(define-condition wv-condition ()
-  ((message :reader wv-condition-message
+(define-condition wavpack-error ()
+  ((message :reader wavpack-error-message
             :initarg :message))
   (:report (lambda (c s)
 	     (format s "WavPack: ~A"
-		     (wv-condition-message c))))
+		     (wavpack-error-message c))))
   (:documentation "General (unspecified) WavPack condition"))
 
-(define-condition block-error (wv-condition) () ; A large part of currently generated conditions is of this type
+(define-condition block-error (wavpack-error) () ; A large part of currently generated conditions is of this type
   (:documentation "Error associated with block reader/decoder error"))
 
-(define-condition unknown-metadata (wv-condition warning)
+(define-condition unknown-metadata (wavpack-error warning)
   ((metadata :reader unknown-metadata
              :initarg :metadata))
   (:report (lambda (c s)

@@ -247,7 +247,7 @@
          (block-samples (block-block-samples test-block)))
 
     (if (> number total-samples)
-        (error 'wv-condition
+        (error 'wavpack-error
                :message "Requested sample number is too big"))
 
     (multiple-value-bind (complete-blocks remainder)
@@ -262,7 +262,7 @@
                                          (reader-position reader (1- middle))
                                          (restore-sync reader))))
                      (if (< block-starting-number first-half)
-                         (error 'wv-condition
+                         (error 'wavpack-error
                                 :message "Seeking error: wrong half chosen"))
                      (cond
                        ((< block-starting-number second-half)

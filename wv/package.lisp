@@ -24,7 +24,7 @@
 (defpackage easy-audio.wv
   (:use #:cl #:bitreader #:easy-audio-early #:utils)
   (:nicknames #:wv)
-  (:export #:wv-condition ; Conditions
+  (:export #:wavpack-error ; Conditions
            #:block-error
            #:unknown-metadata
 
