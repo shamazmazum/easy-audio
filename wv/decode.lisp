@@ -232,6 +232,9 @@
             residual-1 residual-2))
 
 (defun decode-wv-block (wv-block)
+  "Decode a wavpack block, destructively modifying it.
+   This function returns a list of simple-arrays, each
+   correspoding to a separate channel"
   (let ((decorr-samples (block-decorr-samples wv-block))
         (decorr-passes (block-decorr-passes wv-block))
         (residual (block-residual wv-block))) ; Will be destructively modified to output
@@ -271,9 +274,10 @@
                                                              :decorr-samples decorr-samples))))))
              t))
 
-      (destructuring-bind (last . first) decorr-passes
-        (mapc #'correlation-pass (reverse first))
-        (correlation-pass last :decorr-samples decorr-samples)))
+      (if decorr-passes
+          (destructuring-bind (last . first) decorr-passes
+            (mapc #'correlation-pass (reverse first))
+            (correlation-pass last :decorr-samples decorr-samples))))
 
     (let ((shift (left-shift-amount wv-block)))
       (declare (type (ub 8) shift))

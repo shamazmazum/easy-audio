@@ -31,6 +31,11 @@
            #:block-samplerate ; Block parameters
            #:block-bps
            #:block-channels
+           #:block-track-number ; Unused in current format specification
+           #:block-index-number ; Unused in current format specification
+           #:block-total-samples
+           #:block-block-index
+           #:block-block-samples
            #:flag-set-p
 
            #:read-wv-block ; Functions

@@ -185,6 +185,8 @@
     (block-crc           (:octets 4) :endianness :little))
 
 (defun read-wv-block (reader)
+  "Read the next block in the stream. READER's position must be set
+   to the beginning of this block explicitly (e.g. by calling RESTORE-SYNC)"
   (declare (optimize (speed 3)))
   (let ((wv-block (read-wv-block% reader)))
     (if (/= (block-id wv-block) +wv-id+)
@@ -217,7 +219,8 @@
     (decode-residual wv-block)))
 
 (defun restore-sync (reader)
-  "Go to the first block in the stream"
+  "Restore the reader's position to the first occurring
+   block in the stream"
   (peek-octet reader +wv-id/first-octet+)
   (let ((position (reader-position reader)))
     (handler-case
@@ -229,6 +232,8 @@
         (restore-sync reader)))))
 
 (defun make-wv-block-reader (reader)
+  "Return a closure which you can call with reader as its only argument
+   instead of READ-WV-BLOCK in order to reduce allocation of internal buffers"
   (let* ((first-block
           (let ((position (reader-position reader)))
             (prog1

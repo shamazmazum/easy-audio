@@ -32,28 +32,38 @@
 		     (wv-condition-message c))))
   (:documentation "General (unspecified) WavPack condition"))
 
-(define-condition block-error (wv-condition) ())
+(define-condition block-error (wv-condition) () ; A large part of currently generated conditions is of this type
+  (:documentation "Error associated with block reader/decoder error"))
 
 (define-condition unknown-metadata (wv-condition warning)
   ((metadata :reader unknown-metadata
              :initarg :metadata))
   (:report (lambda (c s)
 	     (format s "WavPack: cannot understand metadata (id=~d)"
-                     (metadata-id (unknown-metadata c))))))
+                     (metadata-id (unknown-metadata c)))))
+  (:documentation "The reader does not know how to read metadata"))
 ;; --------
 ;; Metadata
 ;; --------
 (defclass metadata ()
   ((id          :accessor metadata-id
-                :type (ub 8))
+                :type (ub 8)
+                :documentation "An ID number designating this metadata")
    (size        :accessor metadata-size
-                :type (ub 24)) ; NB: in bytes, not in words
+                :type (ub 24)
+                :documentation "Size of this metadata on disk in bytes")
    (actual-size :accessor metadata-actual-size
-                :type (ub 24)) ; Size or size-1
-   (data        :accessor metadata-data))) ; Usually it is unbound
+                :type (ub 24)
+                :documentation "Actual size of metadata. Can be size or size-1")
+   (data        :accessor metadata-data
+                :documentation "Raw metadata. Usually this slot is not bound"))
+  (:documentation "General class for storing metadata. If instantiated, the metadata reader
+                   will only read raw metadata to data slot"))
 
 (defclass metadata-decorr (metadata)
-  ((decorr-passes :accessor metadata-decorr-passes)))
+  ((decorr-passes :accessor metadata-decorr-passes))
+  (:documentation "General class for everything (de)correlation-related.
+                   This class is not instantiated"))
 
 (defclass metadata-decorr-terms (metadata-decorr) ())
 (defclass metadata-decorr-weights (metadata-decorr) ())
@@ -105,7 +115,7 @@
 (defconstant +wv-id/first-octet+ #x77)
 
 (defstruct decorr-pass
-  (term      0 :type (sb 32)) ; FIXME: these fields are signed
+  (term      0 :type (sb 32))
   (delta     0 :type (sb 32))
   (weight    (make-array 2 :element-type '(sb 32) :initial-element 0)
                :type (sa-sb 32))
@@ -132,9 +142,6 @@
   (block-samples 0 :type (ub 32))
   (flags         0 :type (ub 32))
   (crc           0 :type (ub 32))
-  ;; FIXME: "Following the 32-byte header to the end of the block are
-  ;; a series of "metadata" sub-blocks". Does it mean that audio data
-  ;; is in there?
   metadata
   decorr-passes
   decorr-samples
@@ -225,6 +232,7 @@
 
 (declaim (inline flag-set-p bit-set-p))
 (defun flag-set-p (wv-block mask)
+  "Predicate for checking if wv-block has a flag set"
   (declare (optimize (speed 3))
            (type fixnum mask))
   (= (logand (block-flags wv-block) mask) mask))
@@ -236,6 +244,7 @@
 
 ;; Place these here too
 (defun block-samplerate (wv-block)
+  "Return a sample rate of the block WV-BLOCK"
   (let ((samplerate% (block-samplerate% wv-block))
         (samplerate-list (list 6000  8000  9600
                                11025 12000 16000
@@ -246,6 +255,7 @@
     (nth samplerate% samplerate-list)))
 
 (defun block-bps (wv-block)
+  "Return bits per second of the block WV-BLOCK"
   (cond
     ((flag-set-p wv-block +flags-4-byte/sample+) 32)
     ((flag-set-p wv-block +flags-3-byte/sample+) 24)
@@ -254,4 +264,6 @@
 
 (declaim (ftype (function (t) (integer 1 2)) block-channels))
 (defun block-channels (wv-block)
+  "Return a number of channels (a block can have 1 or 2)
+   in the block WV-BLOCK"
   (if (flag-set-p wv-block +flags-mono-output+) 1 2))
