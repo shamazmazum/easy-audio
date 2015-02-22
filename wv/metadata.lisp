@@ -71,7 +71,7 @@
 
 (defmethod read-metadata-body ((metadata metadata-decorr-weights) reader)
   (let* ((data-size (metadata-actual-size metadata))
-         (mono (bit-set-p (block-flags *current-block*) +flags-mono-output+))
+         (mono (flag-set-p *current-block* +flags-mono-output+))
          (term-number (if mono data-size (ash data-size -1)))
          (channels (if mono 1 2)))
 
@@ -95,12 +95,12 @@
 
 (defmethod read-metadata-body ((metadata metadata-decorr-samples) reader)
   (if (and (= (block-version *current-block*) #x402)
-           (bit-set-p (block-flags *current-block*) +flags-hybrid-mode+))
+           (flag-set-p *current-block* +flags-hybrid-mode+))
       (error 'block-error "Hybrid encoding is not supported"))
 
   (let ((first-pass (first (metadata-decorr-passes metadata))))
     (if first-pass
-        (let ((channels (if (bit-set-p (block-flags *current-block*) +flags-mono-output+) 1 2))
+        (let ((channels (if (flag-set-p *current-block* +flags-mono-output+) 1 2))
               (first-term (decorr-pass-term first-pass))
               (bytes-read 0))
 

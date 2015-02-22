@@ -25,8 +25,8 @@
 
 (defvar *residual-buffers* nil)
 
-(defun samplerate (flags)
-  (let ((samplerate% (samplerate% flags))
+(defun block-samplerate (wv-block)
+  (let ((samplerate% (block-samplerate% wv-block))
         (samplerate-list (list 6000  8000  9600
                                11025 12000 16000
                                22050 24000 32000
@@ -34,6 +34,13 @@
                                88200 96000 192000)))
     (declare (dynamic-extent samplerate-list))
     (nth samplerate% samplerate-list)))
+
+(defun block-bps (wv-block)
+  (cond
+    ((flag-set-p wv-block +flags-4-byte/sample+) 32)
+    ((flag-set-p wv-block +flags-3-byte/sample+) 24)
+    ((flag-set-p wv-block +flags-2-byte/sample+) 16)
+    (t 8)))
 
 (defun get-med (median i)
   (declare (optimize (speed 3))
@@ -64,11 +71,11 @@
 
 (defun decode-residual (wv-block)
   (declare (optimize (speed 3)))
-  (if (bit-set-p (block-flags wv-block) +flags-hybrid-mode+)
+  (if (flag-set-p wv-block +flags-hybrid-mode+)
       (error 'block-error :message "Cannot work with hybrid mode"))
   (let ((metadata-residual (find 'metadata-wv-residual (the list (block-metadata wv-block))
                                  :key #'type-of))
-        (channels (if (bit-set-p (block-flags wv-block) +flags-mono-output+) 1 2))
+        (channels (if (flag-set-p wv-block +flags-mono-output+) 1 2))
         (samples (block-block-samples wv-block)))
 
     (if metadata-residual
@@ -205,7 +212,7 @@
               (> version #x410))
           (error 'block-error :message "Unsupported WavPack block version")))
 
-    (if (bit-set-p (block-flags wv-block) +flags-reserved-zero+)
+    (if (flag-set-p wv-block +flags-reserved-zero+)
         ;; Specification says we should "refuse to decode if set"
         (error 'block-error :message "Reserved flag is set to 1"))
 
@@ -244,7 +251,7 @@
             (prog1
                 (read-wv-block reader)
               (reader-position reader position))))
-         (buffers (loop repeat (if (bit-set-p (block-flags first-block) +flags-mono-output+) 1 2) collect
+         (buffers (loop repeat (if (flag-set-p first-block +flags-mono-output+) 1 2) collect
                        (make-array (block-block-samples first-block) :element-type '(signed-byte 32)))))
     (flet ((read-wv-block% (reader)
              (let ((*residual-buffers* buffers))

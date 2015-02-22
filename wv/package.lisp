@@ -23,4 +23,15 @@
 
 (defpackage easy-audio.wv
   (:use #:cl #:bitreader #:easy-audio-early #:utils)
-  (:nicknames #:wv))
+  (:nicknames #:wv)
+  (:export #:wv-condition ; Conditions
+           #:block-error
+           #:unknown-metadata
+
+           #:block-samplerate ; Block parameters
+           #:block-bps
+           #:flag-set-p
+
+           #:read-wv-block ; Functions
+           #:decode-wv-block
+           #:restore-sync))
