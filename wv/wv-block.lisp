@@ -25,32 +25,20 @@
 
 (defvar *residual-buffers* nil)
 
-(defun get-med (median i)
+(defun get-med (median)
   (declare (optimize (speed 3))
-           (type (sa-ub 32) median))
-  (1+ (ash (aref median i) -4)))
+           (type (ub 32) median))
+  (1+ (ash median -4)))
 
-(macrolet ((define-median-inc/dec (divs)
-             `(progn
-                ,@(loop for div in divs
-                        for i from 0 by 1 collect
-                       (let ((inc-name (intern (format nil "INC-MED~d" i)))
-                             (dec-name (intern (format nil "DEC-MED~d" i))))
-                         `(progn
-                            (defun ,inc-name (median)
-                              (declare (optimize (speed 3))
-                                       (type (sa-ub 32) median))
-                              (incf (aref median ,i)
-                                    (* 5 (floor (+ ,div (aref median ,i)) ,div)))
-                              median)
+(defun inc-med (median amount)
+  (declare (optimize (speed 3))
+           (type (ub 32) median amount))
+  (+ median (* 5 (floor (+ amount median) amount))))
 
-                            (defun ,dec-name (median)
-                              (declare (optimize (speed 3))
-                                       (type (sa-ub 32) median))
-                              (decf (aref median ,i)
-                                    (* 2 (floor (+ ,div (aref median ,i) -2) ,div)))
-                              median)))))))
-  (define-median-inc/dec (128 64 32)))
+(defun dec-med (median amount)
+  (declare (optimize (speed 3))
+           (type (ub 32) median amount))
+  (- median (* 2 (floor (+ amount median -2) amount))))
 
 (defun decode-residual (wv-block)
   (declare (optimize (speed 3)))
@@ -128,28 +116,28 @@
                             (type (sa-ub 32) median))
                    (cond
                      ((= ones-count 0)
-                      (setq high (1- (get-med median 0)))
-                      (dec-med0 median))
+                      (setq high (1- (get-med (aref median 0))))
+                      (setf (aref median 0) (dec-med (aref median 0) 128)))
                      (t
-                      (setq low (get-med median 0))
-                      (inc-med0 median)
+                      (setq low (get-med (aref median 0)))
+                      (setf (aref median 0) (inc-med (aref median 0) 128))
                       (cond
                         ((= ones-count 1)
-                         (setq high (+ low (get-med median 1) -1))
-                         (dec-med1 median))
+                         (setq high (+ low (get-med (aref median 1)) -1))
+                         (setf (aref median 1) (dec-med (aref median 1) 64)))
                         (t
-                         (setq low (+ low (get-med median 1)))
-                         (inc-med1 median)
+                         (setq low (+ low (get-med (aref median 1))))
+                         (setf (aref median 1) (inc-med (aref median 1) 64))
                          (cond
                            ((= ones-count 2)
-                            (setq high (+ low (get-med median 2) -1))
-                            (dec-med2 median))
+                            (setq high (+ low (get-med (aref median 2)) -1))
+                            (setf (aref median 2) (dec-med (aref median 2) 32)))
                            (t
                             (setq low (+ low (the (sb 32)
-                                                  (* (get-med median 2)
+                                                  (* (get-med (aref median 2))
                                                      (- ones-count 2))))
-                                  high (+ low (get-med median 2) -1))
-                            (inc-med2 median)))))))
+                                  high (+ low (get-med (aref median 2)) -1))
+                            (setf (aref median 2) (inc-med (aref median 2) 32))))))))
                    (incf low (read-code coded-residual-reader (- high low)))
                    (setf (aref (the (sa-sb 32) (nth channel residual)) sample)
                          (if (= (residual-read-bit coded-residual-reader) 1)
