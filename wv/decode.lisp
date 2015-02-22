@@ -143,7 +143,7 @@
     (declare (type (sa-sb 32) residual-1 residual-2 weights)
              (type (sb 32) delta))
     (when decorr-samples
-      (correlate-sample (aref (the (sa-sb 32) (first decorr-samples)) 0)
+      (correlate-sample (first decorr-samples)
                         (aref residual-1 0)
                         (aref weights 0)
                         update-weight-clip))
@@ -171,7 +171,7 @@
     (declare (type (sa-sb 32) residual-1 residual-2 weights)
              (type (sb 32) delta))
     (when decorr-samples
-      (correlate-sample (aref (the (sa-sb 32) (second decorr-samples)) 0)
+      (correlate-sample (second decorr-samples)
                         (aref residual-2 0)
                         (aref weights 1)
                         update-weight-clip))
@@ -200,12 +200,12 @@
              (type (sb 32) delta))
     (when decorr-samples
       (correlate-sample
-       (aref (the (sa-sb 32) (first decorr-samples)) 0)
+       (first decorr-samples)
        (aref residual-1 0)
        (aref weights 0)
        update-weight-clip)
       (correlate-sample
-       (aref (the (sa-sb 32) (second decorr-samples)) 0)
+       (second decorr-samples)
        (aref residual-1 1)
        (aref weights 1)
        update-weight-clip))
