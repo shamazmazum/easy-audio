@@ -176,9 +176,10 @@
                         (aref weights 1)
                         update-weight-clip))
 
-    (correlate-sample-interchannel (aref residual-2 0)
-                                   (aref residual-1 0)
-                                   (aref weights 0))
+    (correlate-sample (aref residual-2 0)
+                      (aref residual-1 0)
+                      (aref weights 0)
+                      update-weight-clip)
 
     (loop for i from 1 below (length residual-1) do
          (correlate-sample

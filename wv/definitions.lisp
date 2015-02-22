@@ -233,3 +233,25 @@
   (declare (optimize (speed 3))
            (type fixnum mask value))
   (= (logand value mask) mask))
+
+;; Place these here too
+(defun block-samplerate (wv-block)
+  (let ((samplerate% (block-samplerate% wv-block))
+        (samplerate-list (list 6000  8000  9600
+                               11025 12000 16000
+                               22050 24000 32000
+                               44100 48000 64000
+                               88200 96000 192000)))
+    (declare (dynamic-extent samplerate-list))
+    (nth samplerate% samplerate-list)))
+
+(defun block-bps (wv-block)
+  (cond
+    ((flag-set-p wv-block +flags-4-byte/sample+) 32)
+    ((flag-set-p wv-block +flags-3-byte/sample+) 24)
+    ((flag-set-p wv-block +flags-2-byte/sample+) 16)
+    (t 8)))
+
+(declaim (ftype (function (t) (integer 1 2)) block-channels))
+(defun block-channels (wv-block)
+  (if (flag-set-p wv-block +flags-mono-output+) 1 2))

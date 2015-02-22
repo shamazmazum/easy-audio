@@ -30,6 +30,7 @@
 
            #:block-samplerate ; Block parameters
            #:block-bps
+           #:block-channels
            #:flag-set-p
 
            #:read-wv-block ; Functions

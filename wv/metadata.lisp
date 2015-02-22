@@ -71,9 +71,8 @@
 
 (defmethod read-metadata-body ((metadata metadata-decorr-weights) reader)
   (let* ((data-size (metadata-actual-size metadata))
-         (mono (flag-set-p *current-block* +flags-mono-output+))
-         (term-number (if mono data-size (ash data-size -1)))
-         (channels (if mono 1 2)))
+         (channels (block-channels *current-block*))
+         (term-number (ash data-size (- 1 channels))))
 
     (if (> term-number
            (length (metadata-decorr-passes metadata)))
@@ -100,7 +99,7 @@
 
   (let ((first-pass (first (metadata-decorr-passes metadata))))
     (if first-pass
-        (let ((channels (if (flag-set-p *current-block* +flags-mono-output+) 1 2))
+        (let ((channels (block-channels *current-block*))
               (first-term (decorr-pass-term first-pass))
               (bytes-read 0))
 
@@ -144,15 +143,14 @@
 
 (defmethod read-metadata-body ((metadata metadata-entropy) reader)
   (let ((data-size (metadata-actual-size metadata))
-        (mono (bit-set-p (block-flags *current-block*)
-                         +flags-mono-output+)))
+        (channels (block-channels *current-block*)))
 
-    (if (/= data-size (if mono 6 12))
+    (if (/= data-size (* 6 channels))
         (error 'block-error :message
                (format nil "Size of metadata sub-block ~a is invalid" metadata)))
 
     (setf (metadata-entropy-median metadata)
-          (loop repeat (if mono 1 2) collect
+          (loop repeat channels collect
                (let ((median (make-array 3 :element-type '(ub 32))))
                  (loop for i below 3 do
                       (setf (aref median i)
