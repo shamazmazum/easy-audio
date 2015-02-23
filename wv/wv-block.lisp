@@ -248,7 +248,11 @@
    which contains a sample with the specified number.
    Works for readers associated with files.
    Return a position of the sample in the block"
+
+  ;; Reset position of the reader
+  (reader-position reader 0)
   (restore-sync reader)
+
   (let* ((file-length (reader-length reader))
          (test-block (read-wv-block reader))
          (total-samples (block-total-samples test-block))
