@@ -26,7 +26,12 @@
   (:nicknames #:wv)
   (:export #:wavpack-error ; Conditions
            #:block-error
+           #:lost-sync
            #:unknown-metadata
+
+           #:read-new-block-single    ; Restarts and recovery from errors
+           #:read-new-block-multichannel
+           #:read-new-block
 
            #:block-samplerate ; Block parameters
            #:block-bps
@@ -39,7 +44,9 @@
            #:flag-set-p
 
            #:read-wv-block ; Functions
+           #:read-wv-block-multichannel
            #:decode-wv-block
            #:restore-sync
+           #:restore-sync-multichannel
            #:make-wv-block-reader
            #:seek-sample))

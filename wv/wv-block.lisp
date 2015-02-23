@@ -160,7 +160,7 @@
 ;; 3) When I need to get a value from flags using masks and shifts, use
 ;;    automatically generated special functions
 
-(defreader read-wv-block% ((make-wv-block))
+(defreader read-wv-block%% ((make-wv-block))
     (block-id            (:octets 4) :endianness :big)
     (block-size          (:octets 4) :endianness :little)
     (block-version       (:octets 2) :endianness :little)
@@ -172,13 +172,11 @@
     (block-flags         (:octets 4) :endianness :little)
     (block-crc           (:octets 4) :endianness :little))
 
-(defun read-wv-block (reader)
-  "Read the next block in the stream. READER's position must be set
-   to the beginning of this block explicitly (e.g. by calling RESTORE-SYNC)"
+(defun read-wv-block% (reader)
   (declare (optimize (speed 3)))
-  (let ((wv-block (read-wv-block% reader)))
+  (let ((wv-block (read-wv-block%% reader)))
     (if (/= (block-id wv-block) +wv-id+)
-        (error 'block-error :message "WavPack ckID /= 'wvpk'"))
+        (error 'lost-sync :message "WavPack ckID /= 'wvpk'"))
 
     (let ((version (block-version wv-block)))
       (if (or (< version #x402) ; FIXME: is this range inclusive?
@@ -206,6 +204,16 @@
 
     (decode-residual wv-block)))
 
+(defun read-wv-block (reader)
+  "Read the next block in the stream. READER's position must be set
+   to the beginning of this block explicitly (e.g. by calling RESTORE-SYNC)"
+  (restart-case
+      (read-wv-block% reader)
+    (read-new-block-single ()
+        :report "Restore sync and read a new block"
+        (restore-sync reader)
+        (read-wv-block reader))))
+
 (defun restore-sync (reader)
   "Restore the reader's position to the first occurring
    block in the stream"
@@ -215,7 +223,7 @@
         (prog1
             (block-block-index (read-wv-block reader))
           (reader-position reader position))
-      (block-error ()
+      (lost-sync ()
         (reader-position reader (1+ position))
         (restore-sync reader)))))
 

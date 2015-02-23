@@ -110,28 +110,28 @@
           (let ((decorr-samples
                  (cond
                    ((> first-term 8)
-                    (let ((decorr-samples% (loop repeat channels collect
+                    (let ((decorr-samples (loop repeat channels collect
                                                 (make-array (list 2) :element-type '(sb 32)))))
-                      (loop for samples in decorr-samples% do
+                      (loop for samples in decorr-samples do
                            (setf (aref samples 0)
                                  (exp2s (read-octets 2 reader :endianness :little))
                                  (aref samples 1)
                                  (exp2s (read-octets 2 reader :endianness :little)))
                            (incf bytes-read 4))
-                      decorr-samples%))
+                      decorr-samples))
 
                    ((< first-term 0)
                     (loop for i below channels do (incf bytes-read 2) collect
                          (exp2s (read-octets 2 reader :endianness :little))))
 
                    (t
-                    (let ((decorr-samples% (loop repeat channels collect
-                                                (make-array (list first-term) :element-type '(sb 32)))))
+                    (let ((decorr-samples (loop repeat channels collect
+                                               (make-array (list first-term) :element-type '(sb 32)))))
                       (loop for i below first-term do
-                           (loop for samples in decorr-samples% do
+                           (loop for samples in decorr-samples do
                                 (setf (aref samples i) (exp2s (read-octets 2 reader :endianness :little)))
                                 (incf bytes-read 2)))
-                      decorr-samples%)))))
+                      decorr-samples)))))
 
             (if (/= bytes-read (metadata-actual-size metadata))
                 (error 'block-error :message

@@ -35,6 +35,13 @@
 (define-condition block-error (wavpack-error) () ; A large part of currently generated conditions is of this type
   (:documentation "Error associated with block reader/decoder error"))
 
+(define-condition lost-sync (block-error) ()
+  (:documentation "Error signaled when sync is obviously lost
+                   (e.g. first 4 bytes in block are not Wavpack ID).
+                   Errors signalled when reading a block which cause
+                   loss of sync are not of this type, but of BLOCK-ERROR.
+                   Useful for skipping garbage in audio files"))
+
 (define-condition unknown-metadata (wavpack-error warning)
   ((metadata :reader unknown-metadata
              :initarg :metadata))

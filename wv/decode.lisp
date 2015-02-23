@@ -49,10 +49,10 @@
   (if (and (/= source 0)
            (/= result 0))
       (let* ((sign (ash (logxor source result) -31))
-             (weight% (+ (logxor weight sign) (- delta sign))))
-        (if (> weight% 1024)
-            (setq weight% 1024))
-        (- (logxor weight% sign) sign))
+             (weight (+ (logxor weight sign) (- delta sign))))
+        (if (> weight 1024)
+            (setq weight 1024))
+        (- (logxor weight sign) sign))
       weight))
 
 (declaim (ftype (function ((sb 32) (sb 32)) (sb 32))
@@ -83,20 +83,20 @@
 
                 (cond
                   (decorr-samples
-                   (let ((decorr-samples% decorr-samples))
-                     (declare (type (sa-sb 32) decorr-samples%))
+                   (let ((decorr-samples decorr-samples))
+                     (declare (type (sa-sb 32) decorr-samples))
 
                      ;; The first sample in the block
                      (correlate-sample (,correlate-sample-name
-                                        (aref decorr-samples% 0)
-                                        (aref decorr-samples% 1))
+                                        (aref decorr-samples 0)
+                                        (aref decorr-samples 1))
                                        (aref residual 0)
                                        weight update-weight)
 
                      ;; The second sample in the block
                      (correlate-sample (,correlate-sample-name
                                         (aref residual 0)
-                                        (aref decorr-samples% 0))
+                                        (aref decorr-samples 0))
                                        (aref residual 1)
                                        weight update-weight)))
                   (t
@@ -123,10 +123,10 @@
            (type (sa-sb 32) residual))
 
   (if decorr-samples
-      (let ((decorr-samples% decorr-samples))
-        (declare (type (sa-sb 32) decorr-samples%))
-        (loop for j below (length decorr-samples%) do
-             (correlate-sample (aref decorr-samples% j)
+      (let ((decorr-samples decorr-samples))
+        (declare (type (sa-sb 32) decorr-samples))
+        (loop for j below (length decorr-samples) do
+             (correlate-sample (aref decorr-samples j)
                                (aref residual j)
                                weight update-weight))))
 
@@ -282,7 +282,7 @@
     (let ((shift (left-shift-amount wv-block)))
       (declare (type (ub 8) shift))
       (labels ((shift-sample (sample)
-                 (ash sample shift))
+                 (the (sb 32) (ash sample shift)))
                (shift-channel (channel-out)
                  (declare (type (sa-sb 32) channel-out))
                  (map-into channel-out #'shift-sample channel-out)))
