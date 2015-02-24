@@ -97,7 +97,7 @@
 
 (defun make-reader-from-buffer (buffer &rest args)
   "Make bitreader from buffer"
-  (declare (type (sa-sb 8) buffer))
+  (declare (type (sa-ub 8) buffer))
   (apply #'make-reader
          :buffer buffer
          :end (length buffer)
