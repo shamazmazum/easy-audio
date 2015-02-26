@@ -123,12 +123,10 @@
            (type (sa-sb 32) residual))
 
   (if decorr-samples
-      (let ((decorr-samples decorr-samples))
-        (declare (type (sa-sb 32) decorr-samples))
-        (loop for j below (length decorr-samples) do
-             (correlate-sample (aref decorr-samples j)
-                               (aref residual j)
-                               weight update-weight))))
+      (loop for j below term do
+           (correlate-sample (aref (the (sa-sb 32) decorr-samples) j)
+                             (aref residual j)
+                             weight update-weight)))
 
   (loop for j from term below (length residual) do
        (correlate-sample (aref residual (- j term))

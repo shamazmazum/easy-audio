@@ -61,7 +61,7 @@
               (residual (if *residual-buffers*
                             (mapc (lambda (buffer)
                                     (declare (type (sa-sb 32) buffer))
-                                    (map-into buffer (lambda (x) (declare (ignore x)) 0) buffer))
+                                    (fill buffer 0))
                                   *residual-buffers*)
                             (loop repeat channels collect (make-array samples
                                                                       :element-type '(sb 32)
@@ -89,8 +89,9 @@
                (let ((zero-length (read-elias-code coded-residual-reader)))
                  (when (/= zero-length 0)
                    (incf i zero-length)
-                   (setq medians (loop repeat channels collect
-                                      (make-array 3 :element-type '(ub 32) :initial-element 0)))))
+                   (mapc (lambda (median)
+                           (declare (type (sa-ub 32) median))
+                           (fill median 0)) medians)))
                (setq zero-run-met t))
 
               (t
