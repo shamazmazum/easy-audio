@@ -67,6 +67,10 @@
   (:documentation "General class for storing metadata. If instantiated, the metadata reader
                    will only read raw metadata to data slot"))
 
+(defclass metadata-ignorable (metadata) ()
+  (:documentation "Known metadata block for which we have no special reader method.
+                   Not to be instantiated"))
+
 (defclass metadata-decorr (metadata)
   ((decorr-passes :accessor metadata-decorr-passes))
   (:documentation "General class for everything (de)correlation-related.
@@ -80,10 +84,19 @@
 (defclass metadata-entropy (metadata)
   ((entropy-median :accessor metadata-entropy-median)))
 
-(defclass metadata-residual (metadata)
+;; We can do nothing with residual metadata block
+;; in the moment when READ-METADATA-BODY is called,
+;; so set it to -IGNORABLE
+(defclass metadata-residual (metadata-ignorable)
   ((reader :type reader
            :accessor metadata-residual-reader)))
 (defclass metadata-wv-residual (metadata-residual) ())
+
+(defclass metadata-riff-header (metadata-ignorable) ()
+  (:documentation "Contents the original RIFF header in DATA slot"))
+
+(defclass metadata-riff-trailer (metadata-ignorable) ()
+  (:documentation "Contents the original RIFF trailer in DATA slot"))
 
 (defgeneric read-metadata-body (metadata reader))
 

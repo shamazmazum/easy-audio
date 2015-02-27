@@ -41,6 +41,8 @@
            #:block-total-samples
            #:block-block-index
            #:block-block-samples
+           #:block-metadata
+           #:metadata-data
            #:flag-set-p
 
            #:read-wv-block ; Functions

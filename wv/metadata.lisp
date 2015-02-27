@@ -161,16 +161,16 @@
           (metadata-entropy-median metadata)))
   metadata)
 
-;; There is nothing we can do with residuals at this moment
-;; as they can be decoded all at once, so just silence warning
-;; and assign buffer reader to data
-(defmethod read-metadata-body :around ((metadata metadata-residual) reader)
+(defmethod read-metadata-body :around ((metadata metadata-ignorable) reader)
+  (declare (ignore reader))
   (handler-bind
       ((unknown-metadata #'muffle-warning))
-    (call-next-method))
+    (call-next-method)))
+
+(defmethod read-metadata-body :after ((metadata metadata-residual) reader)
+  (declare (ignore reader))
   (setf (metadata-residual-reader metadata)
-        (make-reader-from-buffer (metadata-data metadata)))
-  metadata)
+        (make-reader-from-buffer (metadata-data metadata))))
 
 ;; Metadata reader
 (defreader read-metadata% ((make-instance 'metadata) metadata)
@@ -187,15 +187,20 @@
             (if (bit-set-p (metadata-id metadata) +meta-id-data-length--1+)
                 (1- size) size)))
 
-    (if (not (bit-set-p (metadata-id metadata) +meta-id-useless-for-decoder+))
-        (change-class
-         metadata
-         (let ((function (logand (metadata-id metadata) +meta-id-function+)))
-           (cond
-             ((= function +meta-id-decorr-terms+) 'metadata-decorr-terms)
-             ((= function +meta-id-decorr-weights+) 'metadata-decorr-weights)
-             ((= function +meta-id-decorr-samples+) 'metadata-decorr-samples)
-             ((= function +meta-id-entropy-vars+) 'metadata-entropy)
-             ((= function +meta-id-wv-bitstream+) 'metadata-wv-residual)
-             (t 'metadata)))))
+    (let* ((id (metadata-id metadata))
+           (useless (bit-set-p id +meta-id-useless-for-decoder+))
+           (useful (not useless))
+           (function (logand id (logior +meta-id-useless-for-decoder+
+                                        +meta-id-function+))))
+      (change-class
+       metadata
+       (cond
+         ((and useful  (= function +meta-id-decorr-terms+)) 'metadata-decorr-terms)
+         ((and useful  (= function +meta-id-decorr-weights+)) 'metadata-decorr-weights)
+         ((and useful  (= function +meta-id-decorr-samples+)) 'metadata-decorr-samples)
+         ((and useful  (= function +meta-id-entropy-vars+)) 'metadata-entropy)
+         ((and useful  (= function +meta-id-wv-bitstream+)) 'metadata-wv-residual)
+         ((and useless (= function +meta-id-riff-header+)) 'metadata-riff-header)
+         ((and useless (= function +meta-id-riff-trailer+)) 'metadata-riff-trailer)
+         (t 'metadata))))
     (read-metadata-body metadata reader)))
