@@ -164,42 +164,16 @@
 (defconstant +flags-4-byte/sample+     #x00000003)
 (defconstant +flags-byte/sample-mask+  #x00000003)
 
-(defconstant +flags-stereo-output+     #x00000000)
 (defconstant +flags-mono-output+       #x00000004)
-(defconstant +flags-output-mask+       #x00000004)
-
-(defconstant +flags-lossless-mode+     #x00000000)
 (defconstant +flags-hybrid-mode+       #x00000008)
-(defconstant +flags-mode-mask+         #x00000008)
-
-(defconstant +flags-stereo-true+       #x00000000)
 (defconstant +flags-stereo-joint+      #x00000010)
-(defconstant +flags-stereo-mask+       #x00000010)
-
-(defconstant +flags-channels-indep+    #x00000000)
 (defconstant +flags-channels-decor+    #x00000020)
-(defconstant +flags-channels-mask+     #x00000020)
-
-(defconstant +flags-flat-noise+        #x00000000)
 (defconstant +flags-noise-shaping+     #x00000040)
-(defconstant +flags-noise-mask+        #x00000040)
-
-(defconstant +flags-data-integer+      #x00000000)
 (defconstant +flags-data-float+        #x00000080)
-(defconstant +flags-data-mask+         #x00000080)
-
-(defconstant +flags-extended-int+      #x00000000)
 (defconstant +flags-shifted-int+       #x00000100)
-(defconstant +flags-int-mask+          #x00000100)
-
-(defconstant +flags-hybrid-param/noise+    #x00000000)
 (defconstant +flags-hybrid-param/bitrate+  #x00000200)
-(defconstant +flags-hybrid-param-mask+     #x00000200)
-
 (defconstant +flags-hybrid-noise-balanced+ #x00000400)
-
 (defconstant +flags-initial-block+     #x00000800)
-
 (defconstant +flags-final-block+       #x00001000)
 
 (defconstant +flags-left-shift-amount-mask+ #x0003e000)
