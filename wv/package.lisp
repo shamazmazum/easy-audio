@@ -33,6 +33,9 @@
            #:read-new-block-multichannel
            #:read-new-block
 
+           #:metadata-riff-header ; Metadata types
+           #:metadata-riff-trailer
+           
            #:block-samplerate ; Block parameters
            #:block-bps
            #:block-channels
@@ -50,5 +53,6 @@
            #:decode-wv-block
            #:restore-sync
            #:restore-sync-multichannel
-           #:make-wv-block-reader
-           #:seek-sample))
+           #:seek-sample
+           #:with-output-buffers
+           #:open-wv))

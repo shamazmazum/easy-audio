@@ -24,12 +24,11 @@
 (in-package :easy-audio.wv-examples)
 
 (defun wv2wav (wv-name wav-name)
-  "Decodes wavpack to wav."
+  "Decode wavpack to wav."
   (with-open-file (in wv-name :element-type '(unsigned-byte 8))
-    (let ((reader (make-reader-from-stream in)))
+    (let ((reader (open-wv in)))
       (restore-sync reader)
-      (let* ((block-reader (make-wv-block-reader reader))
-             (first-block (funcall block-reader reader))
+      (let* ((first-block (read-wv-block reader))
              (channels (block-channels first-block))
              (bps (block-bps first-block))
              (samples (block-block-samples first-block))
@@ -43,11 +42,15 @@
                              :if-exists :supersede
                              :if-does-not-exist :create
                              :element-type '(unsigned-byte 8))
-          (write-pcm-wav-header out
-                                :samplerate (block-samplerate first-block)
-                                :channels channels
-                                :bps bps
-                                :totalsamples (block-total-samples first-block)))
+
+          (let ((riff-header (find 'metadata-riff-header (block-metadata first-block)
+                                   :key #'type-of)))
+            (if riff-header (write-sequence (metadata-data riff-header) out)
+                (write-pcm-wav-header out
+                                      :samplerate (block-samplerate first-block)
+                                      :channels channels
+                                      :bps bps
+                                      :totalsamples (block-total-samples first-block)))))
 
         (with-open-file (out wav-name
                              :direction :output
@@ -55,7 +58,8 @@
                              :if-does-not-exist :create
                              :element-type (list 'signed-byte bps))
           (file-position out (/ (ash 44 3) bps))
-          (handler-case
-              (loop while t do
-                   (write-sequence (mixchannels out-buf (decode-wv-block (funcall block-reader reader))) out))
-            (bitreader-eof () ())))))))
+          (with-output-buffers (reader)
+            (handler-case
+                (loop while t do
+                     (write-sequence (mixchannels out-buf (decode-wv-block (read-wv-block reader))) out))
+              ((or lost-sync bitreader-eof) () ()))))))))

@@ -228,20 +228,20 @@
         (reader-position reader (1+ position))
         (restore-sync reader)))))
 
-(defun make-wv-block-reader (reader)
-  "Return a closure which you can call with reader as its only argument
-   instead of READ-WV-BLOCK in order to reduce allocation of internal buffers"
-  (let* ((first-block
-          (let ((position (reader-position reader)))
-            (prog1
-                (read-wv-block reader)
-              (reader-position reader position))))
-         (buffers (loop repeat (block-channels first-block) collect
-                       (make-array (block-block-samples first-block) :element-type '(signed-byte 32)))))
-    (flet ((read-wv-block% (reader)
-             (let ((*residual-buffers* buffers))
-               (read-wv-block reader))))
-      #'read-wv-block%)))
+(defmacro with-output-buffers ((reader) &body body)
+  "Calls to READ-WV-BLOCK, RESTORE-SYNC etc. can be done inside with macro
+   to avoid unnecessary consing if all WavPack blocks in the stream contain
+   the same number of samples and have the same number of channels."
+  (let ((position (gensym))
+        (first-block (gensym)))
+    `(let ((*residual-buffers*
+            (let ((,position (reader-position ,reader))
+                  (,first-block (read-wv-block ,reader)))
+              (prog1
+                  (loop repeat (block-channels ,first-block) collect
+                       (make-array (block-block-samples ,first-block) :element-type '(sb 32)))
+                (reader-position ,reader ,position)))))
+       ,@body)))
 
 (defun seek-sample (reader number)
   (declare (type (integer 0) number))
@@ -285,3 +285,7 @@
                        (t t)))))
           (binary-search 0 file-length))
         remainder))))
+
+(defun open-wv (stream)
+  "Return BITREADER handle of Wavpack stream"
+  (make-reader-from-stream stream))
