@@ -228,20 +228,20 @@
         (reader-position reader (1+ position))
         (restore-sync reader)))))
 
+(defun make-output-buffers (reader)
+  (let ((position (reader-position reader))
+        (first-block (read-wv-block reader)))
+    (prog1
+        (loop repeat (block-channels first-block) collect
+             (make-array (block-block-samples first-block) :element-type '(sb 32)))
+      (reader-position reader position))))
+
 (defmacro with-output-buffers ((reader) &body body)
   "Calls to READ-WV-BLOCK, RESTORE-SYNC etc. can be done inside with macro
    to avoid unnecessary consing if all WavPack blocks in the stream contain
    the same number of samples and have the same number of channels."
-  (let ((position (gensym))
-        (first-block (gensym)))
-    `(let ((*residual-buffers*
-            (let ((,position (reader-position ,reader))
-                  (,first-block (read-wv-block ,reader)))
-              (prog1
-                  (loop repeat (block-channels ,first-block) collect
-                       (make-array (block-block-samples ,first-block) :element-type '(sb 32)))
-                (reader-position ,reader ,position)))))
-       ,@body)))
+  `(let ((*residual-buffers* (make-output-buffers ,reader)))
+     ,@body))
 
 (defun seek-sample (reader number)
   (declare (type (integer 0) number))
@@ -289,3 +289,11 @@
 (defun open-wv (stream)
   "Return BITREADER handle of Wavpack stream"
   (make-reader-from-stream stream))
+
+(defmacro with-open-wv ((reader name &rest options) &body body)
+  "Binds READER to an open wavpack stream associated with
+   file with the name NAME"
+  (let ((stream (gensym)))
+    `(let* ((,stream (apply #'open ,name :element-type '(ub 8) ,options))
+            (,reader (open-wv ,stream)))
+       (unwind-protect (progn ,@body) (close ,stream)))))

@@ -99,9 +99,11 @@
 	   #:frame-decode
 	   #:seek-sample
 	   #:metadata-find-seektable
-           #:with-output-buffers
 
-	   #:close-reader
+           ;; Macros
+           #:with-output-buffers
+           #:with-open-flac
+           #:with-open-ogg-flac
 
 	   ;; Conditions
 	   #:flac-error

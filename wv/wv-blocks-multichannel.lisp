@@ -23,28 +23,27 @@
 
 (in-package :easy-audio.wv)
 
-(defun read-wv-block-multichannel% (reader callback)
-  (let ((first-block (funcall callback reader)))
+(defun read-wv-block-multichannel% (reader)
+  (let ((first-block (read-wv-block reader)))
     (if (not (flag-set-p first-block +flags-initial-block+))
         (error 'lost-sync :message "Lost sync: the first block in multichannel configuration is not initial"))
     (if (flag-set-p first-block +flags-final-block+) (list first-block)
         (cons first-block
-              (loop for wv-block = (funcall callback reader)
+              (loop for wv-block = (read-wv-block reader)
                     collect wv-block
                     until (flag-set-p wv-block +flags-final-block+))))))
 
-(defun read-wv-block-multichannel (reader &optional (callback #'read-wv-block))
+(defun read-wv-block-multichannel (reader)
   "Read a list of Wavpack blocks in an multichannel configuration
    different from 1.0 or 2.0. Each block in the list can itself
    be mono or stereo. Read the format specification for the
-   details. The closure returned from MAKE-WV-BLOCK-READER can be
-   supplied as a CALLBACK here."
+   details."
   (restart-case
-      (read-wv-block-multichannel% reader callback)
+      (read-wv-block-multichannel% reader)
     (read-new-block-multichannel ()
       :report "Restore sync and read a new multichannel blocks list"
       (restore-sync-multichannel reader)
-      (read-wv-block-multichannel reader callback))))
+      (read-wv-block-multichannel reader))))
 
 (defun restore-sync-multichannel (reader)
   (restore-sync reader)

@@ -27,9 +27,8 @@
 (defun flac2wav (flac-name wav-name)
   "Decodes flac to wav. Works only for 8 or 16 bps,
    fixed block size and if total samples in stream is known"
-  (with-open-file (in flac-name :element-type '(unsigned-byte 8))
-    (let* ((in-reader (open-flac in))
-           (blocks (read-metadata in-reader))
+  (with-open-flac (in-reader flac-name)
+    (let* ((blocks (read-metadata in-reader))
            (streaminfo (the streaminfo (first blocks)))
            (minblocksize (streaminfo-minblocksize streaminfo))
            (maxblocksize (streaminfo-maxblocksize streaminfo))

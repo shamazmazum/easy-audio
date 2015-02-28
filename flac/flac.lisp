@@ -50,6 +50,14 @@
                #+easy-audio-check-crc
                #'crc-0-8005))
 
+(defmacro with-open-flac ((reader name &rest options) &body body)
+  "A helper macro like WITH-OPEN-FILE. READER can be used as an
+   argument to READ-METADATA or READ-FRAME inside this macro."
+  (let ((stream (gensym)))
+    `(let* ((,stream (apply #'open ,name :element-type '(ub 8) ,options))
+            (,reader (open-flac ,stream)))
+       (unwind-protect (progn ,@body) (close ,stream)))))
+
 (defun read-metadata (bitreader)
   "Return list of metadata blocks in the stream"
   ;; Checking if stream is a flac stream

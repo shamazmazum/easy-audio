@@ -30,6 +30,14 @@
   "Return BITREADER handler of ogg-encapsulated flac stream"
   (ogg:open-ogg stream))
 
+(defmacro with-open-ogg-flac ((reader name &rest options) &body body)
+  "A helper macro like WITH-OPEN-FILE. READER can be used as an
+   argument to READ-OGG-METADATA or READ-OGG-FRAME inside this macro."
+  (let ((stream (gensym)))
+    `(let* ((,stream (apply #'open ,name :element-type '(ub 8) ,options))
+            (,reader (open-ogg-flac ,stream)))
+       (unwind-protect (progn ,@body) (close ,stream)))))
+
 (defun read-ogg-metadata (reader)
   "Return list of metadata in ogg-encapsulated stream"
   (let ((non-audio-packets 0)

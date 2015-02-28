@@ -54,5 +54,7 @@
            #:restore-sync
            #:restore-sync-multichannel
            #:seek-sample
-           #:with-output-buffers
-           #:open-wv))
+           #:open-wv
+
+           #:with-output-buffers ; Macros
+           #:with-open-wv))
