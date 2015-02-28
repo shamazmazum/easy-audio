@@ -91,7 +91,7 @@
 (test flac-bitreader-tests
   "Test advanced bitreader for flac decoder"
   (with-input-from-sequence (input #(224 170 150   #xc3 #x88   #x7f))
-    (let ((reader (bitreader:make-reader :stream input)))
+    (let ((reader (flac:open-flac input)))
       (is (= (flac::read-utf8-u32 reader) 2710))
       (is (= (flac::read-utf8-u32 reader) 200))
       (is (= (flac::read-utf8-u32 reader) 127))))
@@ -100,11 +100,7 @@
   (is (= (flac::unsigned-to-signed 13 5) 13))
 
   (with-input-from-sequence (input #(#x00 #x8a))
-    (let ((reader (bitreader:make-reader :stream input
-                                         #+easy-audio-check-crc
-                                         :crc-fun
-                                         #+easy-audio-check-crc
-                                         #'bitreader:crc-0-8005)))
+    (let ((reader (flac:open-flac input)))
       (is (= (flac::read-unary-coded-integer reader) 8))
       (is (= (flac::read-rice-signed reader 3) 13))
       ;; Check is reading operations consumed right amount of input
@@ -122,11 +118,7 @@
                                       #x00 #x0a                               ; Constant subframe with 8-bit value 10
                                       #x02 ,@(loop repeat 192 collect #x0b) ; Verbatim subframe with 8-bit values
                                       #x4d #x6b))                             ; CRC-16
-    (let* ((reader (bitreader:make-reader :stream input
-                                          #+easy-audio-check-crc
-                                          :crc-fun
-                                          #+easy-audio-check-crc
-                                          #'bitreader:crc-0-8005))
+    (let* ((reader (flac:open-flac input))
            (frame  (flac:read-frame reader)))
       (is (equalp (flac:frame-decode frame)
                   (list (make-array 192 :initial-element 10)

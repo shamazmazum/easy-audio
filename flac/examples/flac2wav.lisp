@@ -28,56 +28,54 @@
   "Decodes flac to wav. Works only for 8 or 16 bps,
    fixed block size and if total samples in stream is known"
   (with-open-file (in flac-name :element-type '(unsigned-byte 8))
-    (multiple-value-bind (blocks in-reader) (open-flac in)
-      (let* ((streaminfo (the streaminfo (first blocks)))
-             
-             (minblocksize (streaminfo-minblocksize streaminfo))
-             (maxblocksize (streaminfo-maxblocksize streaminfo))
-             (totalsamples (streaminfo-totalsamples streaminfo))
-             (blocksize minblocksize)
-             
-             (bps (streaminfo-bitspersample streaminfo))
-             (channels (streaminfo-channels streaminfo))
-             (samplerate (streaminfo-samplerate streaminfo)))
+    (let* ((in-reader (open-flac in))
+           (blocks (read-metadata in-reader))
+           (streaminfo (the streaminfo (first blocks)))
+           (minblocksize (streaminfo-minblocksize streaminfo))
+           (maxblocksize (streaminfo-maxblocksize streaminfo))
+           (totalsamples (streaminfo-totalsamples streaminfo))
+           (blocksize minblocksize)
+           (bps (streaminfo-bitspersample streaminfo))
+           (channels (streaminfo-channels streaminfo))
+           (samplerate (streaminfo-samplerate streaminfo)))
       
-        (if (= 0 totalsamples)
-            (error "Number of total samples is unknown"))
-        (if (/= minblocksize maxblocksize)
-            (error "Block size must be fixed"))
+      (if (= 0 totalsamples)
+          (error "Number of total samples is unknown"))
+      (if (/= minblocksize maxblocksize)
+          (error "Block size must be fixed"))
       
-        (if (not (or (= 8 bps)
-                     (= 16 bps)))
-            (error "Bps must be 16 or 8"))
+      (if (not (or (= 8 bps)
+                   (= 16 bps)))
+          (error "Bps must be 16 or 8"))
       
-        (with-open-file
-         (out-stream wav-name
-                     :direction :output
-                     :if-exists :supersede
-                     :if-does-not-exist :create
-                     :element-type '(unsigned-byte 8))
+      (with-open-file
+          (out-stream wav-name
+                      :direction :output
+                      :if-exists :supersede
+                      :if-does-not-exist :create
+                      :element-type '(unsigned-byte 8))
 
-         ;; Fill headers
-         (write-pcm-wav-header out-stream
-                               :samplerate samplerate
-                               :channels channels
-                               :bps bps
-                               :totalsamples totalsamples))
-                        
-      
-        (with-open-file
-         (out-stream wav-name
-                     :direction :output
-                     :if-exists :append
-                     :element-type (list 'signed-byte bps))
-         
-         (file-position out-stream
-                        (/ (ash 44 3) bps))
-		      
-         (let ((buf (make-array (* blocksize channels)
-                                :element-type '(signed-byte 32)))
-               (flac-out-data (make-output-buffers streaminfo)))
-			
-           (loop for i below totalsamples
-                 by blocksize do
-                 (write-sequence (mixchannels buf (frame-decode (read-frame in-reader streaminfo flac-out-data)))
+        ;; Fill headers
+        (write-pcm-wav-header out-stream
+                              :samplerate samplerate
+                              :channels channels
+                              :bps bps
+                              :totalsamples totalsamples))
+
+      (with-open-file
+          (out-stream wav-name
+                      :direction :output
+                      :if-exists :append
+                      :element-type (list 'signed-byte bps))
+
+        (file-position out-stream
+                       (/ (ash 44 3) bps))
+
+        (let ((buf (make-array (* blocksize channels)
+                               :element-type '(signed-byte 32))))
+
+          (with-output-buffers (streaminfo)
+            (loop for i below totalsamples
+               by blocksize do
+                 (write-sequence (mixchannels buf (frame-decode (read-frame in-reader streaminfo)))
                                  out-stream))))))))

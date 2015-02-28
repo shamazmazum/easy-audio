@@ -36,7 +36,7 @@
           (read-bits 7 stream)
           (read-bits 24 stream)))
 
-(defun read-metadata (stream)
+(defun read-metadata-block (stream)
   "Read one metadata block from STREAM"
   (multiple-value-bind (start-position last-block-p type length)
       (read-metadata-header stream)

@@ -91,13 +91,15 @@
 
 	   ;; Functions
 	   #:open-flac
+           #:read-metadata
 	   #:read-frame
            #:open-ogg-flac
+           #:read-ogg-metadata
 	   #:read-ogg-frame
 	   #:frame-decode
 	   #:seek-sample
 	   #:metadata-find-seektable
-           #:make-output-buffers
+           #:with-output-buffers
 
 	   #:close-reader
 

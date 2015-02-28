@@ -27,6 +27,8 @@
 
 (easy-audio-early:defvar-unbound *out-buffer*
     "Output buffer for exactly one subframe")
+(defvar *out-buffers* nil
+  "Output buffers for stream with a fixed block size")
 
 (defun get-blocking-strategy (val)
   (declare (type non-negative-fixnum val))
@@ -234,18 +236,18 @@
       (read-subframe-body stream subframe frame)
       subframe))
 
-(defmethod read-frame :around (stream &optional streaminfo out-buffers)
+(defmethod read-frame :around (stream &optional streaminfo)
   (restart-case
       (call-next-method)
       (skip-malformed-frame ()
         :report "Skip this frame and read the next one"
         (restore-sync stream streaminfo)
-        (read-frame stream streaminfo out-buffers))
+        (read-frame stream streaminfo))
       (stop-reading-frame ()
         :report "Do nothing and return dummy frame"
         (make-instance 'frame))))
 
-(defmethod read-frame (stream &optional streaminfo out-buffers)
+(defmethod read-frame (stream &optional streaminfo)
   (let ((frame (make-instance 'frame)))
     #+easy-audio-check-crc
     (init-crc stream)
@@ -286,7 +288,7 @@
                (type (integer 4 32) sample-size))
       (setf (frame-subframes frame)
             (loop for sf fixnum below (if (<= assignment +max-channels+) assignment 2)
-                  collect (let ((*out-buffer* (nth sf out-buffers)))
+                  collect (let ((*out-buffer* (nth sf *out-buffers*)))
                             (read-subframe
                              stream frame
                              ;; Do bps correction

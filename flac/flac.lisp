@@ -43,46 +43,42 @@
                       4)))
 
 (defun open-flac (stream)
-  "Reads flac file from STREAM and returns two values:
-   1) A list of metadata blocks
-   2) Bitreader wrapper around the stream"
-  (let ((bitreader (make-reader :stream stream
-                                #+easy-audio-check-crc
-                                :crc-fun
-                                #+easy-audio-check-crc
-                                #'crc-0-8005)))
-    ;; Checking if stream is flac stream
-    (if (/= +flac-id+ (read-octets 4 bitreader))
-        (error 'flac-error :message "Stream is not flac stream"))
+  "Return BITREADER handler of flac stream"
+  (make-reader :stream stream
+               #+easy-audio-check-crc
+               :crc-fun
+               #+easy-audio-check-crc
+               #'crc-0-8005))
 
-    (let (metadata-list)
-     (do (last-block)
-         (last-block)
-       
-       (setq last-block
-             (easy-audio-early:with-interactive-debug
-                 (restart-case
-                     (let ((metadata (read-metadata bitreader)))
-                       (push metadata metadata-list)
-                       (metadata-last-block-p metadata))
+(defun read-metadata (bitreader)
+  "Return list of metadata blocks in the stream"
+  ;; Checking if stream is a flac stream
+  (if (/= +flac-id+ (read-octets 4 bitreader))
+      (error 'flac-error :message "Stream is not flac stream"))
+
+  (do (last-block metadata-list)
+      (last-block (reverse metadata-list))
+    (setq last-block
+          (easy-audio-early:with-interactive-debug
+            (restart-case
+                (let ((metadata (read-metadata-block bitreader)))
+                  (push metadata metadata-list)
+                  (metadata-last-block-p metadata))
                    
-                   (skip-malformed-metadata (c)
-                     :interactive (lambda () (list easy-audio-early:*current-condition*))
-                     :report "Skip malformed metadata"
-                     (let ((metadata (flac-metadata c)))
-                       (fix-stream-position bitreader metadata)
-                       (metadata-last-block-p metadata)))
+              (skip-malformed-metadata (c)
+                :interactive (lambda () (list easy-audio-early:*current-condition*))
+                :report "Skip malformed metadata"
+                (let ((metadata (flac-metadata c)))
+                  (fix-stream-position bitreader metadata)
+                  (metadata-last-block-p metadata)))
                    
-                   (read-raw-block (c)
-                     :interactive (lambda () (list easy-audio-early:*current-condition*))
-                     :report "Interprete as unknown metadata block"
-                     (let ((metadata (flac-metadata c)))
-                       (read-block-and-fix bitreader metadata)
-                       (push metadata metadata-list)
-                       (metadata-last-block-p metadata)))))))
-     (values
-      (reverse metadata-list)
-      bitreader))))
+              (read-raw-block (c)
+                :interactive (lambda () (list easy-audio-early:*current-condition*))
+                :report "Interprete as unknown metadata block"
+                (let ((metadata (flac-metadata c)))
+                  (read-block-and-fix bitreader metadata)
+                  (push metadata metadata-list)
+                  (metadata-last-block-p metadata))))))))
 
 (defun make-output-buffers (streaminfo)
   (let ((blocksize (streaminfo-minblocksize streaminfo)))
@@ -91,3 +87,9 @@
            collect (make-array (list blocksize)
                                :element-type '(sb 32)))
         (error 'flac-error :message "Cannot make output buffers: variable block size in stream"))))
+
+(defmacro with-output-buffers ((streaminfo) &body body)
+  "Calls to READ-FRAME can be made inside this macro to avoid unnecessary consing
+   if flac stream is of fixed block size"
+  `(let ((*out-buffers* (make-output-buffers ,streaminfo)))
+     ,@body))

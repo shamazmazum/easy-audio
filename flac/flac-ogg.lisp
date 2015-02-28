@@ -27,9 +27,12 @@
   "`FLAC' signature")
 
 (defun open-ogg-flac (stream)
-  "Open flac stream in ogg container"
-  (let ((reader (ogg:open-ogg stream))
-        (non-audio-packets 0)
+  "Return BITREADER handler of ogg-encapsulated flac stream"
+  (ogg:open-ogg stream))
+
+(defun read-ogg-metadata (reader)
+  "Return list of metadata in ogg-encapsulated stream"
+  (let ((non-audio-packets 0)
         metadata)
     (let* ((packet (ogg:read-packet reader))
            (packet-reader (make-reader-from-buffer packet)))
@@ -41,24 +44,24 @@
       (setq non-audio-packets (read-octets 2 packet-reader))
       (if (/= +flac-id+ (read-octets 4 packet-reader))
           (error 'flac-error :message "The stream is not a flac stream"))
-      (push (read-metadata packet-reader) metadata))
+      (setq metadata (read-metadata-block packet-reader)))
 
     (if (not (ogg:fresh-page reader))
         (error 'flac-error :message "There are other packets on the first page"))
 
     (setq metadata
-          (nconc metadata
-                 (loop repeat non-audio-packets collect
-                      (let* ((packet (ogg:read-packet reader))
-                             (packet-reader (make-reader-from-buffer packet)))
-                        (read-metadata packet-reader)))))
+          (cons metadata
+                (loop repeat non-audio-packets collect
+                     (let* ((packet (ogg:read-packet reader))
+                            (packet-reader (make-reader-from-buffer packet)))
+                       (read-metadata-block packet-reader)))))
 
     (if (not (ogg:fresh-page reader))
         (error 'flac-error :message "Audio data must begin with a fresh page"))
-    
-    (values metadata reader)))
 
-(defun read-ogg-frame (reader &rest args)
+    metadata))
+
+(defun read-ogg-frame (reader &optional streaminfo)
   "Read flac frame from ogg container"
   (let* ((packet (ogg:read-packet reader))
          (packet-reader (make-reader-from-buffer packet
@@ -66,4 +69,4 @@
                                                  :crc-fun
                                                  #+easy-audio-check-crc
                                                  #'crc-0-8005)))
-    (apply #'read-frame packet-reader args)))
+    (read-frame packet-reader streaminfo)))
