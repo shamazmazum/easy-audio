@@ -25,6 +25,19 @@
 
 (declaim (optimize (speed 3)))
 
+(declaim (inline unsigned-to-signed)
+	 (ftype (function ((ub 32)
+			   (integer 0 32))
+			  (sb 32))
+		unsigned-to-signed))
+(defun unsigned-to-signed (byte len)
+  (declare (type (integer 0 32) len)
+	   (type (ub 32) byte))
+  (let ((sign-mask (ash 1 (1- len))))
+    (if (< byte sign-mask)
+        byte
+        (- byte (ash sign-mask 1)))))
+
 (defun read-bits-array (stream array size &key
 			       signed
 			       (len (length array))
@@ -88,19 +101,6 @@
 	  (setq v (ash v 6))
 	  (setq v (logior v (logand x #x3F))))
     v))
-
-(declaim (inline unsigned-to-signed)
-	 (ftype (function ((ub 32)
-			   (integer 0 32))
-			  (sb 32))
-		unsigned-to-signed))
-(defun unsigned-to-signed (byte len)
-  (declare (type (integer 0 32) len)
-	   (type (ub 32) byte))
-  (let ((sign-mask (ash 1 (1- len))))
-    (if (< byte sign-mask)
-        byte
-        (- byte (ash sign-mask 1)))))
 
 (declaim (ftype (function (t) fixnum)
 		read-unary-coded-integer)
