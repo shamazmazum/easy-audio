@@ -29,6 +29,20 @@
 (def-suite decoders  :description "General decoders tests")
 (def-suite wavpack   :description "Wavpack tests")
 
+(defun prepare-input (&rest args)
+  (labels ((list-flatten% (acc args)
+             (destructuring-bind (car . cdr) args
+               (let ((acc
+                      (if (typep car 'atom)
+                          (cons car acc)
+                          (append (reverse car) acc))))
+                 (if cdr
+                     (list-flatten% acc cdr)
+                     acc)))))
+    (let ((input (reverse (list-flatten% nil args))))
+      (make-array (length input)
+                  :initial-contents input))))
+
 ;; Can it be done with FiveAM itself?
 ;; Maybe it's good idea to create suite registry here?
 (defun run-tests ()
@@ -114,10 +128,11 @@
    Covers only subframe-verbatim and subframe-constant readers."
   ;; Note that CRC8 (last byte in next line) is actually 0 (it's not checked)
   ;; 192 samples
-  (with-input-from-sequence (input `#(#xff #xf8 #x19 #x12 #x00 #x00           ; Header
-                                      #x00 #x0a                               ; Constant subframe with 8-bit value 10
-                                      #x02 ,@(loop repeat 192 collect #x0b) ; Verbatim subframe with 8-bit values
-                                      #x4d #x6b))                             ; CRC-16
+  (with-input-from-sequence (input (prepare-input
+                                    #xff #xf8 #x19 #x12 #x00 #x00           ; Header
+                                    #x00 #x0a                               ; Constant subframe with 8-bit value 10
+                                    #x02 (loop repeat 192 collect #x0b)     ; Verbatim subframe with 8-bit values
+                                    #x4d #x6b))                             ; CRC-16
     (let* ((reader (flac:open-flac input))
            (frame  (flac:read-frame reader)))
       (is (equalp (flac:frame-decode frame)
@@ -127,16 +142,17 @@
 (in-suite ogg)
 (test ogg-packets
   "Test ogg packet reader"
-  (with-input-from-sequence (input `#(#x4f #x67 #x67 #x53 ; OggS
-                                      #x00 #x02           ; First page of logical bitstream
-                                      #x00 #x00 #x00 #x00
-                                      #x00 #x00 #x00 #x00 ; 0 absolute granule position
-                                      #xbe #xba #xfe #xca ; Stream serial number
-                                      #x00 #x00 #x00 #x00 ; Page number
-                                      #x93 #x11 #xba #x36 ; CRC
-                                      #x02                ; 2 segments
-                                      #xff #x00           ; 1 255-bytes packet
-                                      ,@(loop repeat 255 collect 1)))
+  (with-input-from-sequence (input (prepare-input
+                                    #x4f #x67 #x67 #x53 ; OggS
+                                    #x00 #x02           ; First page of logical bitstream
+                                    #x00 #x00 #x00 #x00
+                                    #x00 #x00 #x00 #x00 ; 0 absolute granule position
+                                    #xbe #xba #xfe #xca ; Stream serial number
+                                    #x00 #x00 #x00 #x00 ; Page number
+                                    #x93 #x11 #xba #x36 ; CRC
+                                    #x02                ; 2 segments
+                                    #xff #x00           ; 1 255-bytes packet
+                                    (loop repeat 255 collect 1)))
     (let* ((reader (ogg:open-ogg input))
            (packet (ogg:read-packet reader)))
       (is (not (ogg:ogg-is-continued reader)))
@@ -150,20 +166,21 @@
 
 (test ogg-restore-sync
   "Test restore sync ability"
-  (with-input-from-sequence (input `#(1 #x4f 3            ; Junk
-                                      #x4f #x67 #x67 #x53 ; OggS
-                                      #x00 #x02           ; First page of logical bitstream
-                                      #x00 #x00 #x00 #x00
-                                      #x00 #x00 #x00 #x00 ; 0 absolute granule position
-                                      #xbe #xba #xfe #xca ; Stream serial number
-                                      #x00 #x00 #x00 #x00 ; Page number
-                                      #x13 #x98 #x76 #xae ; CRC
-                                      #x01                ; 1 segment
-                                      #x01                ; with length of 1 byte
-                                      #x01))              ; Content
+  (with-input-from-sequence (input (prepare-input
+                                    1 #x4f 3            ; Junk
+                                    #x4f #x67 #x67 #x53 ; OggS
+                                    #x00 #x02           ; First page of logical bitstream
+                                    #x00 #x00 #x00 #x00
+                                    #x00 #x00 #x00 #x00 ; 0 absolute granule position
+                                    #xbe #xba #xfe #xca ; Stream serial number
+                                    #x00 #x00 #x00 #x00 ; Page number
+                                    #x13 #x98 #x76 #xae ; CRC
+                                    #x01                ; 1 segment
+                                    #x01                ; with length of 1 byte
+                                    #x03))              ; Content
     (let ((reader (ogg:open-ogg input)))
-      (ogg:restore-sync reader)
-      (is (ogg:read-packet reader)))))
+      (is (= (ogg:restore-sync reader) 3))
+      (is (equalp #(#x03) (ogg:read-packet reader))))))
 
 (in-suite decoders)
 (test g.711-ulaw

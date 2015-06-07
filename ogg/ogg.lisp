@@ -173,11 +173,14 @@
   "restore sync bringing a reader position to
    the beginning of a new page"
   (read-to-byte-alignment reader)
+  ;; Reset Ogg reader state
+  (setf (ogg-segment-table reader) nil
+        (ogg-reader-position reader) 0)
   (peek-octet reader #x4f)  ; Letter "O" in OggS
   (let ((pos (reader-position reader)))
     (handler-case
         (progn
-          (read-page-header reader)
+          (read-packet-pages reader)
           (reader-position reader pos))
       (ogg-error ()
         (reader-position reader (1+ pos))
