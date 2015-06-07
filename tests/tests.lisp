@@ -174,7 +174,7 @@
                                     #x00 #x00 #x00 #x00 ; 0 absolute granule position
                                     #xbe #xba #xfe #xca ; Stream serial number
                                     #x00 #x00 #x00 #x00 ; Page number
-                                    #x13 #x98 #x76 #xae ; CRC
+                                    #x1d #xc7 #x2d #x0a ; CRC
                                     #x01                ; 1 segment
                                     #x01                ; with length of 1 byte
                                     #x03))              ; Content

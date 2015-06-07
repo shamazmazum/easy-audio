@@ -55,8 +55,8 @@
   #+easy-audio-check-crc
   (crc-start 0 :type non-negative-fixnum)
   #+easy-audio-check-crc
-  (crc-fun #'(lambda (array accum)
-               (declare (ignore array accum))
+  (crc-fun #'(lambda (array accum &key start end)
+               (declare (ignore array accum start end))
                0) :type function)
   stream)
 
