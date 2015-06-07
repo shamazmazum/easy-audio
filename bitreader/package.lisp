@@ -30,18 +30,7 @@
            #:make-reader ; Obsolete
            #:make-reader-from-stream
            #:make-reader-from-buffer
-           #:reader-ibit
-           #:reader-ibyte
-           #:reader-end
-           #:reader-stream
-           #:reader-buffer
            
-           #:reset-counters      ; Helper functions & macros
-           #:move-forward
-           #:fill-buffer
-           #:can-not-read
-           #:read-bits-loop
-
            #:read-bit            ; "End user" functions
            #:read-bits
            #:read-octet
