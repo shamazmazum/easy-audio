@@ -31,9 +31,13 @@
   (make-array (list 256)
               :element-type '(ub 8)
               :initial-contents
-              '#.(with-open-file (in (merge-pathnames "exp2table.lisp-expr"
-                                                      *compile-file-truename*))
-                   (read in))))
+              '#.(flet ((calc (x)
+                          (let* ((val (* 256 (1- (expt 2 (/ x 256.0)))))
+                                 (int-val (floor val)))
+                            (if (< (- val int-val)
+                                   (- int-val val -1))
+                                int-val (1+ int-val)))))
+                   (loop for x below 256 collect (calc x)))))
 
 (declaim (ftype (function ((ub 16)) (sb 32)) exp2s))
 (defun exp2s (val)
