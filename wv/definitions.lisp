@@ -68,7 +68,7 @@
                    will only read raw metadata to data slot"))
 
 (defclass metadata-ignorable (metadata) ()
-  (:documentation "Known metadata block for which we have no special reader method.
+  (:documentation "Known metadata block for which we have no special primary reader method.
                    Not to be instantiated"))
 
 (defclass metadata-decorr (metadata)

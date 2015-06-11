@@ -167,6 +167,9 @@
       ((unknown-metadata #'muffle-warning))
     (call-next-method)))
 
+;; We do not have primary reader method for residual block, as we cannot do
+;; anything with it at the moment when READ-METADATA-BODY is called. We
+;; only create additional residual reader in the following method.
 (defmethod read-metadata-body :after ((metadata metadata-residual) reader)
   (declare (ignore reader))
   (setf (metadata-residual-reader metadata)
