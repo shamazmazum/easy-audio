@@ -152,15 +152,11 @@
     (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
     (incf (reader-ibyte reader))))
 
-#+easy-audio-use-fixnums
 (declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol)) non-negative-fixnum) read-octets))
-#-easy-audio-use-fixnums
-(declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol)) non-negative-int) read-octets))
 (defun read-octets (n reader &key (endianness :big))
   "Reads n octets in integer value"
   (let ((res 0))
-    (declare #+easy-audio-use-fixnums
-             (type non-negative-fixnum res)
+    (declare (type non-negative-fixnum res)
              (type fixnum n)
              (type (member :big :little) endianness))
     (dotimes (i n)
@@ -170,9 +166,9 @@
         (declare (type (ub 8) octet))
         (setq res
               (if (eq endianness :big)
-                  (logior #f non-negative-fixnum (ash res 8) octet)
-                  (logior #f non-negative-fixnum
-                          (ash octet #f non-negative-fixnum (ash i 3)) res))))
+                  (logior (the non-negative-fixnum (ash res 8)) octet)
+                  (logior (the non-negative-fixnum
+                               (ash octet (the non-negative-fixnum (ash i 3)))) res))))
       (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
       (incf (reader-ibyte reader)))
     res))
@@ -205,10 +201,7 @@
           (setf ibit 0)
           (incf ibyte)))))
 
-#+easy-audio-use-fixnums
 (declaim (ftype (function (reader &optional t) non-negative-fixnum) reader-position))
-#-easy-audio-use-fixnums
-(declaim (ftype (function (reader &optional t) non-negative-int) reader-position))
 (defun reader-position (reader &optional val)
   "Returns or sets number of readed octets.
    Similar to file-position
@@ -222,13 +215,13 @@
           (fill-buffer reader))
          (t (setf (reader-ibyte reader) val)))
        val)
-      (t #f non-negative-fixnum
-         (if stream
-             (+ #f non-negative-fixnum
-                (file-position (reader-stream reader))
-                (- (reader-end reader))
-                (reader-ibyte reader))
-             (reader-ibyte reader))))))
+      (t (the non-negative-fixnum
+              (if stream
+                  (+ (the non-negative-fixnum
+                          (file-position (reader-stream reader)))
+                     (- (reader-end reader))
+                     (reader-ibyte reader))
+                  (reader-ibyte reader)))))))
 
 (declaim (ftype (function (reader (ub 8)) (ub 8)) peek-octet))
 (defun peek-octet (reader octet)
@@ -253,25 +246,16 @@
   (let ((stream (reader-stream reader)))
     (if stream (file-length stream) (length (reader-buffer reader)))))
 
-#+easy-audio-use-fixnums
 (declaim (ftype (function (non-negative-int reader &key (:endianness symbol)) non-negative-fixnum) read-bits))
-#-easy-audio-use-fixnums
-(declaim (ftype (function (non-negative-int reader &key (:endianness symbol)) non-negative-int) read-bits))
 (defun read-bits (bits reader &key (endianness :big))
   "Read any number of bits from reader"
   (declare
-   #+easy-audio-use-fixnums
    (type non-negative-fixnum bits)
-   #-easy-audio-use-fixnums
-   (type non-negative-int bits)
    (type (member :big :little) endianness))
 
   (let ((result 0)
         (already-read 0))
-    #+easy-audio-use-fixnums
     (declare (type non-negative-fixnum result already-read))
-    #-easy-audio-use-fixnums
-    (declare (type non-negative-int result already-read))
 
     (with-accessors ((ibit reader-ibit)) reader
       (dotimes (i (ceiling (+ bits ibit) 8))
@@ -279,15 +263,15 @@
         (let ((bits-to-add (min bits (- 8 ibit))))
           (declare (type bit-counter bits-to-add))
           (setq result (logior result
-                               #f non-negative-fixnum
-                               (ash
-                                (ldb (byte bits-to-add (- 8 ibit bits-to-add))
-                                     (aref (reader-buffer reader)
-                                           (reader-ibyte reader)))
-                                #f non-negative-fixnum
-                                (if (eq endianness :big)
-                                    (- bits bits-to-add)
-                                    already-read)))
+                               (the non-negative-fixnum
+                                    (ash
+                                     (ldb (byte bits-to-add (- 8 ibit bits-to-add))
+                                          (aref (reader-buffer reader)
+                                                (reader-ibyte reader)))
+                                     (if (eq endianness :big)
+                                         (the non-negative-fixnum
+                                              (- bits bits-to-add))
+                                         already-read))))
                 bits (- bits bits-to-add)
                 already-read (+ already-read bits-to-add))
           

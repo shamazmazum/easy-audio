@@ -39,17 +39,6 @@
            #:sa-sb
            #:bit-value))
 
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun type-decl-func (stream sub-char num)
-    (declare (ignore sub-char num))
-    (let ((type (read stream))
-          (form (read stream)))
-      #-easy-audio-use-fixnums (declare (ignore type))
-      #+easy-audio-use-fixnums `(the ,type ,form)
-      #-easy-audio-use-fixnums form))
-
-  (set-dispatch-macro-character #\# #\f #'type-decl-func))
-
 (in-package :easy-audio-early)
 
 (deftype non-negative-fixnum () '(integer 0 #.most-positive-fixnum))
