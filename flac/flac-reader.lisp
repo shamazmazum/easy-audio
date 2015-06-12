@@ -102,27 +102,17 @@
 	  (setq v (logior v (logand x #x3F))))
     v))
 
-(declaim (ftype (function (t) fixnum)
-		read-unary-coded-integer)
-	 (inline read-unary-coded-integer))
-(defun read-unary-coded-integer (bitreader)
-  "Read an unary coded integer from bitreader
-   By default zero bit is considered as arithmetical 1,
-   1 bit signals termination"
-  (do ((res 0 (1+ res)))
-      ((= (read-bit bitreader) 1) res)
-    (declare (type (ub 32) res)) ()))
-
 (declaim (ftype (function (t (integer 0 30))
 			  (sb 32))
 		read-rice-signed))
 (defun read-rice-signed (bitreader param)
   "Read signed rice-coded value"
   (declare (type (integer 0 30) param))
-  (let* ((unary  (read-unary-coded-integer bitreader))
+  (let* ((unary  (count-zeros bitreader))
          (binary (read-bits param bitreader))
          (val    (logior (ash unary param) binary)))
-    
+    (declare (type (ub 32) unary))
+
     (if (zerop (logand val 1))
       (ash val -1)
       (- -1 (ash val -1)))))

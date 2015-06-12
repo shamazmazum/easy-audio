@@ -274,9 +274,38 @@
                                          already-read))))
                 bits (- bits bits-to-add)
                 already-read (+ already-read bits-to-add))
-          
+
           (move-forward reader bits-to-add))))
     result))
+
+(declaim (ftype (function (t) non-negative-fixnum) count-zeros))
+(defun count-zeros (reader)
+  "Count number of zeros in the input. It reads the first
+   occcured one too to copy behaviour of removed
+   FLAC::READ-UNARY-CODED-integer"
+  (let ((res 0))
+    (declare (type non-negative-fixnum res))
+    (tagbody :count-cycle
+       (if (can-not-read reader) (fill-buffer reader))
+       (let* ((8-ibit (- 8 (reader-ibit reader)))
+              (byte (ldb (byte 8-ibit 0)
+                         (aref (reader-buffer reader)
+                               (reader-ibyte reader)))))
+
+         (cond
+           ((/= byte 0)
+            (let ((zeros-in-octet (- 8-ibit (integer-length byte))))
+              (incf res zeros-in-octet)
+              (move-forward reader zeros-in-octet)))
+           (t
+            (incf res 8-ibit)
+            (incf (reader-ibyte reader))
+            (setf (reader-ibit reader) 0)
+            (go :count-cycle)))))
+
+    ;; "Read" 1
+    (move-forward reader)
+    res))
 
 #+easy-audio-check-crc
 (progn

@@ -214,7 +214,7 @@
            (wasted-bits
             (let ((lead-in-bit (read-bit stream)))
               (if (= lead-in-bit 1)
-                  (1+ (read-unary-coded-integer stream))
+                  (1+ (count-zeros stream))
                 0)))
            (blocksize (frame-block-size frame)))
       (declare (type non-negative-fixnum wasted-bits))

@@ -37,6 +37,7 @@
            #:read-octet-vector
            #:read-octets
            #:read-to-byte-alignment
+           #:count-zeros
            #:reader-position
            #:peek-octet
            #:reader-length

@@ -57,7 +57,7 @@
 (in-suite bitreader)
 (test bitreader-tests
   "Test low-level bitreader functions"
-  (with-input-from-sequence (input #(1 2 3 128 129 4 1 2))
+  (with-input-from-sequence (input #(1 2 3 128 129 4 1 2 #xc5 #x00 #x0c))
     ;; Set internal buffer size low to check buffer refill
     (let ((bitreader::*buffer-size* 3)
           (reader (bitreader:make-reader :stream input)))
@@ -72,7 +72,14 @@
       (is (= (bitreader:read-bit reader) 1))
       (is (= (bitreader:read-to-byte-alignment reader) 1))
       (is (= (bitreader:read-bits 8 reader) 4))
-      (is (= (bitreader:read-octets 2 reader) 258)))))
+      (is (= (bitreader:read-octets 2 reader) 258))
+      ;; Test zero counter
+      (is (= (bitreader:read-bits 2 reader) 3))
+      (is (= (bitreader:count-zeros reader) 3))
+      (is (= (bitreader:read-bits 2 reader) 1))
+      ;; And with multiple octets
+      (is (= (bitreader:count-zeros reader) 12))
+      (is (= (bitreader:read-to-byte-alignment reader) 4)))))
 
 (test bitreader-little-endian
   "Test low-level bitreader functions"
@@ -113,9 +120,8 @@
   (is (= (flac::unsigned-to-signed 13 4) -3))
   (is (= (flac::unsigned-to-signed 13 5) 13))
 
-  (with-input-from-sequence (input #(#x00 #x8a))
+  (with-input-from-sequence (input #(#x14))
     (let ((reader (flac:open-flac input)))
-      (is (= (flac::read-unary-coded-integer reader) 8))
       (is (= (flac::read-rice-signed reader 3) 13))
       ;; Check is reading operations consumed right amount of input
       (is (= (bitreader::read-to-byte-alignment reader) 0)))))
