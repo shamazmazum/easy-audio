@@ -63,19 +63,21 @@
 (declaim (inline move-forward))
 (defun move-forward (reader &optional (bits 1))
   "Moves position in READER bit reader in range [0; 8-ibit] BITS.
-   Maximum value of ibit is 7."
+   Maximum value of ibit is 7. Does not check if ibit becomes
+   out of range."
   (declare (type non-negative-fixnum bits))
   
   (with-accessors
    ((ibit reader-ibit)
     (ibyte reader-ibyte)) reader
 
-    (incf ibit bits)
-
+    (let ((new-ibit (+ ibit bits)))
     (cond
-     ((= ibit 8)
-      (setf ibit 0)
-      (incf ibyte)))))
+      ((< new-ibit 8)
+       (setf ibit new-ibit))
+      (t
+       (setf ibit 0)
+       (incf ibyte))))))
 
 (defun read-buffer-from-stream (reader)
   "Read internal buffer from stream"
@@ -196,8 +198,8 @@
 
     (if (= ibit 0) 0
         (prog1
-            (ldb (byte (- 8 ibit) 0)
-                 (aref (reader-buffer reader) ibyte))
+            (logand (1- (ash 1 (- 8 ibit)))
+                    (aref (reader-buffer reader) ibyte))
           (setf ibit 0)
           (incf ibyte)))))
 
@@ -288,23 +290,20 @@
     (tagbody :count-cycle
        (if (can-not-read reader) (fill-buffer reader))
        (let* ((8-ibit (- 8 (reader-ibit reader)))
-              (byte (ldb (byte 8-ibit 0)
-                         (aref (reader-buffer reader)
-                               (reader-ibyte reader)))))
+              (byte (logand (1- (ash 1 8-ibit))
+                            (aref (reader-buffer reader)
+                                  (reader-ibyte reader)))))
 
          (cond
            ((/= byte 0)
             (let ((zeros-in-octet (- 8-ibit (integer-length byte))))
               (incf res zeros-in-octet)
-              (move-forward reader zeros-in-octet)))
+              (move-forward reader (1+ zeros-in-octet)))) ; Also "read" the first 1 here
            (t
             (incf res 8-ibit)
             (incf (reader-ibyte reader))
             (setf (reader-ibit reader) 0)
             (go :count-cycle)))))
-
-    ;; "Read" 1
-    (move-forward reader)
     res))
 
 #+easy-audio-check-crc
