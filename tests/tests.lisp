@@ -249,4 +249,13 @@
                                 :element-type '(signed-byte 32)
                                 :initial-contents '(-1 -3 -5 7 9 11 13)))
             (out (make-array 14 :element-type '(signed-byte 32))))
-        (is (equalp (utils:mixchannels out (list array1 array2)) #(0 -1 -2 -3 -4 -5 6 7 8 9 10 11 12 13)))))
+        (is (equalp (utils:mixchannels out (list array1 array2)) #(0 -1 -2 -3 -4 -5 6 7 8 9 10 11 12 13))))
+
+      (let ((array1 (make-array 7
+                                :element-type '(signed-byte 32)
+                                :initial-contents '(0 -2 -4 6 8 10 12)))
+            (array2 (make-array 7
+                                :element-type '(signed-byte 32)
+                                :initial-contents '(-1 -3 -5 7 9 11 13)))
+            (out (make-array 16 :element-type '(signed-byte 32) :initial-element 0)))
+        (is (equalp (utils:mixchannels out (list array1 array2)) #(0 -1 -2 -3 -4 -5 6 7 8 9 10 11 12 13 0 0)))))

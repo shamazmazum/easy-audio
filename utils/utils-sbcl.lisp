@@ -75,29 +75,31 @@
                  output channel1 channel2)
            (optimize (speed 3)))
 
-  (let ((len (length output))
-        (len-ch (length channel1)))
+  (let* ((len (length output))
+         (len-ch (length channel1))
+         (len-ch-shift (ash len-ch 1)))
     (if (or
-         (/= len (ash (length channel2) 1))
+         (> len-ch-shift len)
          (/= len-ch (length channel2)))
-        (error "bad arrays"))
+        (error "bad arrays: out len ~d, ch1 len ~d, ch2 len ~d"
+               len len-ch (length channel2)))
 
-    (if (/= len
-            (loop for i below (logand len (lognot 3)) by 4
-               for j = (ash i -1)
+    (if (/= len-ch
+            (loop for i below (logand len-ch (lognot 1)) by 2
+               for j from 0 by 4
                do
                  (utils-sbcl:store-simd-pack-to-sa-sb32
                   output
-                  i
+                  j
                   (utils-sbcl:make-simd-pack-sb32
-                   (aref channel1 j)
-                   (aref channel2 j)
-                   (aref channel1 (1+ j))
-                   (aref channel2 (1+ j))))
-                 finally (return (+ i 4))))
+                   (aref channel1 i)
+                   (aref channel2 i)
+                   (aref channel1 (1+ i))
+                   (aref channel2 (1+ i))))
+               finally (return (+ i 2))))
 
-        (setf (aref output (- len 2))
+        (setf (aref output (- len-ch-shift 2))
               (aref channel1 (1- len-ch))
-              (aref output (- len 1))
+              (aref output (- len-ch-shift 1))
               (aref channel2 (1- len-ch)))))
   output)

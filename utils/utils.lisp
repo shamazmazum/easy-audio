@@ -37,8 +37,8 @@
 
 #-(and sbcl x86-64)
 (defun mixchannles-2 (output channel1 channel2)
-  (mixchannels output
-               (list channel1 channel2)))
+  (mixchannels-n output
+                 (list channel1 channel2)))
 
 (defun mixchannels (out buffers)
   "Maps a list of buffers (each one for each channel) into
