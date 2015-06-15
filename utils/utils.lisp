@@ -40,6 +40,11 @@
       (incf idx offset))
     out))
 
+#-(and sbcl x86-64)
+(defun mixchannles-2 (output channel1 channel2)
+  (mixchannels output
+               (list channel1 channel2)))
+
 (defun write-pcm-wav-header (out-stream &key samplerate channels bps totalsamples)
   "Writes header of uncompressed wav into stream"
   (let ((size (ash (* bps channels totalsamples) -3))

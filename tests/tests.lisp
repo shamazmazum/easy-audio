@@ -28,6 +28,7 @@
 (def-suite ogg       :description "ogg container tests")
 (def-suite decoders  :description "General decoders tests")
 (def-suite wavpack   :description "Wavpack tests")
+(def-suite utils     :description "Utilities tests")
 
 (defun prepare-input (&rest args)
   (labels ((list-flatten% (acc args)
@@ -51,7 +52,8 @@
   (explain! (run 'flac))
   (explain! (run 'ogg))
   (explain! (run 'decoders))
-  (explain! (run 'wavpack)))
+  (explain! (run 'wavpack))
+  (explain! (run 'utils)))
 (export 'run-tests)
 
 (in-suite bitreader)
@@ -227,3 +229,24 @@
         (is (= (wv::read-code reader 5) 1))   ; Reading 2 bits   -  01
         (is (= (wv::residual-read-bits 3 reader) 7))))
                                               ; Reading the rest - 111
+
+(in-suite utils)
+(test mixchannels-2
+      "Test MIXCHANNELS-2 special case"
+      (let ((array1 (make-array 6
+                                :element-type '(signed-byte 32)
+                                :initial-contents '(0 -2 -4 6 8 10)))
+            (array2 (make-array 6
+                                :element-type '(signed-byte 32)
+                                :initial-contents '(-1 -3 -5 7 9 11)))
+            (out (make-array 12 :element-type '(signed-byte 32))))
+        (is (equalp (utils:mixchannels-2 out array1 array2) #(0 -1 -2 -3 -4 -5 6 7 8 9 10 11))))
+
+      (let ((array1 (make-array 7
+                                :element-type '(signed-byte 32)
+                                :initial-contents '(0 -2 -4 6 8 10 12)))
+            (array2 (make-array 7
+                                :element-type '(signed-byte 32)
+                                :initial-contents '(-1 -3 -5 7 9 11 13)))
+            (out (make-array 14 :element-type '(signed-byte 32))))
+        (is (equalp (utils:mixchannels-2 out array1 array2) #(0 -1 -2 -3 -4 -5 6 7 8 9 10 11 12 13)))))
