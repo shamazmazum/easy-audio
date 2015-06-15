@@ -36,9 +36,9 @@
                (:file "wav/wav" :depends-on ("wav/package"))
 
                (:file "utils/package" :depends-on ("wav/package"))
-               (:file "utils/utils" :depends-on ("utils/package"))
                #+(and x86-64 sbcl)
                (:file "utils/utils-sbcl" :depends-on ("utils/package"))
+               (:file "utils/utils" :depends-on ("utils/package"))
 
                (:file "wv/package" :depends-on ("utils/package"))
                (:file "wv/definitions" :depends-on ("wv/package"))

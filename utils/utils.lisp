@@ -16,12 +16,7 @@
                 (ldb (byte 8 (- len-bits pos 8)) val))))
   array)
 
-(defun mixchannels (out buffers)
-  "Maps a list of buffers (each one for each channel) into
-   one buffer writing the first sample of the first channel when the
-   first sample of second channel and so on until final channel is reached.
-   When process repeats for second sample of each channel until all data is
-   written"
+(defun mixchannels-n (out buffers)
   (declare (type list buffers)
 	   (type (simple-array (signed-byte 32)) out)
 	   (optimize #+easy-audio-unsafe-code
@@ -44,6 +39,20 @@
 (defun mixchannles-2 (output channel1 channel2)
   (mixchannels output
                (list channel1 channel2)))
+
+(defun mixchannels (out buffers)
+  "Maps a list of buffers (each one for each channel) into
+   one buffer writing the first sample of the first channel when the
+   first sample of second channel and so on until final channel is reached.
+   When process repeats for second sample of each channel until all data is
+   written"
+  (declare (optimize (speed 3))
+           (type list buffers))
+  (case (length buffers)
+    (2 (mixchannels-2 out
+                      (first buffers)
+                      (second buffers)))
+    (t (mixchannels-n out buffers))))
 
 (defun write-pcm-wav-header (out-stream &key samplerate channels bps totalsamples)
   "Writes header of uncompressed wav into stream"

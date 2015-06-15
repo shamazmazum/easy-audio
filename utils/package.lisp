@@ -2,7 +2,6 @@
   (:nicknames #:utils)
   (:use #:cl #:easy-audio-early)
   (:export #:mixchannels
-           #:mixchannels-2
            #:write-pcm-wav-header
            #:defreader))
 
