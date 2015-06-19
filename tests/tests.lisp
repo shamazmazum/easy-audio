@@ -31,18 +31,10 @@
 (def-suite utils     :description "Utilities tests")
 
 (defun prepare-input (&rest args)
-  (labels ((list-flatten% (acc args)
-             (destructuring-bind (car . cdr) args
-               (let ((acc
-                      (if (typep car 'atom)
-                          (cons car acc)
-                          (append (reverse car) acc))))
-                 (if cdr
-                     (list-flatten% acc cdr)
-                     acc)))))
-    (let ((input (reverse (list-flatten% nil args))))
-      (make-array (length input)
-                  :initial-contents input))))
+  (apply #'concatenate
+         'vector
+         (mapcar (lambda (elem)
+                   (if (atom elem) (list elem) elem)) args)))
 
 ;; Can it be done with FiveAM itself?
 ;; Maybe it's good idea to create suite registry here?
