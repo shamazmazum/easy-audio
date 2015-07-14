@@ -223,31 +223,44 @@
                                               ; Reading the rest - 111
 
 (in-suite utils)
+
+(defun mixed-correctly-p (output a1 a2)
+  (every #'identity
+         (loop for i below (length a1)
+            for j from 0 by 2
+            collect
+              (and (= (aref output j) (aref a1 i))
+                   (= (aref output (1+ j))
+                      (aref a2 i))))))
+
 (test mixchannels-2
       "Test MIXCHANNELS-2 special case"
-      (let ((array1 (make-array 6
-                                :element-type '(signed-byte 32)
-                                :initial-contents '(0 -2 -4 6 8 10)))
-            (array2 (make-array 6
-                                :element-type '(signed-byte 32)
-                                :initial-contents '(-1 -3 -5 7 9 11)))
-            (out (make-array 12 :element-type '(signed-byte 32))))
-        (is (equalp (utils:mixchannels out (list array1 array2)) #(0 -1 -2 -3 -4 -5 6 7 8 9 10 11))))
+      (let ((data1 (loop repeat 522 collect (- (random 1000) 2000)))
+            (data2 (loop repeat 522 collect (- (random 1000) 2000))))
 
-      (let ((array1 (make-array 7
-                                :element-type '(signed-byte 32)
-                                :initial-contents '(0 -2 -4 6 8 10 12)))
-            (array2 (make-array 7
-                                :element-type '(signed-byte 32)
-                                :initial-contents '(-1 -3 -5 7 9 11 13)))
-            (out (make-array 14 :element-type '(signed-byte 32))))
-        (is (equalp (utils:mixchannels out (list array1 array2)) #(0 -1 -2 -3 -4 -5 6 7 8 9 10 11 12 13))))
+        (let ((array1 (make-array 512
+                                  :element-type '(signed-byte 32)
+                                  :initial-contents (subseq data1 0 512)))
+              (array2 (make-array 512
+                                  :element-type '(signed-byte 32)
+                                  :initial-contents (subseq data2 0 512)))
+              (out (make-array 1024 :element-type '(signed-byte 32))))
+        (is (mixed-correctly-p (utils:mixchannels out (list array1 array2)) array1 array2)))
 
-      (let ((array1 (make-array 7
-                                :element-type '(signed-byte 32)
-                                :initial-contents '(0 -2 -4 6 8 10 12)))
-            (array2 (make-array 7
-                                :element-type '(signed-byte 32)
-                                :initial-contents '(-1 -3 -5 7 9 11 13)))
-            (out (make-array 16 :element-type '(signed-byte 32) :initial-element 0)))
-        (is (equalp (utils:mixchannels out (list array1 array2)) #(0 -1 -2 -3 -4 -5 6 7 8 9 10 11 12 13 0 0)))))
+        (let ((array1 (make-array 522
+                                  :element-type '(signed-byte 32)
+                                  :initial-contents data1))
+              (array2 (make-array 522
+                                  :element-type '(signed-byte 32)
+                                  :initial-contents data2))
+              (out (make-array #.(expt 522 2) :element-type '(signed-byte 32))))
+        (is (mixed-correctly-p (utils:mixchannels out (list array1 array2)) array1 array2)))
+
+        (let ((array1 (make-array 522
+                                  :element-type '(signed-byte 32)
+                                  :initial-contents data1))
+              (array2 (make-array 522
+                                  :element-type '(signed-byte 32)
+                                  :initial-contents data2))
+              (out (make-array #.(1+ (expt 522 2)) :element-type '(signed-byte 32))))
+          (is (mixed-correctly-p (utils:mixchannels out (list array1 array2)) array1 array2)))))

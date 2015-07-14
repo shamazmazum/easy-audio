@@ -52,14 +52,14 @@
     (:result-types simd-pack-int)
     (:generator 0
                 (move res pack)
-                (inst movntdq (sb-vm::make-ea
-                               :qword
-                               :base array
-                               :index index
-                               :scale 2
-                               :disp (- (* sb-vm::vector-data-offset
-                                           sb-vm::n-word-bytes)
-                                        sb-vm::other-pointer-lowtag)) res))))
+                (inst movdqa (sb-vm::make-ea
+                              :qword
+                              :base array
+                              :index index
+                              :scale 2
+                              :disp (- (* sb-vm::vector-data-offset
+                                          sb-vm::n-word-bytes)
+                                       sb-vm::other-pointer-lowtag)) res))))
 
 (defun make-simd-pack-sb32 (w x y z)
   (make-simd-pack-sb32 w x y z))
@@ -84,22 +84,24 @@
         (error "bad arrays: out len ~d, ch1 len ~d, ch2 len ~d"
                len len-ch (length channel2)))
 
-    (if (/= len-ch
-            (loop for i below (logand len-ch (lognot 1)) by 2
-               for j from 0 by 4
-               do
-                 (utils-sbcl:store-simd-pack-to-sa-sb32
-                  output
-                  j
-                  (utils-sbcl:make-simd-pack-sb32
-                   (aref channel1 i)
-                   (aref channel2 i)
-                   (aref channel1 (1+ i))
-                   (aref channel2 (1+ i))))
-               finally (return (+ i 2))))
+    (let ((rest
+           (loop for i below (logand len-ch (lognot 1)) by 2
+                 for j from 0 by 4
+                 do
+                (utils-sbcl:store-simd-pack-to-sa-sb32
+                 output
+                 j
+                 (utils-sbcl:make-simd-pack-sb32
+                  (aref channel1 i)
+                  (aref channel2 i)
+                  (aref channel1 (1+ i))
+                  (aref channel2 (1+ i))))
+                 finally (return i))))
 
-        (setf (aref output (- len-ch-shift 2))
-              (aref channel1 (1- len-ch))
-              (aref output (- len-ch-shift 1))
-              (aref channel2 (1- len-ch)))))
+      (loop for i from rest below len-ch
+            for j from (ash rest 1) by 2 do
+           (setf (aref output j)
+                 (aref channel1 i)
+                 (aref output (+ j 1))
+                 (aref channel2 i)))))
   output)
