@@ -99,6 +99,7 @@
 	   #:frame-decode
 	   #:seek-sample
 	   #:metadata-find-seektable
+           #:make-output-buffers
 
            ;; Macros
            #:with-output-buffers
@@ -115,4 +116,7 @@
 	   #:skip-malformed-metadata
            #:skip-malformed-frame
            #:stop-reading-frame
-           #:read-raw-block))
+           #:read-raw-block
+
+           ;;Variables
+           #:*out-buffers*))
