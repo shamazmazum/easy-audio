@@ -23,7 +23,7 @@
 
 (in-package :easy-audio.ogg)
 
-(define-condition ogg-error ()
+(define-condition ogg-error (error)
   ((message :initarg :message
 	    :initform ""
 	    :type string

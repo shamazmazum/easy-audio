@@ -23,7 +23,7 @@
 
 (in-package :easy-audio.flac)
 
-(define-condition flac-error ()
+(define-condition flac-error (error)
   ((message :initarg :message
 	    :initform ""
 	    :type string

@@ -61,7 +61,7 @@
   samples-num)
 
 ;; Condition
-(define-condition wav-error ()
+(define-condition wav-error (error)
   ((message :initarg :message
             :initform ""
 	    :type string

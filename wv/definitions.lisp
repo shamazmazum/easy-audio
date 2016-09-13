@@ -24,13 +24,16 @@
 (in-package :easy-audio.wv)
 
 ;; Conditions
-(define-condition wavpack-error ()
-  ((message :reader wavpack-error-message
+(define-condition wavpack-condition ()
+  ((message :reader condition-message
             :initarg :message))
   (:report (lambda (c s)
 	     (format s "WavPack: ~A"
-		     (wavpack-error-message c))))
+		     (condition-message c))))
   (:documentation "General (unspecified) WavPack condition"))
+
+(define-condition wavpack-error (wavpack-condition error) ())
+(define-condition wavpack-warning (wavpack-condition warning) ())
 
 (define-condition block-error (wavpack-error) () ; A large part of currently generated conditions is of this type
   (:documentation "Error associated with block reader/decoder error"))
@@ -42,7 +45,7 @@
                    loss of sync are not of this type, but of BLOCK-ERROR.
                    Useful for skipping garbage in audio files"))
 
-(define-condition unknown-metadata (wavpack-error warning)
+(define-condition unknown-metadata (wavpack-warning)
   ((metadata :reader unknown-metadata
              :initarg :metadata))
   (:report (lambda (c s)

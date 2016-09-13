@@ -36,7 +36,7 @@
    input buffer, but also zero read parts in the buffer. Useful
    for CRC calculation in some containers")
 
-(define-condition bitreader-eof ()
+(define-condition bitreader-eof (error)
   ((bitreader :initarg :bitreader
               :reader bitreader-eof-bitreader)))
 
