@@ -40,6 +40,9 @@
                (:file "utils/utils-sbcl" :depends-on ("utils/package"))
                (:file "utils/utils" :depends-on ("utils/package"))
 
+               (:file "ape/package" :depends-on ("utils/package"))
+               (:file "ape/apev2" :depends-on ("ape/package"))
+
                (:file "wv/package" :depends-on ("utils/package"))
                (:file "wv/definitions" :depends-on ("wv/package"))
                (:file "wv/wavpack-reader" :depends-on ("wv/package"))
