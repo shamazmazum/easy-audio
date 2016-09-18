@@ -64,8 +64,7 @@
   (flet ((read-comment-string (stream)
 	  (let ((buffer (make-array (list (read-bits 32 stream :endianness :little))
 					   :element-type '(unsigned-byte 8))))
-	    (read-octet-vector buffer stream)
-	    (babel:octets-to-string buffer))))
+	    (babel:octets-to-string (read-octet-vector buffer stream)))))
     
     (setf (vorbis-vendor-comment data)
 	  (read-comment-string stream))
@@ -108,8 +107,8 @@
 	(streaminfo-totalsamples data) (read-bits 36 stream))
 
   (let ((md5 (make-array (list 16) :element-type '(ub 8))))
-    (read-octet-vector md5 stream)
-    (setf (streaminfo-md5 data) md5))
+    (setf (streaminfo-md5 data)
+          (read-octet-vector md5 stream)))
   data)
 
 (defun read-cuesheet-string (stream length)
@@ -194,8 +193,8 @@
   (let* ((description-len (read-bits 32 stream))
          (description-seq (make-array (list description-len)
                                       :element-type '(unsigned-byte 8))))
-    (read-octet-vector description-seq stream)
-    (setf (picture-description data) (babel:octets-to-string description-seq)))
+    (setf (picture-description data)
+          (babel:octets-to-string (read-octet-vector description-seq stream))))
 
   (setf (picture-width data) (read-bits 32 stream)
         (picture-height data) (read-bits 32 stream)

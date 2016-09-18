@@ -32,8 +32,8 @@
                       4))
   (let ((chunk (make-array (list (metadata-length metadata))
 			   :element-type '(ub 8))))
-    (read-octet-vector chunk bitreader)
-    (setf (slot-value metadata 'rawdata) chunk)))
+    (setf (slot-value metadata 'rawdata)
+          (read-octet-vector chunk bitreader))))
 
 (defun fix-stream-position (bitreader metadata)
   "Set stream position to end of the malformed metadata block"

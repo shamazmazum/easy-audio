@@ -175,7 +175,7 @@
       (incf (reader-ibyte reader)))
     res))
 
-(declaim (ftype (function ((sa-ub 8) reader) positive-int) read-octet-vector))
+(declaim (ftype (function ((sa-ub 8) reader) (sa-ub 8)) read-octet-vector))
 (defun read-octet-vector (array reader)
   ;; Stupid and maybe slow version.
   ;; Why not? I do not use this function often
@@ -185,7 +185,7 @@
           (aref (reader-buffer reader) (reader-ibyte reader)))
     (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
     (incf (reader-ibyte reader)))
-  (length array))
+  array)
 
 (declaim (ftype (function (reader) non-negative-fixnum) read-to-byte-alignment))
 (defun read-to-byte-alignment (reader)

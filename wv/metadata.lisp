@@ -27,8 +27,8 @@
 (defmethod read-metadata-body ((metadata metadata) reader)
   (let ((data (make-array (list (metadata-actual-size metadata))
                           :element-type '(ub 8))))
-    (read-octet-vector data reader)
-    (setf (metadata-data metadata) data))
+    (setf (metadata-data metadata)
+          (read-octet-vector data reader)))
 
   (warn 'unknown-metadata :metadata metadata)
   metadata)
