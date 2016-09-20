@@ -1,9 +1,0 @@
-Easy audio is (or actually, will be ;) my pack of audio decoders. It can
-help you decode audio files and also provides easy access to metadata.
-Currently only flac decoder is available and there are some stubs on wav
-format too.
-
-Currently implemented: flac, wav (partially)
-Planned: ape, wavpack
-
-There is no unified API for all decoders yet
