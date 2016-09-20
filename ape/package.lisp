@@ -25,4 +25,6 @@
   (:use #:cl #:bitreader #:easy-audio-early #:utils)
   (:nicknames #:ape)
   (:export #:read-tag
-           #:read-tag-from-end))
+           #:read-tag-from-end
+           #:ape-error
+           #:apev2-tag-error))

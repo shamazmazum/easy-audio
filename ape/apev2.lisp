@@ -160,7 +160,6 @@
   "Helper function to read APEv2 tag from end of reader's stream.
 Changes reader's position. Needs APEv2 tag to contain a footer."
   (let ((length (reader-length reader)))
-    #+nil
     (if (< length 32)
         (error 'apev2-tag-error :message "Stream is too short to be an APEv2 tag"))
     (reader-position reader (- length 32))
