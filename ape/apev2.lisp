@@ -24,6 +24,8 @@
 (in-package :easy-audio.ape)
 
 (defparameter *apev2-preamble* #.(map 'vector #'char-code "APETAGEX"))
+(defparameter *apev2-external-format* '(:utf-8 :eol-style :crlf)
+  "External format used in human-readable APEv2 items")
 
 (defun has-header (flags)
   (declare (type fixnum flags))
@@ -142,7 +144,8 @@
                                    :element-type '(unsigned-byte 8))))
             (read-octet-vector array reader)
             (case (content-type (item-flags item))
-              (:utf-8 (babel:octets-to-string array))
+              (:utf-8 (flexi-streams:octets-to-string
+                       array :external-format *apev2-external-format*))
               (:binary array)
               (t (error 'apev2-tag-error :message "Unknown content type")))))
     item))

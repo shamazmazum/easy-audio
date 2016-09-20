@@ -54,4 +54,4 @@
                     (asdf:load-system :easy-audio-tests)
                     (funcall
                      (intern "RUN-TESTS" (find-package "EASY-AUDIO-TESTS"))))
-  :depends-on (:babel))
+  :depends-on (:flexi-streams))

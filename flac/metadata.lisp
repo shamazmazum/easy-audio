@@ -64,7 +64,7 @@
   (flet ((read-comment-string (stream)
 	  (let ((buffer (make-array (list (read-bits 32 stream :endianness :little))
 					   :element-type '(unsigned-byte 8))))
-	    (babel:octets-to-string (read-octet-vector buffer stream)))))
+	    (flexi-streams:octets-to-string (read-octet-vector buffer stream)))))
     
     (setf (vorbis-vendor-comment data)
 	  (read-comment-string stream))
@@ -117,7 +117,7 @@
     (let ((pos (position 0 buffer)))
       (setq buffer
 	    (if pos (subseq buffer 0 pos) buffer)))
-    (babel:octets-to-string buffer)))
+    (flexi-streams:octets-to-string buffer)))
 
 (defun read-cuesheet-index (stream)
   (let ((index (make-cuesheet-index)))
@@ -188,13 +188,13 @@
         (error 'flac-bad-metadata
                :message "MIME type must be an ASCII string"
                :metadata data))
-    (setf (picture-mime-type data) (babel:octets-to-string mime-type-seq)))
+    (setf (picture-mime-type data) (flexi-streams:octets-to-string mime-type-seq)))
 
   (let* ((description-len (read-bits 32 stream))
          (description-seq (make-array (list description-len)
                                       :element-type '(unsigned-byte 8))))
     (setf (picture-description data)
-          (babel:octets-to-string (read-octet-vector description-seq stream))))
+          (flexi-streams:octets-to-string (read-octet-vector description-seq stream))))
 
   (setf (picture-width data) (read-bits 32 stream)
         (picture-height data) (read-bits 32 stream)

@@ -27,4 +27,5 @@
   (:export #:read-tag
            #:read-tag-from-end
            #:ape-error
-           #:apev2-tag-error))
+           #:apev2-tag-error
+           #:*apev2-external-format*))
