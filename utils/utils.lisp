@@ -35,10 +35,16 @@
       (incf idx offset))
     out))
 
-#-(and sbcl x86-64)
-(defun mixchannles-2 (output channel1 channel2)
-  (mixchannels-n output
-                 (list channel1 channel2)))
+(defun mixchannels-2 (output channel1 channel2)
+  (declare (optimize (speed 3) (safety 0))
+           (type (sa-sb 32) output channel1 channel2))
+  (loop for i below (length channel1)
+        for j from 0 by 2 do
+       (setf (aref output j)
+             (aref channel1 i)
+             (aref output (1+ j))
+             (aref channel2 i)))
+  output)
 
 (defun mixchannels (out buffers)
   "Maps a list of buffers (each one for each channel) into
