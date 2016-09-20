@@ -23,4 +23,6 @@
 
 (defpackage easy-audio.ape
   (:use #:cl #:bitreader #:easy-audio-early #:utils)
-  (:nicknames #:ape))
+  (:nicknames #:ape)
+  (:export #:read-tag
+           #:read-tag-from-end))
