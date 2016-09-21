@@ -9,6 +9,8 @@
   :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
                (read input))
   :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
+  :description "A pack of audio decoders for FLAC, WavPack and other formats"
+  :licence "2-clause BSD"
   :components ((:file "easy-audio-early")
                
                (:file "general-decoders/package")
