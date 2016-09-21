@@ -24,6 +24,7 @@
 (in-package :easy-audio.wav)
 
 (defun skip-subchunk (c)
+  "Invoke @c(skip-subchank) restart"
   (invoke-restart 'skip-subchunk c))
 
 (defun read-chunk-header (reader)
@@ -109,7 +110,7 @@
     chunks))
 
 (defun read-wav-header (stream)
-  "Reads wav file header from STREAM. Returns two values:
+  "Reads wav file header from @c(stream). Returns two values:
    list of subchunks and size of audio data to read.
    Stream position is set to begining of audio data."
   (let* ((reader (read-chunk-header

@@ -217,5 +217,6 @@
          :metadata data))
 
 (defun metadata-find-seektable (metadata)
+  "Return a seektable from metadata list if any"
   (find 'seektable metadata
         :key #'type-of))

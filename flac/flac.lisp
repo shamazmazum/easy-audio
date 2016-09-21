@@ -43,7 +43,7 @@
                       4)))
 
 (defun open-flac (stream)
-  "Return BITREADER handler of flac stream"
+  "Return @c(bitreader) handler of flac stream"
   (make-reader :stream stream
                #+easy-audio-check-crc
                :crc-fun
@@ -89,6 +89,7 @@
                   (metadata-last-block-p metadata))))))))
 
 (defun make-output-buffers (streaminfo)
+  "Make output buffers for binding with @c(*output-buffers*) to reduce consing"
   (let ((blocksize (streaminfo-minblocksize streaminfo)))
     (if (= blocksize (streaminfo-maxblocksize streaminfo))
         (loop repeat (streaminfo-channels streaminfo)

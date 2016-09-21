@@ -32,8 +32,10 @@
 		     (condition-message c))))
   (:documentation "General (unspecified) WavPack condition"))
 
-(define-condition wavpack-error (wavpack-condition error) ())
-(define-condition wavpack-warning (wavpack-condition warning) ())
+(define-condition wavpack-error (wavpack-condition error) ()
+  (:documentation "General WavPack error"))
+(define-condition wavpack-warning (wavpack-condition warning) ()
+  (:documentation "General WavPack warning"))
 
 (define-condition block-error (wavpack-error) () ; A large part of currently generated conditions is of this type
   (:documentation "Error associated with block reader/decoder error"))
@@ -42,12 +44,13 @@
   (:documentation "Error signaled when sync is obviously lost
                    (e.g. first 4 bytes in block are not Wavpack ID).
                    Errors signalled when reading a block which cause
-                   loss of sync are not of this type, but of BLOCK-ERROR.
+                   loss of sync are not of this type, but of @c(block-error).
                    Useful for skipping garbage in audio files"))
 
 (define-condition unknown-metadata (wavpack-warning)
   ((metadata :reader unknown-metadata
-             :initarg :metadata))
+             :initarg :metadata
+             :documentation "Metadata object"))
   (:report (lambda (c s)
 	     (format s "WavPack: cannot understand metadata (id=~d)"
                      (metadata-id (unknown-metadata c)))))
@@ -154,6 +157,7 @@
                                   (block-block-index struct)
                                   (+ (block-block-index struct)
                                      (block-block-samples struct)))))))
+  "WavPack block structure"
   (id            0 :type (ub 32))
   (size          0 :type (ub 32))
 

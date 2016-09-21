@@ -25,6 +25,7 @@
   (:use #:cl #:bitreader #:easy-audio-early #:utils)
   (:nicknames #:wv)
   (:export #:wavpack-error ; Conditions
+           #:wavpack-warning
            #:block-error
            #:lost-sync
            #:unknown-metadata

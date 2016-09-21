@@ -108,7 +108,6 @@
 
 	   ;; Conditions
 	   #:flac-error
-	   #:flac-eof
 	   #:flac-bad-metadata
 	   #:flac-bad-frame
 

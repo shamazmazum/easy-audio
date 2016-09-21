@@ -59,9 +59,11 @@
             :reader ape-error-message))
   (:report (lambda (c s)
              (format s "Ape error: ~a"
-                     (ape-error-message c)))))
+                     (ape-error-message c))))
+  (:documentation "General APE error"))
 
-(define-condition apev2-tag-error (ape-error) ())
+(define-condition apev2-tag-error (ape-error) ()
+  (:documentation "APEv2 tag error"))
 
 (defun check-preamble (preamble)
   (if (equalp preamble *apev2-preamble*) preamble

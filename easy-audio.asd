@@ -46,6 +46,7 @@
                (:file "wv/wavpack-reader" :depends-on ("wv/package"))
                (:file "wv/metadata" :depends-on ("wv/package"))
                (:file "wv/wv-block" :depends-on ("wv/package"))
+               (:file "wv/wv-blocks-multichannel" :depends-on ("wv/package"))
                (:file "wv/decode" :depends-on ("wv/package")))
   :perform (test-op (op system)
                     (declare (ignore op system))

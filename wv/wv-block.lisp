@@ -23,7 +23,10 @@
 
 (in-package :easy-audio.wv)
 
-(defvar *residual-buffers* nil)
+(defvar *residual-buffers* nil
+  "Works with @c(make-output-bufffers) to reduce consing.
+Bind this variable to output buffers when you read multiple
+block in a loop to reduce consing.")
 
 (defun get-med (median)
   (declare (optimize (speed 3))
@@ -206,8 +209,8 @@
     (decode-residual wv-block)))
 
 (defun read-wv-block (reader)
-  "Read the next block in the stream. READER's position must be set
-   to the beginning of this block explicitly (e.g. by calling RESTORE-SYNC)"
+  "Read the next block in the stream. @c(reader)'s position must be set to the
+beginning of this block explicitly (e.g. by calling @c(restore-sync))"
   (restart-case
       (read-wv-block% reader)
     (read-new-block-single ()
@@ -229,6 +232,7 @@
         (restore-sync reader)))))
 
 (defun make-output-buffers (reader)
+  "Make output buffers to bind them to @c(*residual-buffers*) to reduce consing."
   (let ((position (reader-position reader))
         (first-block (read-wv-block reader)))
     (prog1
@@ -237,9 +241,9 @@
       (reader-position reader position))))
 
 (defmacro with-output-buffers ((reader) &body body)
-  "Calls to READ-WV-BLOCK, RESTORE-SYNC etc. can be done inside with macro
-   to avoid unnecessary consing if all WavPack blocks in the stream contain
-   the same number of samples and have the same number of channels."
+  "Calls to @c(read-wv-block), @c(restore-sync) etc. can be done inside this macro to
+avoid unnecessary consing if all WavPack blocks in the stream contain the same number
+of samples and have the same number of channels."
   `(let ((*residual-buffers* (make-output-buffers ,reader)))
      ,@body))
 
@@ -287,7 +291,7 @@
         remainder))))
 
 (defun open-wv (stream)
-  "Return BITREADER handle of Wavpack stream"
+  "Return @c(bitreader) handle of Wavpack stream"
   (make-reader-from-stream stream))
 
 (defmacro with-open-wv ((reader name &rest options) &body body)

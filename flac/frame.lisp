@@ -322,7 +322,7 @@
   "Seeks to an interchannel sample.
    Sets input to new frame, which contains this sample.
    Returns position of this sample in the frame.
-   SEEKTABLE and STREAMINFO are optional. Providing STREAMINFO enables
+   @c(seektable) and @c(streaminfo) are optional. Providing @c(streaminfo) enables
    additional sanity checks. Currently only fixed block size is supported."
   (declare (type reader bitreader)
 	   (type (or null streaminfo) streaminfo)

@@ -35,15 +35,18 @@
            #:+wave-format-mulaw+
            #:+wave-format-extensible+
 
-           #:format-audio-format ; Subchunk accessors
+           #:format-audio-format ; Format subchunk and accessors
            #:format-channels-num
            #:format-samplerate
            #:format-bps
+           #:format-subchuck
 
+           #:data-subchunk  ; Data subchunk and accessors
            #:data-size
-           
+
+           #:fact-subchunk ; Fact subchunk and accessors
            #:fact-samples-num
-           #:samples-num
+           #:samples-num ; Helper function
 
            #:wav-error  ; Conditions
            #:wav-error-subchunk

@@ -46,6 +46,8 @@
       (read-wv-block-multichannel reader))))
 
 (defun restore-sync-multichannel (reader)
+  "Restore sync in multichannel configuration.
+The reader position is set to the beginning of the first channel block."
   (restore-sync reader)
   (labels ((restore-sync-multichannel% (reader)
              (let ((reader-position (reader-position reader)))
@@ -60,10 +62,11 @@
     (restore-sync-multichannel% reader)))
 
 (defun read-new-block (c)
-  "Function to be supplied to HANDLER-BIND in order to deal with LOST-SYNC condition.
-   It transfers control to RESTORE-SYNC-AND-RETRY-BLOCK or to RESTORE-SYNC-AND-RETRY-BLOCK-MULTICH
-   depending on the situation. A newly read block or a list of blocks is always returned from
-   HANDLER-BIND if BITREADER-EOF is not signalled"
+  "Function to be supplied to @c(handler-bind) in order to deal with @c(lost-sync)
+condition. It transfers control to @c(read-new-block-single) or to
+@c(read-new-block-multichannel) depending on the situation. A newly read block or a
+list of blocks is always returned from @c(handler-bind) if @c(bitreader-eof) is not
+signalled."
   (declare (ignore c))
   (if (find-restart 'read-new-block-multichannel)
       (invoke-restart 'read-new-block-multichannel)

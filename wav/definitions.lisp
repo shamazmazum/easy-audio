@@ -41,23 +41,30 @@
 
 ;; Audio formats
 (defconstant +wave-format-unknown+     #x0000)
-(defconstant +wave-format-pcm+         #x0001)
-(defconstant +wave-format-float+       #x0003)
-(defconstant +wave-format-alaw+        #x0006)
-(defconstant +wave-format-mulaw+       #x0007)
+(defconstant +wave-format-pcm+         #x0001
+  "PCM audio format")
+(defconstant +wave-format-float+       #x0003
+  "Float audio format")
+(defconstant +wave-format-alaw+        #x0006
+  "A-law coded audio")
+(defconstant +wave-format-mulaw+       #x0007
+  "Mu-law coded audio")
 (defconstant +wave-format-extensible+  #xfffe)
 
 ;; Subchunk structures
 (defstruct (format-subchunk (:conc-name format-))
+  "Format subchunk, containing info about audio data"
   audio-format
   channels-num
   samplerate
   bps)
 
 (defstruct (data-subchunk (:conc-name data-))
+  "Size of audio data itself"
   size)
 
 (defstruct (fact-subchunk (:conc-name fact-))
+  "Actual number of samples in stream"
   samples-num)
 
 ;; Condition
@@ -67,7 +74,8 @@
 	    :type string
 	    :reader wav-error-message))
   (:report (lambda (c s)
-             (format s "Wav decoder error: ~A" (wav-error-message c)))))
+             (format s "Wav decoder error: ~A" (wav-error-message c))))
+  (:documentation "General Wav error"))
 
 (define-condition wav-error-subchunk (wav-error)
   ((reader      :initarg :reader
@@ -75,4 +83,5 @@
    (rest-bytes  :initarg :rest-bytes
                 :reader wav-error-rest-bytes)
    (subchunk    :initarg :subchunk
-                :reader wav-error-subchunk)))
+                :reader wav-error-subchunk))
+  (:documentation "Error reading subchunk"))

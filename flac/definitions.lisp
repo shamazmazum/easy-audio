@@ -36,7 +36,8 @@
 
 (define-condition flac-bad-metadata (flac-error)
   ((metadata     :reader flac-metadata
-		 :initarg :metadata))
+		 :initarg :metadata
+		 :documentation "Current metadata"))
   (:report (lambda (c s)
 	     (format s "Bad metadata: ~A"
 		     (flac-error-message c))))
@@ -102,7 +103,7 @@ metadata type"))
   (:documentation "Represents PADDING metadata block"))
 
 (defstruct seekpoint
-  "A seekpoint (entry in sdeektable)"
+  "A seekpoint (entry in seektable)"
   (samplenum 0        :type (ub 64))
   (offset 0           :type (ub 64))
   (samples-in-frame 0 :type (ub 16)))
@@ -133,7 +134,8 @@ metadata type"))
 		   :documentation "t if cueshhet corresponds to Compact Disk")
    (tracks         :accessor cuesheet-tracks
                    :type list
-                   :documentation "List of tracks")))
+                   :documentation "List of tracks"))
+  (:documentation "CUESHEET metadata block"))
 
 (defstruct cuesheet-track
   offset

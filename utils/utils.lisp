@@ -36,7 +36,8 @@
     out))
 
 (defun mixchannels-2 (output channel1 channel2)
-  (declare (optimize (speed 3) (safety 0))
+  (declare (optimize #+easy-audio-unsafe-code
+                     (safety 0) (speed 3))
            (type (sa-sb 32) output channel1 channel2))
   (loop for i below (length channel1)
         for j from 0 by 2 do
@@ -47,11 +48,10 @@
   output)
 
 (defun mixchannels (out buffers)
-  "Maps a list of buffers (each one for each channel) into
-   one buffer writing the first sample of the first channel when the
-   first sample of second channel and so on until final channel is reached.
-   When process repeats for second sample of each channel until all data is
-   written"
+  "Maps a list of @c(buffers) (each one for each channel) into one buffer @c(out)
+writing sequentially the first sample of the first channel then the first sample of
+second channel and so on until final channel is reached. When process repeats for
+second sample of each channel until all data is written"
   (declare (optimize (speed 3))
            (type list buffers))
   (case (length buffers)
