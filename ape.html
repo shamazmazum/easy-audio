@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+  APE &ndash; Easy Audio
+</title>
+    <link rel="stylesheet" href="static/style.css"/>
+    
+  <link rel="stylesheet" href="static/highlight.css"/>
+  <script src="static/highlight.js"></script>
+  <style>
+   /* Highlight the current top-level TOC item, and hide the TOC of all other items */
+
+   .toc a[data-node="ape"] {
+       color: #AD3108;
+   }
+
+   .toc ol {
+       display: none;
+   }
+
+   .toc > ol {
+       display: block;
+   }
+
+   .toc li a[data-node="ape"] + ol {
+       display: block;
+   }
+
+   .toc li a[data-node="ape"] + ol li {
+       font-size: 16px;
+       margin: 0 10px;
+   }
+
+   .toc li a[active] + ol li:first-child {
+       margin-top: 5px;
+   }
+  </style>
+
+  </head>
+  <body>
+    
+  <h1 class="doc-title">Easy Audio » APE</h1>
+  <article id="article" data-section="ape">
+    <aside>
+      <ol class="toc"><li><a href="index.html" data-node="overview">Overview</a></li><li><a href="flac.html" data-node="flac">FLAC</a><ol><li><a href="flac.html#api" data-node="api">API</a></li></ol></li><li><a href="wavpack.html" data-node="wavpack">WavPack</a><ol><li><a href="wavpack.html#0-api" data-node="0-api">API</a></li></ol></li><li><a href="wav.html" data-node="wav">Wav</a><ol><li><a href="wav.html#1-api" data-node="1-api">API</a></li></ol></li><li><a href="general-decoders.html" data-node="general-decoders">General decoders</a><ol><li><a href="general-decoders.html#2-api" data-node="2-api">API</a></li></ol></li><li><a href="ape.html" data-node="ape">APE</a><ol><li><a href="ape.html#3-api" data-node="3-api">API</a></li></ol></li><li><a href="utility-functions.html" data-node="utility-functions">Utility functions</a></li></ol>
+    </aside>
+    <main class="codex-section">
+      
+   This package will be for APE decoding one day, but now its only for reading
+   APEv2 tags. You can read a tag by <code>read-tag</code> passing a bitreader to it. It
+   will return a list of tag items in format
+   <pre><code class=NIL>((KEY-1 VALUE-1 :UTF-8 utf-8-p :r/w r/w-p)
+ (KEY-2 VALUE-2 :UTF-8 utf-8-p :r/w r/w-p))</code></pre>
+   <code>:utf-8-p</code> is <code>t</code> when value is a text, not a binary, <code>r/w-p</code> is <code>t</code>
+   when readonly flag is not set on that item.
+<h1 id="3-api">API</h1>
+   
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">read-tag</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Read APEv2 tag from reader</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">read-tag-from-end</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Helper function to read APEv2 tag from end of reader's stream.
+Changes reader's position. Needs APEv2 tag to contain a footer.</div></div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">ape-error</code><div class="codex-docstring">General APE error</div><ul class="codex-slot-list"><li class="codex-slot codex-class-slot"><code class="codex-name">message</code><div class="codex-docstring">&lt;No docstring&gt;</div></li></ul></div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">apev2-tag-error</code><div class="codex-docstring">APEv2 tag error</div><ul class="codex-slot-list"></ul></div>
+      <div class="codex-doc-node codex-variable"><code class="codex-name">*apev2-external-format*</code><div class="codex-docstring">External format used in human-readable APEv2 items</div></div>
+   
+
+
+    </main>
+  </article>
+  <footer>
+    <div class="info">
+      Created with <a href="https://github.com/CommonDoc/codex">Codex</a>.
+    </div>
+  </footer>
+  <script>
+   HighlightLisp.highlight_auto();
+  </script>
+
+  </body>
+</html>
