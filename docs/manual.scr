@@ -1,0 +1,189 @@
+@begin(section)
+   @title(Overview)
+   @c(easy-audio) is a collection of audio decoders and metadata readers. You
+   can get it from @link[uri="http://github.com/shamazmazum/easy-audio"](GitHub).
+   Here is the documentation covering various parts of this collection. All
+   decoders work with binary streams with element type @c((unsigned-byte 8)).
+@end(section)
+
+@begin(section)
+   @title(FLAC)
+   To read and decode FLAC file or stream you need to follow these steps:
+   @begin(enum)
+      @item(Open a FLAC file/Get a stream with element type @c((unsigned-byte 8)).)
+      @item(Pass the stream to @c(flac:open-flac) function which will create and
+            return @c(bitreader:reader) object. This object allows
+            @c(easy-audio) library to read not just octets, but any amount of
+            bits from audio stream.) 
+      @item(Read metadata blocks from the stream, passing the object from previous
+            step to @c(flac:read-metadata).)
+      @item(Do whatever you want with metadata and read the first audio frame with
+            @c(flac:read-frame).)
+      @item(Decode the frame with @c(flac:decode-frame) and repeat previous step
+            until all data is read and decoded.)
+   @end(enum)
+   @b(NB): You can reduce consing when reading frames by binding
+   @c(flac:*out-buffers*) variable with buffers returned by
+   @c(flac:make-output-buffers).
+
+@begin(section)
+   @title(API)
+   @u(Conditions).
+   @cl:with-package[name="easy-audio.flac"](
+      @cl:doc(condition flac-error)
+      @cl:doc(condition flac-bad-metadata)
+      @cl:doc(condition flac-bad-frame)
+   )
+   @u(Metadata blocks).
+   Please note, that slot accessors are not documented here, but usually available
+   by scheme @c(CLASSNAME-SLOTNAME).
+   @cl:with-package[name="easy-audio.flac"](
+      @cl:doc(class streaminfo)
+      @cl:doc(class seektable)
+      @cl:doc(struct seekpoint)
+      @cl:doc(class vorbis-comment)
+      @cl:doc(class cuesheet)
+      @cl:doc(class picture)
+   )
+   @u(Working with audio frames).
+   @cl:with-package[name="easy-audio.flac"](
+      @cl:doc(class frame)
+      @cl:doc(generic read-frame)
+      @cl:doc(function frame-decode)
+   )
+   @u(Other functions / helpers).
+   @cl:with-package[name="easy-audio.flac"](
+      @cl:doc(function open-flac)
+      @cl:doc(function read-metadata)
+      @cl:doc(function seek-sample)
+      @cl:doc(function metadata-find-seektable)
+      @cl:doc(function make-output-buffers)
+   )
+   It also can decode FLAC data from OGG container. There are
+   @c(flac:open-ogg-flac), @c(flac:read-ogg-metadata) and @c(flac:read-ogg-frame)
+   functions for that purpose. Seeking does not work with OGG container.
+@end(section)
+@end(section)
+
+@begin(section)
+   @title(WavPack)
+   WavPack decoder works in the same manner as FLAC decoder, with exception that
+   there is no metadata blocks in the beggining of file, but metadata section in
+   each WavPack block. This metadata is not as useful as FLAC metadata,
+   though. Information about track title, album or performer is usualy stored in
+   APEv2 tag in the end of file. So the algorithm for WavPack is usually this:
+   @begin(enum)
+      @item(Open a WavPack file/Get a stream with element type @c((unsigned-byte
+            8)). This step is the same as for FLAC format.) 
+      @item(Pass the stream to @c(wv:open-wv) function which will create and
+            return @c(bitreader:reader) object. Again, this is what you do when
+            working with FLAC, just the function name differs.)
+      @item(Read the first WavPack block with @c(wv:read-wv-block). It contains
+            all information about channels, samplerate, etc. If the stream/file
+            contains more than 2 channels (i.e. 5.1 audio), you can read
+            multiple stereo or mono blocks with @c(wv:read-wv-block-multichannel).)
+      @item(Decode the block with @c(wv:decode-wv-block) and repeat previous step.)
+   @end(enum)
+
+@begin(section)
+   @title(API)
+   @u(Conditions).
+   @cl:with-package[name="easy-audio.wv"](
+      @cl:doc(condition wavpack-error)
+      @cl:doc(condition wavpack-warning)
+      @cl:doc(condition block-error)
+      @cl:doc(condition lost-sync)
+      @cl:doc(condition unknown-metadata)
+   )
+   @u(Metadata).
+   @cl:with-package[name="easy-audio.wv"](
+      @cl:doc(class metadata-riff-header)
+      @cl:doc(class metadata-riff-trailer)
+   )
+   @u(WavPack blocks).
+   WavPack block class has readers/accessors in the form @c(BLOCK-SLOTNAME).
+   @cl:with-package[name="easy-audio.wv"](
+      @cl:doc(struct wv-block)
+      @cl:doc(function read-wv-block)
+      @cl:doc(function read-wv-block-multichannel)
+      @cl:doc(function decode-wv-block)
+   )
+   @u(Other stuff).
+   @cl:with-package[name="easy-audio.wv"](
+      @cl:doc(function restore-sync)
+      @cl:doc(function restore-sync-multichannel)
+      @cl:doc(function seek-sample)
+      @cl:doc(function open-wv)
+      @cl:doc(function make-output-buffers)
+      @cl:doc(variable *residual-buffers*)
+      @cl:doc(macro with-output-buffers)
+      @cl:doc(function read-new-block)
+   )
+@end(section)
+@end(section)
+
+@begin(section)
+   @title(Wav)
+   This package is for reading Wav headers (that is if you are lucky
+   enough:). There is nothing to describe here: just open a binary stream with
+   element type @c((unsigned-byte 8)) as always and call @c(wav:read-wav-header).
+
+@begin(section)
+   @title(API)
+   @cl:with-package[name="easy-audio.wav"](
+      @cl:doc(function read-wav-header)
+      @cl:doc(variable +wave-format-pcm+)
+      @cl:doc(variable +wave-format-float+)
+      @cl:doc(variable +wave-format-alaw+)
+      @cl:doc(variable +wave-format-mulaw+)
+      @cl:doc(variable +wave-format-extensible+)
+      @cl:doc(struct format-subchunk)
+      @cl:doc(struct data-subchunk)
+      @cl:doc(struct fact-subchunk)
+      @cl:doc(condition wav-error)
+      @cl:doc(condition wav-error-subchunk)
+   )
+@end(section)
+@end(section)
+
+@begin(section)
+   @title(General decoders)
+   Currently this package has only A-law and mu-law decoders.
+@begin(section)
+   @title(API)
+   @cl:with-package[name="easy-audio.general"](
+      @cl:doc(function g.711-ulaw-decode)
+      @cl:doc(function g.711-alaw-decode)
+   )
+@end(section)
+@end(section)
+
+@begin(section)
+   @title(APE)
+   This package will be for APE decoding one day, but now its only for reading
+   APEv2 tags. You can read a tag by @c(read-tag) passing a bitreader to it. It
+   will return a list of tag items in format
+   @code(((KEY-1 VALUE-1 :UTF-8 utf-8-p :r/w r/w-p)
+ (KEY-2 VALUE-2 :UTF-8 utf-8-p :r/w r/w-p)))
+   @c(:utf-8-p) is @c(t) when value is a text, not a binary, @c(r/w-p) is @c(t)
+   when readonly flag is not set on that item.
+@begin(section)
+   @title(API)
+   @cl:with-package[name="easy-audio.ape"](
+      @cl:doc(function read-tag)
+      @cl:doc(function read-tag-from-end)
+      @cl:doc(condition ape-error)
+      @cl:doc(condition apev2-tag-error)
+      @cl:doc(variable *apev2-external-format*)
+   )
+@end(section)
+@end(section)
+
+@begin(section)
+   @title(Utility functions)
+   Package @c(easy-audio.utils) contains some useful functions. Here they are.
+   @cl:with-package[name="easy-audio.utils"](
+      @cl:doc(function write-pcm-wav-header)
+      @cl:doc(function mixchannels)
+   )
+@end(section)
