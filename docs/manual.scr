@@ -1,4 +1,4 @@
-@begin(section)
+@begin[ref=index](section)
    @title(Overview)
    @c(easy-audio) is a collection of audio decoders and metadata readers. You
    can get it from @link[uri="http://github.com/shamazmazum/easy-audio"](GitHub).
