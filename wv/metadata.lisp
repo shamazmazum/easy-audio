@@ -23,6 +23,11 @@
 
 (in-package :easy-audio.wv)
 
+(defvar *wvx-buffers* nil
+  "Works with @c(make-output-buffers) to reduce consing.
+Bind this variable to wvx buffers when you read multiple
+block in a loop to reduce consing.")
+
 ;; Metadata body readers
 (defmethod read-metadata-body ((metadata metadata) reader)
   (let ((data (make-array (list (metadata-actual-size metadata))
@@ -161,6 +166,44 @@
           (metadata-entropy-median metadata)))
   metadata)
 
+(defmethod read-metadata-body ((metadata metadata-int32-info) reader)
+  (let ((data-size (metadata-actual-size metadata)))
+    (if (/= data-size 4)
+        (error 'block-error :message
+               (format nil "Size of metadata sub-block ~a is invalid" metadata))))
+  (setf (metadata-sent-bits metadata) (read-octet reader)
+        (metadata-zeros metadata) (read-octet reader)
+        (metadata-ones metadata) (read-octet reader)
+        (metadata-dups metadata) (read-octet reader)
+        (block-int32-info *current-block*) metadata)
+  metadata)
+
+(defmethod read-metadata-body ((metadata metadata-wvx-bits) reader)
+  (let ((int32-info (find 'metadata-int32-info (block-metadata *current-block*) :key #'type-of)))
+    (if (not int32-info)
+        (error 'block-error :message "No int32-info prior to wvx-bitstream"))
+    (let* ((block-samples (block-block-samples *current-block*))
+           (channels (block-channels *current-block*))
+           (sent-bits (metadata-sent-bits int32-info))
+           (size (metadata-actual-size metadata))
+           (bits-wasted (- (* 8 size) (* channels block-samples sent-bits))))
+      (if (< bits-wasted 0)
+          (error 'block-error :message "wvx-bitstream is too small"))
+      (let ((bits
+             (or *wvx-buffers*
+                 (loop repeat channels collect
+                      (make-array (list block-samples) :element-type '(sb 32))))))
+        (loop for i below block-samples do
+             (loop for j below channels do
+                  (setf (aref (nth j bits) i)
+                        (read-bits (metadata-sent-bits int32-info) reader :endianness :little))))
+        (setf (metadata-bits metadata) bits
+              ;; Make a copy for easy access
+              (block-wvx-bits *current-block*) bits))
+
+      (read-bits bits-wasted reader))) ;; Why there are wasted bits anyway?
+  metadata)
+
 (defmethod read-metadata-body :around ((metadata metadata-ignorable) reader)
   (declare (ignore reader))
   (handler-bind
@@ -203,6 +246,8 @@
          ((and useful  (= function +meta-id-decorr-samples+)) 'metadata-decorr-samples)
          ((and useful  (= function +meta-id-entropy-vars+)) 'metadata-entropy)
          ((and useful  (= function +meta-id-wv-bitstream+)) 'metadata-wv-residual)
+         ((and useful  (= function +meta-id-int32-info+)) 'metadata-int32-info)
+         ((and useful  (= function +meta-id-wvx-bitstream+)) 'metadata-wvx-bits)
          ((and useless (= function +meta-id-riff-header+)) 'metadata-riff-header)
          ((and useless (= function +meta-id-riff-trailer+)) 'metadata-riff-trailer)
          (t 'metadata))))

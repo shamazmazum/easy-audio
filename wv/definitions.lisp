@@ -98,11 +98,26 @@
            :accessor metadata-residual-reader)))
 (defclass metadata-wv-residual (metadata-residual) ())
 
+(defclass metadata-wvx-bits (metadata)
+  ((bits :accessor metadata-bits))
+  (:documentation "This block may be present when sample size is > 24"))
+
 (defclass metadata-riff-header (metadata-ignorable) ()
   (:documentation "Contents the original RIFF header in DATA slot"))
 
 (defclass metadata-riff-trailer (metadata-ignorable) ()
   (:documentation "Contents the original RIFF trailer in DATA slot"))
+
+(defclass metadata-int32-info (metadata)
+  ((sent-bits  :accessor metadata-sent-bits
+               :type (ub 8))
+   (zeros      :accessor metadata-zeros
+               :type (ub 8))
+   (ones       :accessor metadata-ones
+               :type (ub 8))
+   (dups       :accessor metadata-dups
+               :type (ub 8)))
+  (:documentation "This block is present when sample size is > 24"))
 
 (defgeneric read-metadata-body (metadata reader))
 
@@ -170,10 +185,13 @@
   (flags         0 :type (ub 32))
   (crc           0 :type (ub 32))
   metadata
+  ;; These are mostly copy of metadata values for easy access
   decorr-passes
   decorr-samples
   entropy-median
-  residual)
+  residual
+  int32-info
+  wvx-bits)
 
 (defvar-unbound *current-block*
     "Bound to block currently being readed by block reader")

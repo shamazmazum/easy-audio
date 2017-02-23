@@ -229,6 +229,50 @@
   (map-into residual-1 #'+
             residual-1 residual-2))
 
+(defun int32-fixup (wv-block)
+  "Do samples fixup if sample size is > 24 bits"
+  ;; How slow is this?
+  (let ((int32-info (block-int32-info wv-block))
+        (wvx-bits (block-wvx-bits wv-block)))
+    (if (not int32-info)
+        (error 'block-error :message "sample size is > 24 bits and no int32-info metadata block"))
+    (let ((sent-bits (metadata-sent-bits int32-info))
+          (zeros (metadata-zeros int32-info))
+          (ones (metadata-ones int32-info))
+          (dups (metadata-dups int32-info))
+          (shift-add 0))
+      (declare (type (ub 8) sent-bits zeros ones dups shift-add))
+      (labels ((fixup-sample (sample)
+                 (declare (type (sb 32) sample))
+                 (cond
+                   ((/= zeros 0)
+                    (the (sb 32) (ash sample zeros)))
+                   ((/= ones 0)
+                    (1- (the (sb 32) (ash (1+ sample) ones))))
+                   ((/= dups 0)
+                    (- (the (sb 32) (ash (+ sample (logand sample 1)) dups))
+                       (logand sample 1)))
+                   (t sample)))
+               (fixup-sample-wvx (sample fixup)
+                 (declare (type (sb 32) sample fixup))
+                 (fixup-sample (logior (the (sb 32) (ash sample sent-bits)) fixup))))
+        (cond
+          (wvx-bits
+           (labels ((fixup-channel (channel wvx-bits)
+                      (declare (type (sa-sb 32) channel wvx-bits))
+                      (map-into channel #'fixup-sample-wvx channel wvx-bits)))
+             (mapc #'fixup-channel (block-residual wv-block) wvx-bits)))
+           ((and (= sent-bits 0)
+                 (or (/= zeros 0)
+                     (/= ones 0)
+                     (/= dups 0)))
+           (labels ((fixup-channel (channel)
+                      (declare (type (sa-sb 32) channel))
+                      (map-into channel #'fixup-sample channel)))
+             (mapc #'fixup-channel (block-residual wv-block))))
+          (t (setq shift-add (+ zeros sent-bits ones dups)))))
+        shift-add)))
+
 (defun decode-wv-block (wv-block)
   "Decode a wavpack block, destructively modifying it.
    This function returns a list of simple-arrays, each
@@ -279,12 +323,13 @@
 
     (let ((shift (left-shift-amount wv-block)))
       (declare (type (ub 8) shift))
+      (if (flag-set-p wv-block +flags-shifted-int+)
+          (incf shift (int32-fixup wv-block)))
       (labels ((shift-sample (sample)
                  (the (sb 32) (ash sample shift)))
                (shift-channel (channel-out)
                  (declare (type (sa-sb 32) channel-out))
                  (map-into channel-out #'shift-sample channel-out)))
-
         (if (/= shift 0)
             (mapc #'shift-channel residual))))
 
