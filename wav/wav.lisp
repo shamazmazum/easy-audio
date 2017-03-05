@@ -23,6 +23,16 @@
 
 (in-package :easy-audio.wav)
 
+(defun subchunk-type=>string (type)
+  (concatenate
+   'string
+   (mapcar #'code-char
+           (reverse
+            (loop while (/= type 0) collect
+                 (prog1
+                     (logand type #xff)
+                   (setq type (ash type -8))))))))
+
 (defun skip-subchunk (c)
   "Invoke @c(skip-subchank) restart"
   (invoke-restart 'skip-subchunk c))
@@ -97,7 +107,8 @@
                    (make-data-subchunk :size size))
                   (t
                    (error 'wav-error-subchunk
-                          :message "Unknown subchunk"
+                          :message (format nil "Unknown subchunk, type ~x (~s)"
+                                           type (subchunk-type=>string type))
                           :reader reader
                           :rest-bytes size)))
                 chunks)
