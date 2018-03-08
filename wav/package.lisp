@@ -39,7 +39,7 @@
            #:format-channels-num
            #:format-samplerate
            #:format-bps
-           #:format-subchuck
+           #:format-subchunck
 
            #:data-subchunk  ; Data subchunk and accessors
            #:data-size

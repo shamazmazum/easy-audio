@@ -84,6 +84,7 @@
       (error 'wav-error-subchunk
              :message "Extended format subchunk is not supported"
              :rest-bytes (- size 16)
+             :reader reader
              :subchunk subchunk))))
 
 (defun read-subchunks (reader)
