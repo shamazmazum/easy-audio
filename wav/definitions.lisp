@@ -49,7 +49,12 @@
   "A-law coded audio")
 (defconstant +wave-format-mulaw+       #x0007
   "Mu-law coded audio")
-(defconstant +wave-format-extensible+  #xfffe)
+(defconstant +wave-format-extensible+  #xfffe
+  "Extensible audio format")
+(defparameter +wave-format-extensible-magick+
+  (make-array 14
+              :element-type '(ub 8)
+              :initial-contents '(#x00 #x00 #x00 #x00 #x10 #x00 #x80 #x00 #x00 #xAA #x00 #x38 #x9B #x71)))
 
 ;; Subchunk structures
 (defstruct (format-subchunk (:conc-name format-))
@@ -57,7 +62,11 @@
   audio-format
   channels-num
   samplerate
-  bps)
+  bps
+  ;; Extended format
+  valid-bps
+  channel-mask
+  subformat)
 
 (defstruct (data-subchunk (:conc-name data-))
   "Size of audio data itself"
@@ -68,13 +77,14 @@
   samples-num)
 
 ;; Condition
-(define-condition wav-error (error)
-  ((message :initarg :message
-            :initform ""
-	    :type string
-	    :reader wav-error-message))
+(define-condition wav-error (simple-error)
+  ()
   (:report (lambda (c s)
-             (format s "Wav decoder error: ~A" (wav-error-message c))))
+             (apply #'format s
+                    (concatenate 'string
+                                 "Wav decoder error: "
+                                 (simple-condition-format-control c))
+                    (simple-condition-format-arguments c))))
   (:documentation "General Wav error"))
 
 (define-condition wav-error-subchunk (wav-error)

@@ -39,14 +39,16 @@
               :message "Blocking strategy must be 0 or 1"))))
 
 (defun get-block-size (val &optional reader)
-  (declare (type non-negative-fixnum val))
+  (declare (type non-negative-fixnum val)
+           (type (or null reader) reader))
   (cond
     ((= val 1) 192)               ; 0001
     ((and (<= val 5)              ; 0010-0101
           (/= val 0))
      (ash 576 (- val 2)))
-    ((= val 6) (1+ (read-octet (the reader reader))))   ; 0110
-    ((= val 7) (1+ (read-octets 2 (the reader reader))))   ; 0111
+    ((= val 6) (1+ (read-octet reader)))   ; 0110
+    ((= val 7) (1+ (the (integer 0 #.(ash 1 16))
+                        (read-octets 2 reader))))   ; 0111
     ((and (<= val 15)             ; 1000-1111
           (/= val 0))
      (ash 1 val))
@@ -54,17 +56,20 @@
               :message "Frame block size is invalid"))))
 
 (defun get-sample-rate (val &optional reader streaminfo)
-  (declare (type non-negative-fixnum val))
+  (declare (type non-negative-fixnum val)
+           (type (or null streaminfo) streaminfo)
+           (type (or null reader) reader))
   (cond
     ((and (/= val 0)
           (< val 12))
      (nth (1- val) +coded-sample-rates+))
-    ((= val 12) (* 1000 (read-octet (the reader reader))))
-    ((= val 13) (read-octets 2 (the reader reader)))
-    ((= val 14) (* 10 (read-octets 2 (the reader reader))))
+    ((= val 12) (* 1000 (read-octet reader)))
+    ((= val 13) (read-octets 2 reader))
+    ((= val 14) (* 10 (the (integer 0 #.(ash 1 16))
+                           (read-octets 2 reader))))
     ((and (= val 0)
           streaminfo)
-     (streaminfo-samplerate (the streaminfo streaminfo)))
+     (streaminfo-samplerate  streaminfo))
     (t
      (error 'flac-bad-frame
             :message "Frame sample rate is invalid"))))
@@ -76,9 +81,10 @@
                   :message "Invalid channel assignment"))))
 
 (defun get-sample-size (val &optional streaminfo)
-  (declare (type non-negative-fixnum val))
+  (declare (type non-negative-fixnum val)
+           (type (or null streaminfo) streaminfo))
   (if (and (= val 0) streaminfo)
-      (streaminfo-bitspersample (the streaminfo streaminfo))
+      (streaminfo-bitspersample streaminfo)
       (or (cdr (assoc val +coded-sample-sizes+))
           (error 'flac-bad-frame
                  :message "Invalid sample size"))))
@@ -225,9 +231,7 @@
 
             (subframe-out-buf subframe)
             (if (and *out-buffer*
-                     (= (length (the (sa-sb 32)
-                                     *out-buffer*))
-                        blocksize))
+                     (= (length (the (sa-sb 32) *out-buffer*)) blocksize))
                 *out-buffer*
                 (make-array
                  (list blocksize)
@@ -364,8 +368,8 @@
 
     ;; Check implementation limitations
     (if (and streaminfo
-             (/= (the non-negative-fixnum (streaminfo-minblocksize streaminfo))
-                 (the non-negative-fixnum (streaminfo-maxblocksize streaminfo))))
+             (/= (streaminfo-minblocksize streaminfo)
+                 (streaminfo-maxblocksize streaminfo)))
 	(error 'flac-bad-metadata
 	       :message "Cannot seek with variable blocksize"))
 

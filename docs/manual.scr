@@ -124,14 +124,20 @@
 
 @begin(section)
    @title(Wav)
-   This package is for reading Wav headers (that is if you are lucky
-   enough:). There is nothing to describe here: just open a binary stream with
-   element type @c((unsigned-byte 8)) as always and call @c(wav:read-wav-header).
+   This package is for reading Wav audio files (that is if you are lucky
+   enough:). The working process is as simple as always: at first, open a stream
+   with element type @c((unsigned-byte 8)), then create a bitreader with
+   @c(open-wav), then read wav chunks with @c(read-wav-header). You are now
+   ready to read real audio data. To do this, call @c(read-wav-data) and then,
+   optionaly, @c(decode-wav-data).
 
 @begin(section)
    @title(API)
    @cl:with-package[name="easy-audio.wav"](
       @cl:doc(function read-wav-header)
+      @cl:doc(function read-wav-data)
+      @cl:doc(function decode-wav-data)
+      @cl:doc(function samples-num)
       @cl:doc(variable +wave-format-pcm+)
       @cl:doc(variable +wave-format-float+)
       @cl:doc(variable +wave-format-alaw+)

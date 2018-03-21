@@ -82,7 +82,7 @@
   (flags       0 :type (ub 32))
   reserved)
 
-(defreader read-header/footer ((make-header/footer))
+(defreader (read-header/footer) ((make-header/footer))
   (h/f-preamble (:octet-vector (make-array (length *apev2-preamble*)
                                            :element-type '(ub 8)))
                 :function check-preamble)
@@ -105,7 +105,7 @@
   key
   value)
 
-(defreader read-item% ((make-item))
+(defreader (read-item%) ((make-item))
   (item-value-size (:octets 4)
                    :endianness :little)
   (item-flags      (:octets 4)

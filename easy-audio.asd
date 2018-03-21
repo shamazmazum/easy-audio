@@ -33,12 +33,12 @@
 	       (:file "flac/flac" :depends-on ("flac/package"))
                (:file "flac/flac-ogg" :depends-on ("flac/package"))
 
-               (:file "wav/package" :depends-on ("bitreader/package"))
+               (:file "utils/package" :depends-on ("bitreader/package"))
+               (:file "utils/utils" :depends-on ("wav/definitions"))
+
+               (:file "wav/package" :depends-on ("utils/package"))
                (:file "wav/definitions" :depends-on ("wav/package"))
                (:file "wav/wav" :depends-on ("wav/package"))
-
-               (:file "utils/package" :depends-on ("wav/package"))
-               (:file "utils/utils" :depends-on ("utils/package"))
 
                (:file "ape/package" :depends-on ("utils/package"))
                (:file "ape/apev2" :depends-on ("ape/package"))

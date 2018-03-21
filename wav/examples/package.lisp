@@ -27,4 +27,4 @@
         #:easy-audio.utils
         #:easy-audio.general)
   (:nicknames #:wav-examples)
-  (:export #:decode-g.711))
+  (:export #:decode-wav))

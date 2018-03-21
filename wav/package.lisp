@@ -22,7 +22,7 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-audio.wav
-  (:use #:cl #:bitreader)
+  (:use #:cl #:bitreader #:utils #:easy-audio-early)
   (:nicknames #:wav)
   (:export #:+wav-id+   ; Useful constants which can be used in examples
            #:+wav-format+
@@ -39,6 +39,8 @@
            #:format-channels-num
            #:format-samplerate
            #:format-bps
+           #:format-valid-bps
+           #:format-channel-mask
            #:format-subchunk
 
            #:data-subchunk  ; Data subchunk and accessors
@@ -46,11 +48,14 @@
 
            #:fact-subchunk ; Fact subchunk and accessors
            #:fact-samples-num
-           #:samples-num ; Helper function
 
            #:wav-error  ; Conditions
            #:wav-error-subchunk
 
            #:skip-subchunk ; Restarts
 
-           #:read-wav-header))
+           #:open-wav
+           #:read-wav-header
+           #:read-wav-data
+           #:decode-wav-data
+           #:samples-num)) ; Helper function

@@ -164,7 +164,7 @@ block in a loop to reduce consing.")
 ;; 3) When I need to get a value from flags using masks and shifts, use
 ;;    automatically generated special functions
 
-(defreader read-wv-block%% ((make-wv-block))
+(defreader (read-wv-block%%) ((make-wv-block))
     (block-id            (:octets 4) :endianness :big)
     (block-size          (:octets 4) :endianness :little)
     (block-version       (:octets 2) :endianness :little)
@@ -302,6 +302,6 @@ of samples and have the same number of channels."
   "Binds READER to an open wavpack stream associated with
    file with the name NAME"
   (let ((stream (gensym)))
-    `(let* ((,stream (apply #'open ,name :element-type '(ub 8) ,options))
+    `(let* ((,stream (open ,name :element-type '(ub 8) ,@options))
             (,reader (open-wv ,stream)))
        (unwind-protect (progn ,@body) (close ,stream)))))

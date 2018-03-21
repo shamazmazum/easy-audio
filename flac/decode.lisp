@@ -34,9 +34,9 @@
     (declare (type non-negative-fixnum wasted-bits)
 	     (type (sa-sb 32) out-buf))
     (if (/= wasted-bits 0)
-	(map-into out-buf #'(lambda (sample)
-			      (declare (type (sb 32) sample))
-			      (the fixnum (ash sample wasted-bits)))
+	(map-into out-buf (lambda (sample)
+                            (declare (type (sb 32) sample))
+                            (the fixnum (ash sample wasted-bits)))
 		  out-buf))))
 
 (defmethod subframe-decode ((subframe subframe-constant) frame)

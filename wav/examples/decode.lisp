@@ -23,54 +23,43 @@
 
 (in-package :easy-audio.wav-examples)
 
-(defparameter *buffer-size* 4096)
+(defun decode-wav (name-in name-out)
+  "Decode coded (with a-law, mu-law) wav files"
+  (with-open-file (in name-in :element-type '(unsigned-byte 8))
+    (let* ((reader (open-wav in))
+           (subchunks (read-wav-header reader))
+           (format (car subchunks))
+           (audio-format (format-audio-format format)))
 
-(defun decode-g.711 (name-in name-out)
-  "Decode G.711 coded wav files"
-  (with-open-file
-   (in name-in :element-type '(unsigned-byte 8))
-
-   (multiple-value-bind (subchunks size) (read-wav-header in)
-     (declare (ignore size))
-     (let* ((format (car subchunks))
-            (audio-format (format-audio-format format)))
-       (if (= audio-format +wave-format-pcm+)
-           (error "Already contains decoded pcm data"))
-
-       (if (and (/= audio-format +wave-format-alaw+)
-                (/= audio-format +wave-format-mulaw+))
+      (if (= audio-format +wave-format-pcm+)
+          (error "Already contains decoded pcm data"))
+      (if (and (/= audio-format +wave-format-alaw+)
+               (/= audio-format +wave-format-mulaw+))
            (error "Wav is not coded with g.711"))
 
-       (with-open-file
-        (out name-out
-             :direction :output
-             :if-exists :supersede
-             :if-does-not-exist :create
-             :element-type '(unsigned-byte 8))
-        
+      ;; Write pcm wav header
+      (with-open-file
+          (out name-out
+               :direction :output
+               :if-exists :supersede
+               :if-does-not-exist :create
+               :element-type '(unsigned-byte 8))
         (write-pcm-wav-header out
                               :samplerate (format-samplerate format)
                               :channels (format-channels-num format)
                               :bps 16
                               :totalsamples (samples-num subchunks)))
-       
-       (with-open-file
-        (out name-out
-             :direction :output
-             :if-exists :append
-             :element-type '(signed-byte 16))
-        
-        (file-position out 22)
-        
-        (loop with buffer-in = (make-array (list *buffer-size*) :element-type '(unsigned-byte 8))
-              with buffer-out = (make-array (list *buffer-size*) :element-type '(signed-byte 16))
-              for read-size = (read-sequence buffer-in in)
-              until (= read-size 0) do
-              (map-into buffer-out #'(lambda (sample)
-                                       (cond
-                                        ((= audio-format +wave-format-alaw+)
-                                         (g.711-alaw-decode sample))
-                                        (t
-                                         (g.711-ulaw-decode sample))))
-                        buffer-in)
-              (write-sequence buffer-out out)))))))
+
+      ;; Write decoded data
+      (with-open-file
+          (out name-out
+               :direction :output
+               :if-exists :append
+               :element-type '(signed-byte 16))
+        (file-position out (file-length out))
+        (write-sequence
+         (decode-wav-data
+          format
+          (read-wav-data reader format (samples-num subchunks)))
+         out))))
+  t)

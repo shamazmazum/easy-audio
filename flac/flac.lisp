@@ -54,7 +54,7 @@
   "A helper macro like WITH-OPEN-FILE. READER can be used as an
    argument to READ-METADATA or READ-FRAME inside this macro."
   (let ((stream (gensym)))
-    `(let* ((,stream (apply #'open ,name :element-type '(ub 8) ,options))
+    `(let* ((,stream (open ,name :element-type '(ub 8) ,@options))
             (,reader (open-flac ,stream)))
        (unwind-protect (progn ,@body) (close ,stream)))))
 

@@ -219,7 +219,7 @@ block in a loop to reduce consing.")
         (make-reader-from-buffer (metadata-data metadata))))
 
 ;; Metadata reader
-(defreader read-metadata% ((make-instance 'metadata) metadata)
+(defreader (read-metadata%) ((make-instance 'metadata) metadata)
   (metadata-id (:octets 1))
   (metadata-size (:octets (if (bit-set-p (metadata-id metadata)
                                          +meta-id-large-block+) 3 1))
