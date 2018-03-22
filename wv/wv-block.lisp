@@ -46,7 +46,7 @@ block in a loop to reduce consing.")
 (defun decode-residual (wv-block)
   (declare (optimize (speed 3)))
   (if (flag-set-p wv-block +flags-hybrid-mode+)
-      (error 'block-error :message "Cannot work with hybrid mode"))
+      (error 'block-error :format-control "Cannot work with hybrid mode"))
   (let ((metadata-residual (find 'metadata-wv-residual (the list (block-metadata wv-block))
                                  :key #'type-of))
         (channels (block-channels wv-block))
@@ -80,7 +80,7 @@ block in a loop to reduce consing.")
             (declare (type (ub 32) i sample channel))
 
             (if (> sample samples)
-                (error 'block-error :message "Accidentally read too much samples"))
+                (error 'block-error :format-control "Accidentally read too much samples"))
             (cond
               ((and (< (aref (the (sa-ub 32) (first medians)) 0) 2)
                     (or (null (second medians))
@@ -106,7 +106,7 @@ block in a loop to reduce consing.")
                    (t
                     (setq ones-count (read-unary-coded-integer coded-residual-reader #.(1+ 16)))
                     (when (>= ones-count 16)
-                      (if (= ones-count 17) (error 'block-error :message "Invalid residual code"))
+                      (if (= ones-count 17) (error 'block-error :format-control "Invalid residual code"))
                       (incf ones-count (read-elias-code coded-residual-reader)))
                     (psetq
                      holding-one (/= (logand ones-count 1) 0)
@@ -152,7 +152,7 @@ block in a loop to reduce consing.")
           ;; and it seems to be OK. But check if we loose too much
           (if (> (- (the (ub 24) (reader-length coded-residual-reader))
                     (the (ub 24) (reader-position coded-residual-reader))) 1)
-              (error 'block-error :message "Too much useful data is lost in residual reader"))
+              (error 'block-error :format-control "Too much useful data is lost in residual reader"))
           (setf (block-residual wv-block) residual))))
   wv-block)
 
@@ -180,21 +180,21 @@ block in a loop to reduce consing.")
   (declare (optimize (speed 3)))
   (let ((wv-block (read-wv-block%% reader)))
     (if (/= (block-id wv-block) +wv-id+)
-        (error 'lost-sync :message "WavPack ckID /= 'wvpk'"))
+        (error 'lost-sync :format-control "WavPack ckID /= 'wvpk'"))
 
     (let ((version (block-version wv-block)))
       (if (or (< version #x402) ; FIXME: is this range inclusive?
               (> version #x410))
-          (error 'block-error :message "Unsupported WavPack block version")))
+          (error 'block-error :format-control "Unsupported WavPack block version")))
 
     (if (flag-set-p wv-block +flags-reserved-zero+)
         ;; Specification says we should "refuse to decode if set"
-        (error 'block-error :message "Reserved flag is set to 1"))
+        (error 'block-error :format-control "Reserved flag is set to 1"))
 
     (let ((sub-blocks-size (- (block-size wv-block) 24))
           (*current-block* wv-block))
       (if (< sub-blocks-size 0)
-          (error 'block-error :message "Sub-blocks size is less than 0"))
+          (error 'block-error :format-control "Sub-blocks size is less than 0"))
       (loop with bytes-read fixnum = 0
          while (< bytes-read sub-blocks-size)
          for metadata = (read-metadata reader)
@@ -203,7 +203,7 @@ block in a loop to reduce consing.")
                                 (the (ub 24) (metadata-size metadata))))
            (push metadata (block-metadata wv-block))
          finally (if (> bytes-read sub-blocks-size)
-                     (error 'block-error :message "Read more sub-block bytes than needed"))))
+                     (error 'block-error :format-control "Read more sub-block bytes than needed"))))
 
     (decode-residual wv-block)))
 
@@ -269,7 +269,7 @@ of samples and have the same number of channels."
 
     (if (> number total-samples)
         (error 'wavpack-error
-               :message "Requested sample number is too big"))
+               :format-control "Requested sample number is too big"))
 
     (multiple-value-bind (complete-blocks remainder)
         (floor number block-samples)
@@ -284,7 +284,7 @@ of samples and have the same number of channels."
                                          (restore-sync reader))))
                      (if (< block-starting-number first-half)
                          (error 'wavpack-error
-                                :message "Seeking error: wrong half chosen"))
+                                :format-control "Seeking error: wrong half chosen"))
                      (cond
                        ((< block-starting-number second-half)
                         (binary-search start middle))

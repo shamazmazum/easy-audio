@@ -62,7 +62,7 @@
   "Return list of metadata blocks in the stream"
   ;; Checking if stream is a flac stream
   (if (/= +flac-id+ (read-octets 4 bitreader))
-      (error 'flac-error :message "Stream is not flac stream"))
+      (error 'flac-error :format-control "This stream is not a flac stream"))
 
   (do (last-block metadata-list)
       (last-block (reverse metadata-list))
@@ -95,7 +95,7 @@
         (loop repeat (streaminfo-channels streaminfo)
            collect (make-array (list blocksize)
                                :element-type '(sb 32)))
-        (error 'flac-error :message "Cannot make output buffers: variable block size in stream"))))
+        (error 'flac-error :format-control "Cannot make output buffers: variable block size in stream"))))
 
 (defmacro with-output-buffers ((streaminfo) &body body)
   "Calls to READ-FRAME can be made inside this macro to avoid unnecessary consing

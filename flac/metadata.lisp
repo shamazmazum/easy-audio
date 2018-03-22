@@ -57,7 +57,7 @@
     ;; Do sanity checks
     (if (notevery #'zerop  chunk)
         (error 'flac-bad-metadata
-               :message "Padding bytes is not zero"
+               :format-control "Padding bytes is not zero"
                :metadata data))))
 
 (defmethod read-metadata-body (stream (data vorbis-comment))
@@ -88,7 +88,7 @@
     (multiple-value-bind (seekpoints-num remainder)
 	(floor (metadata-length data) 18)
       (if (/= remainder 0) (error 'flac-bad-metadata
-				  :message "Bad seektable"
+				  :format-control "Bad seektable"
 				  :metadata data))
       (setf (seektable-seekpoints data)
 	    (loop for i below seekpoints-num collect
@@ -126,7 +126,7 @@
 
     (let ((reserved (read-bits #.(* 3 8) stream)))
       (if (/= 0 reserved) (error 'flac-bad-metadata
-				 :message "Bad cuesheet index"
+				 :format-control "Bad cuesheet index"
 				 :metadata *data*)))
     index))
 
@@ -143,7 +143,7 @@
     
     (let ((reserved (read-bits #.(+ 6 (* 8 13)) stream)))
       (if (/= 0 reserved) (error 'flac-bad-metadata
-				 :message "Bad cuesheet track"
+				 :format-control "Bad cuesheet track"
 				 :metadata *data*)))
     
     (let ((number-of-indices (read-octet stream)))
@@ -161,7 +161,7 @@
     
     (let ((reserved (read-bits #.(+ 7 (* 8 258)) stream)))
       (if (/= 0 reserved) (error 'flac-bad-metadata
-				 :message "Bad cuesheet"
+				 :format-control "Bad cuesheet"
 				 :metadata data)))
     
     (let ((number-of-tracks (read-octet stream)))
@@ -174,7 +174,7 @@
   (let ((picture-type (nth (read-bits 32 stream) +picture-types+)))
     (if (not (typep picture-type 'picture-type-id))
         (error 'flac-bad-metadata
-               :message "Bad picture type"
+               :format-control "Bad picture type"
                :metadata data))
     (setf (picture-type data) picture-type))
   
@@ -186,7 +186,7 @@
                                         (<= char #x7e)))
                   mime-type-seq)
         (error 'flac-bad-metadata
-               :message "MIME type must be an ASCII string"
+               :format-control "MIME type must be an ASCII string"
                :metadata data))
     (setf (picture-mime-type data) (flexi-streams:octets-to-string mime-type-seq)))
 
@@ -207,13 +207,14 @@
     ;; FIXME: artifical sanity check: Picture can be less than 10 MiB
     (if (> picture-len #.(ash 10 20))
         (error 'flac-bad-metadata
-               :message (format nil "It's strange, but picture size is too long (~D bytes)" picture-len)
+               :format-control "It's strange, but picture size is too long (~D bytes)"
+               :format-arguments (list picture-len)
                :metadata data))
     (setf (picture-picture data) (read-octet-vector picture-seq stream))))
 
 (defmethod read-metadata-body (stream (data metadata-header))
   (error 'flac-bad-metadata
-         :message "Unknown metadata block"
+         :format-control "Unknown metadata block"
          :metadata data))
 
 (defun metadata-find-seektable (metadata)

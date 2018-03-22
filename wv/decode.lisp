@@ -235,7 +235,7 @@
   (let ((int32-info (block-int32-info wv-block))
         (wvx-bits (block-wvx-bits wv-block)))
     (if (not int32-info)
-        (error 'block-error :message "sample size is > 24 bits and no int32-info metadata block"))
+        (error 'block-error :format-control "sample size is > 24 bits and no int32-info metadata block"))
     (let ((sent-bits (metadata-sent-bits int32-info))
           (zeros (metadata-zeros int32-info))
           (ones (metadata-ones int32-info))
@@ -282,7 +282,7 @@
         (residual (block-residual wv-block))) ; Will be destructively modified to output
 
     (if (flag-set-p wv-block +flags-hybrid-mode+)
-        (error 'block-error :message "Hybrid encoding is not supported"))
+        (error 'block-error :format-control "Hybrid encoding is not supported"))
 
     (flet ((correlation-pass (pass &key decorr-samples)
              (let ((term (decorr-pass-term pass))

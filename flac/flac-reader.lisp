@@ -89,7 +89,7 @@
       (setq v (logand x #x01) i 5))
      
      (t (error 'flac-bad-frame
-	       :message "Error reading utf-8 coded value")))
+	       :format-control "Error reading utf-8 coded value")))
 
     (loop for j from i downto 1 do
 	  (setq x (read-octet stream))
@@ -97,7 +97,7 @@
 	       (= 0 (logand x #x80))
 	       (/= 0 (logand x #x40)))
 	      (error 'flac-bad-frame
-		     :message "Error reading utf-8 coded value"))
+		     :format-control "Error reading utf-8 coded value"))
 	  (setq v (ash v 6))
 	  (setq v (logior v (logand x #x3F))))
     v))

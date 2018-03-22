@@ -56,8 +56,9 @@ block in a loop to reduce consing.")
   (let ((data-length (metadata-actual-size metadata)))
     (if (or (>  data-length 16)
             (/= data-length (length (metadata-decorr-passes metadata))))
-        (error 'block-error :message
-               (format nil "Size of metadata sub-block ~a is incorrect" metadata))))
+        (error 'block-error
+               :format-control "Size of metadata sub-block ~a is incorrect"
+               :format-arguments (list metadata))))
 
   (loop for decorr-pass in (metadata-decorr-passes metadata) do
        (let* ((octet (read-octet reader))
@@ -67,8 +68,9 @@ block in a loop to reduce consing.")
                  (< term -3)
                  (and (> term 8) (< term 17))
                  (> term 18))
-             (error 'wv-block :message
-                    (format nil "Invalid term in metadata sub-block ~a" metadata)))
+             (error 'block-error
+                    :format-control "Invalid term in metadata sub-block ~a"
+                    :format-arguments (list metadata)))
 
          (setf (decorr-pass-term decorr-pass) term
                (decorr-pass-delta decorr-pass) delta)))
@@ -81,8 +83,9 @@ block in a loop to reduce consing.")
 
     (if (> term-number
            (length (metadata-decorr-passes metadata)))
-        (error 'block-error :message
-               (format nil "Size of metadata sub-block ~a is too big" metadata)))
+        (error 'block-error
+               :format-control "Size of metadata sub-block ~a is too big"
+               :format-arguments (list metadata)))
 
     (flet ((restore-weight (weight)
              (if (< weight #x80)
@@ -100,7 +103,7 @@ block in a loop to reduce consing.")
 (defmethod read-metadata-body ((metadata metadata-decorr-samples) reader)
   (if (and (= (block-version *current-block*) #x402)
            (flag-set-p *current-block* +flags-hybrid-mode+))
-      (error 'block-error "Hybrid encoding is not supported"))
+      (error 'block-error :format-control "Hybrid encoding is not supported"))
 
   (let ((first-pass (first (metadata-decorr-passes metadata))))
     (if first-pass
@@ -110,7 +113,7 @@ block in a loop to reduce consing.")
 
           (if (and (< first-term 0)
                    (= channels 1))
-              (error 'block-error :message "decorrelation term < 0 and mono audio"))
+              (error 'block-error :format-control "decorrelation term < 0 and mono audio"))
 
           (let ((decorr-samples
                  (cond
@@ -139,8 +142,9 @@ block in a loop to reduce consing.")
                       decorr-samples)))))
 
             (if (/= bytes-read (metadata-actual-size metadata))
-                (error 'block-error :message
-                       (format nil "Size of metadata sub-block ~a is invalid" metadata)))
+                (error 'block-error
+                       :format-control "Size of metadata sub-block ~a is invalid"
+                       :format-arguments (list metadata)))
 
             (setf (metadata-decorr-samples metadata) decorr-samples
                   (block-decorr-samples *current-block*) decorr-samples)))))
@@ -151,8 +155,9 @@ block in a loop to reduce consing.")
         (channels (block-channels *current-block*)))
 
     (if (/= data-size (* 6 channels))
-        (error 'block-error :message
-               (format nil "Size of metadata sub-block ~a is invalid" metadata)))
+        (error 'block-error
+               :format-control "Size of metadata sub-block ~a is invalid"
+               :format-arguments (list metadata)))
 
     (setf (metadata-entropy-median metadata)
           (loop repeat channels collect
@@ -169,8 +174,9 @@ block in a loop to reduce consing.")
 (defmethod read-metadata-body ((metadata metadata-int32-info) reader)
   (let ((data-size (metadata-actual-size metadata)))
     (if (/= data-size 4)
-        (error 'block-error :message
-               (format nil "Size of metadata sub-block ~a is invalid" metadata))))
+        (error 'block-error
+               :format-control "Size of metadata sub-block ~a is invalid"
+               :format-arguments (list metadata))))
   (setf (metadata-sent-bits metadata) (read-octet reader)
         (metadata-zeros metadata) (read-octet reader)
         (metadata-ones metadata) (read-octet reader)
@@ -181,14 +187,14 @@ block in a loop to reduce consing.")
 (defmethod read-metadata-body ((metadata metadata-wvx-bits) reader)
   (let ((int32-info (find 'metadata-int32-info (block-metadata *current-block*) :key #'type-of)))
     (if (not int32-info)
-        (error 'block-error :message "No int32-info prior to wvx-bitstream"))
+        (error 'block-error :format-control "No int32-info prior to wvx-bitstream"))
     (let* ((block-samples (block-block-samples *current-block*))
            (channels (block-channels *current-block*))
            (sent-bits (metadata-sent-bits int32-info))
            (size (metadata-actual-size metadata))
            (bits-wasted (- (* 8 size) (* channels block-samples sent-bits))))
       (if (< bits-wasted 0)
-          (error 'block-error :message "wvx-bitstream is too small"))
+          (error 'block-error :format-control "wvx-bitstream is too small"))
       (let ((bits
              (or *wvx-buffers*
                  (loop repeat channels collect

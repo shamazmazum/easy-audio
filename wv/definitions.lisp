@@ -24,12 +24,12 @@
 (in-package :easy-audio.wv)
 
 ;; Conditions
-(define-condition wavpack-condition ()
-  ((message :reader condition-message
-            :initarg :message))
+(define-condition wavpack-condition (simple-condition) ()
   (:report (lambda (c s)
-	     (format s "WavPack: ~A"
-		     (condition-message c))))
+	     (apply #'format s
+                    (concatenate 'string "WavPack: "
+                                 (simple-condition-format-control c))
+                    (simple-condition-format-arguments c))))
   (:documentation "General (unspecified) WavPack condition"))
 
 (define-condition wavpack-error (wavpack-condition error) ()

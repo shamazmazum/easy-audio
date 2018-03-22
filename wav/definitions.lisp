@@ -77,7 +77,7 @@
   samples-num)
 
 ;; Condition
-(define-condition wav-error (simple-error)
+(define-condition wav-error (error simple-condition)
   ()
   (:report (lambda (c s)
              (apply #'format s

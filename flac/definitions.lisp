@@ -23,15 +23,12 @@
 
 (in-package :easy-audio.flac)
 
-(define-condition flac-error (error)
-  ((message :initarg :message
-	    :initform ""
-	    :type string
-	    :reader flac-error-message
-            :documentation "Error message"))
+(define-condition flac-error (error simple-condition) ()
   (:report (lambda (c s)
-	     (format s "General flac error: ~A"
-		     (flac-error-message c))))
+	     (apply #'format s
+                    (concatenate 'string "General flac error: "
+                                 (simple-condition-format-control c))
+                    (simple-condition-format-arguments c))))
   (:documentation "General (unspecified) flac error"))
 
 (define-condition flac-bad-metadata (flac-error)
@@ -39,14 +36,18 @@
 		 :initarg :metadata
 		 :documentation "Current metadata"))
   (:report (lambda (c s)
-	     (format s "Bad metadata: ~A"
-		     (flac-error-message c))))
+	     (apply #'format s
+                    (concatenate 'string "Bad metadata: "
+                                 (simple-condition-format-control c))
+                    (simple-condition-format-arguments c))))
   (:documentation "Flac metadata error"))
 
 (define-condition flac-bad-frame (flac-error) ()
   (:report (lambda (c s)
-	     (format s "Bad frame: ~A"
-		     (flac-error-message c))))
+	     (apply #'format s
+                    (concatenate 'string "Bad frame: "
+                                 (simple-condition-format-control c))
+                    (simple-condition-format-arguments c))))
   (:documentation "Bad flac frame"))
 
 ;; Metadata

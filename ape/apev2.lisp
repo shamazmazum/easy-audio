@@ -23,6 +23,17 @@
 
 (in-package :easy-audio.ape)
 
+(define-condition ape-error (error simple-condition) ()
+  (:report (lambda (c s)
+             (apply #'format s
+                    (concatenate 'string "Ape error: "
+                                 (simple-condition-format-control c))
+                    (simple-condition-format-arguments c))))
+  (:documentation "General APE error"))
+
+(define-condition apev2-tag-error (ape-error) ()
+  (:documentation "APEv2 tag error"))
+
 (defparameter *apev2-preamble* #.(map 'vector #'char-code "APETAGEX"))
 (defparameter *apev2-external-format* '(:utf-8 :eol-style :crlf)
   "External format used in human-readable APEv2 items")
@@ -42,36 +53,25 @@
 
 (defun check-bits-3...28 (flags)
   (if (zerop (logand #x1ffffff8 flags)) flags
-      (error 'apev2-tag-error :message "Invalid tag/item flags")))
+      (error 'apev2-tag-error :format-control "Invalid tag/item flags")))
 
 (defun content-type (flags)
   (case (ldb (byte 2 1) flags)
     (0 :utf-8)
     (1 :binary)
     (2 :external)
-    (3 (error 'apev2-tag-error :message "Invalid tag item content type"))))
+    (3 (error 'apev2-tag-error :format-control "Invalid tag item content type"))))
 
 (defun content-r/w-p (flags)
   (zerop (logand 1 flags)))
 
-(define-condition ape-error (error)
-  ((message :initarg :message
-            :reader ape-error-message))
-  (:report (lambda (c s)
-             (format s "Ape error: ~a"
-                     (ape-error-message c))))
-  (:documentation "General APE error"))
-
-(define-condition apev2-tag-error (ape-error) ()
-  (:documentation "APEv2 tag error"))
-
 (defun check-preamble (preamble)
   (if (equalp preamble *apev2-preamble*) preamble
-      (error 'apev2-tag-error :message "Not an APEv2 tag")))
+      (error 'apev2-tag-error :format-control "Not an APEv2 tag")))
 
 (defun check-h/f-reserved (reserved)
   (if (zerop reserved) reserved
-      (error 'apev2-tag-error :message "Header/footer reserved slot is not zero")))
+      (error 'apev2-tag-error :format-control "Header/footer reserved slot is not zero")))
 
 (defstruct (header/footer
              (:conc-name "H/F-"))
@@ -149,7 +149,7 @@
               (:utf-8 (flexi-streams:octets-to-string
                        array :external-format *apev2-external-format*))
               (:binary array)
-              (t (error 'apev2-tag-error :message "Unknown content type")))))
+              (t (error 'apev2-tag-error :format-control "Unknown content type")))))
     item))
 
 (defun read-tag (reader)
@@ -166,16 +166,16 @@
 Changes reader's position. Needs APEv2 tag to contain a footer."
   (let ((length (reader-length reader)))
     (if (< length 32)
-        (error 'apev2-tag-error :message "Stream is too short to be an APEv2 tag"))
+        (error 'apev2-tag-error :format-control "Stream is too short to be an APEv2 tag"))
     (reader-position reader (- length 32))
     (let* ((footer (read-header/footer reader))
            (flags (h/f-flags footer)))
       (if (not (and (has-header flags)
                     (has-footer flags) ; Sanity check
                     (eq (h/f-type flags) :footer)))
-          (error 'apev2-tag-error :message "Cannot read APEv2 tag from the end of stream"))
+          (error 'apev2-tag-error :format-control "Cannot read APEv2 tag from the end of stream"))
       (if (< length (+ 32 (h/f-size footer)))
-          (error 'apev2-tag-error :message "Stream is too short to be an APEv2 tag"))
+          (error 'apev2-tag-error :format-control "Stream is too short to be an APEv2 tag"))
       (reader-position reader
                        (- length 32 (h/f-size footer)))
       (read-tag reader))))

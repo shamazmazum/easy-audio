@@ -26,7 +26,8 @@
 (defun read-wv-block-multichannel% (reader)
   (let ((first-block (read-wv-block reader)))
     (if (not (flag-set-p first-block +flags-initial-block+))
-        (error 'lost-sync :message "Lost sync: the first block in multichannel configuration is not initial"))
+        (error 'lost-sync
+               :format-control "Lost sync: the first block in multichannel configuration is not initial"))
     (if (flag-set-p first-block +flags-final-block+) (list first-block)
         (cons first-block
               (loop for wv-block = (read-wv-block reader)

@@ -23,15 +23,12 @@
 
 (in-package :easy-audio.ogg)
 
-(define-condition ogg-error (error)
-  ((message :initarg :message
-	    :initform ""
-	    :type string
-	    :reader ogg-error-message
-            :documentation "Error message"))
+(define-condition ogg-error (error simple-condition) ()
   (:report (lambda (c s)
-	     (format s "General ogg error: ~A"
-		     (ogg-error-message c))))
+	     (apply #'format s
+                    (concatenate 'string "General ogg error: "
+                                 (simple-condition-format-control c))
+                    (simple-condition-format-arguments c))))
   (:documentation "General (unspecified) ogg error"))
 
 (defconstant +ogg-page-id+ #x4f676753
@@ -81,9 +78,9 @@
   (init-crc reader)
   (if (/= (read-octets 4 reader)
           +ogg-page-id+)
-      (error 'ogg-error :message "Wrong page ID"))
+      (error 'ogg-error :format-control "Wrong page ID"))
   (if (/= (read-octet reader) 0)
-      (error 'ogg-error :message "Wrong stream structure version"))
+      (error 'ogg-error :format-control "Wrong stream structure version"))
   (let* ((flags (read-octet reader))
          (is-continued (/= 0 (logand flags +continued-packet+)))
          (bos (/= 0 (logand flags +begining-of-stream+)))
@@ -128,7 +125,7 @@
               (/= (- (ogg-page-number reader)
                      previous-page-num) 1)
               (not (ogg-is-continued reader))))
-        (error 'ogg-error :message "Lost sync"))
+        (error 'ogg-error :format-control "Lost sync"))
 
     (let ((packet (make-array (nth position segment-table) :element-type '(ub 8))))
       (read-octet-vector packet reader)
@@ -136,7 +133,7 @@
       #+easy-audio-check-crc
       (if (and (= position (length segment-table))
                (/= (ogg-page-crc reader) (get-crc reader)))
-          (error 'ogg-error :message "CRC mismatch"))
+          (error 'ogg-error :format-control "CRC mismatch"))
       (if (and (ogg-will-be-continued reader)
                (= position (length segment-table)))
           (read-packet-pages reader
