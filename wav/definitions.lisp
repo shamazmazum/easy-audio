@@ -27,7 +27,8 @@
  (type (ub 32)
        +wav-id+ +wav-format+
        +format-subchunk+ +data-subchunk+
-       +fact-subchunk+))
+       +fact-subchunk+
+       +list-chunk+))
 
 ;; General constants
 (defconstant +wav-id+ #x52494646
@@ -44,6 +45,10 @@
 
 (defconstant +fact-subchunk+ #x66616374
   "Fact subchunk identifier. Contains letters `fact'")
+
+(defconstant +list-chunk+ #x4C495354
+  "List chunk (services as a container for other subchunks).
+Contants letters `LIST'")
 
 (declaim
  (type (ub 16)

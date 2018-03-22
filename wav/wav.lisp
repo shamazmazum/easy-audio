@@ -58,6 +58,7 @@
        (+format-subchunk+ 'format-subchunk)
        (+data-subchunk+ 'data-subchunk)
        (+fact-subchunk+ 'fact-subchunk)
+       (+list-chunk+ 'list-chunk)
        (t (warn 'wav-unknown-chunk
                  :format-control "Unknown chunk type ~x (~s)"
                  :format-arguments (list type
@@ -74,12 +75,13 @@
   chunk)
 
 (defmethod read-body (reader (chunk data-chunk))
-  (read-octet-vector (make-array (riff-size chunk) :element-type '(ub 8)) reader)
+  (reader-position reader (+ (riff-size chunk)
+                             (reader-position reader)))
   chunk)
 
 (defmethod read-body :before (reader (chunk data-subchunk))
-  (setf (data-audio-position chunk) (reader-position reader))
-  chunk)
+  (setf (data-audio-position chunk)
+        (reader-position reader)))
 
 (defreader (read-format-subchunk) (t)
   (format-audio-format (:octets 2) :endianness :little)

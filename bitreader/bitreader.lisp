@@ -84,11 +84,12 @@
   (setf (reader-end reader)
         (read-sequence (reader-buffer reader)
                        (reader-stream reader)))
-  (if (= (reader-end reader) 0) (error 'bitreader-eof :bitreader reader)))
+  (not (zerop (reader-end reader))))
 
 (defun read-buffer-dummy (reader)
   "Read internal buffer from stream"
-  (error 'bitreader-eof :bitreader reader))
+  (declare (ignore reader))
+  nil)
 
 (defun make-reader-from-stream (stream &rest args)
   "Make bitreader from stream"
@@ -125,17 +126,18 @@
         (reader-ibyte reader) 0)
   (funcall (reader-fill-buffer-fun reader) reader))
 
-(declaim (inline can-not-read))
-(defun can-not-read (reader)
+(declaim (inline ensure-data-available))
+(defun ensure-data-available (reader)
   "Checks if READER can be read without calling fill-buffer"
-  (= (reader-ibyte reader)
-     (reader-end reader)))
-
+  (if (= (reader-ibyte reader)
+         (reader-end reader))
+      (if (not (fill-buffer reader))
+          (error 'bitreader-eof :reader reader))))
 
 (declaim (ftype (function (reader) bit-value) read-bit))
 (defun read-bit (reader)
   "Read a single bit from READER"
-  (if (can-not-read reader) (fill-buffer reader))
+  (ensure-data-available reader)
 
   (prog1
       (ldb (byte 1 (- 7 (reader-ibit reader)))
@@ -147,7 +149,7 @@
 (defun read-octet (reader)
   "Reads current octet from reader
    Ignores ibit"
-  (if (can-not-read reader) (fill-buffer reader))
+  (ensure-data-available reader)
   
   (prog1
       (aref (reader-buffer reader) (reader-ibyte reader))
@@ -163,7 +165,7 @@
              (type (member :big :little) endianness))
     (dotimes (i n)
       (declare (type fixnum i))
-      (if (can-not-read reader) (fill-buffer reader))
+      (ensure-data-available reader)
       (let ((octet (aref (reader-buffer reader) (reader-ibyte reader))))
         (declare (type (ub 8) octet))
         (setq res
@@ -180,7 +182,7 @@
   ;; Stupid and maybe slow version.
   ;; Why not? I do not use this function often
   (dotimes (i (length array))
-    (if (can-not-read reader) (fill-buffer reader))
+    (ensure-data-available reader)
     (setf (aref array i)
           (aref (reader-buffer reader) (reader-ibyte reader)))
     (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
@@ -230,13 +232,15 @@
   "Sets input to the first octet found in stream"
   (declare (type (ub 8) octet))
   (setf (reader-ibyte reader)
-	(loop for pos = (position octet (reader-buffer reader)
-				  :start (reader-ibyte reader))
-	      until pos
-	      do
-	      (fill-buffer reader)
-	      (setf (reader-ibyte reader) 0)
-	      finally (return pos)))
+	(loop
+           for pos = (position octet (reader-buffer reader)
+                               :start (reader-ibyte reader))
+           until pos
+           do
+             (if (not (fill-buffer reader))
+                 (error 'bitreader-eof :reader reader))
+             (setf (reader-ibyte reader) 0)
+           finally (return pos)))
   octet)
 
 (declaim (ftype (function (reader) non-negative-int) reader-length))
@@ -261,7 +265,7 @@
 
     (with-accessors ((ibit reader-ibit)) reader
       (dotimes (i (ceiling (+ bits ibit) 8))
-        (if (can-not-read reader) (fill-buffer reader))
+        (ensure-data-available reader)
         (let ((bits-to-add (min bits (- 8 ibit))))
           (declare (type bit-counter bits-to-add))
           (setq result (logior result
@@ -288,7 +292,7 @@
   (let ((res 0))
     (declare (type non-negative-fixnum res))
     (tagbody :count-cycle
-       (if (can-not-read reader) (fill-buffer reader))
+       (ensure-data-available reader)
        (let* ((8-ibit (- 8 (reader-ibit reader)))
               (byte (logand (1- (ash 1 8-ibit))
                             (aref (reader-buffer reader)

@@ -36,8 +36,13 @@
            #:+wave-format-mulaw+
            #:+wave-format-extensible+
 
+           #:data-chunk ; A typed container
+           #:riff-type
+           #:riff-size
+
            #:riff-chunk ; Riff chunk (a container)
            #:riff-subchunks
+           #:riff-subtype
 
            #:format-audio-format ; Format subchunk and accessors
            #:format-channels-num
