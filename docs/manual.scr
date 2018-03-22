@@ -128,13 +128,15 @@
    enough:). The working process is as simple as always: at first, open a stream
    with element type @c((unsigned-byte 8)), then create a bitreader with
    @c(open-wav), then read wav chunks with @c(read-wav-header). You are now
-   ready to read real audio data. To do this, call @c(read-wav-data) and then,
-   optionaly, @c(decode-wav-data).
+   ready to read real audio data. To do this, at first reset the bitreader to the starting
+   point of audio data with @c(reader-position-to-audio-data) and then
+    call @c(read-wav-data) and then, optionaly, @c(decode-wav-data).
 
 @begin(section)
    @title(API)
    @cl:with-package[name="easy-audio.wav"](
       @cl:doc(function read-wav-header)
+      @cl:doc(function reader-position-to-audio-data)
       @cl:doc(function read-wav-data)
       @cl:doc(function decode-wav-data)
       @cl:doc(function samples-num)
@@ -143,11 +145,13 @@
       @cl:doc(variable +wave-format-alaw+)
       @cl:doc(variable +wave-format-mulaw+)
       @cl:doc(variable +wave-format-extensible+)
-      @cl:doc(struct format-subchunk)
-      @cl:doc(struct data-subchunk)
-      @cl:doc(struct fact-subchunk)
+      @cl:doc(class format-subchunk)
+      @cl:doc(class data-subchunk)
+      @cl:doc(class fact-subchunk)
       @cl:doc(condition wav-error)
-      @cl:doc(condition wav-error-subchunk)
+      @cl:doc(condition wav-error-chunk)
+      @cl:doc(condition wav-warning)
+      @cl:doc(condition wav-unknown-chunk)
    )
 @end(section)
 @end(section)

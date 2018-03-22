@@ -1,4 +1,4 @@
-;; Copyright (c) 2012-2013, Vasily Postnicov
+;; Copyright (c) 2012-2018, Vasily Postnicov
 ;; All rights reserved.
 
 ;; Redistribution and use in source and binary forms, with or without
@@ -37,37 +37,59 @@
   "Invoke @c(skip-subchank) restart"
   (invoke-restart 'skip-subchunk c))
 
-(defun check-wav-id (number)
-  (if (/= number +wav-id+)
-      (error 'wav-error :format-control "Not a wav stream")))
+(defmacro number-case (keyform &body cases)
+  (let ((sym (gensym)))
+    `(let ((,sym ,keyform))
+       (cond
+         ,@(loop for case in cases collect
+                (let ((test (car case)))
+                  (if (eq test t)
+                      `(t ,@(cdr case))
+                      `((= ,sym ,test) ,@(cdr case)))))))))
 
-(defun check-wav-format (number)
-  (if (/= number +wav-format+)
-      (error 'wav-error :format-control "Not a wav stream")))
+(defun read-chunk-header (reader)
+  (let* ((type (read-octets 4 reader))
+         (size (read-octets 4 reader :endianness :little))
+         (chunk (make-instance 'data-chunk :type type :size size)))
+    (change-class
+     chunk
+     (number-case (riff-type chunk)
+       (+wav-id+ 'wave-chunk)
+       (+format-subchunk+ 'format-subchunk)
+       (+data-subchunk+ 'data-subchunk)
+       (+fact-subchunk+ 'fact-subchunk)
+       (t (warn 'wav-unknown-chunk
+                 :format-control "Unknown chunk type ~x (~s)"
+                 :format-arguments (list type
+                                         (subchunk-type=>string type))
+                 :chunk chunk)
+          'data-chunk)))))
 
-(defreader (read-chunk-header "Reads RIFF chunk header") ()
-  (() (:octets 4) :function check-wav-id)
-  (() (:octets 4) :endianness :little) ; I Think we can ignore chunk size here and retreive it later
-  (() (:octets 4) :function check-wav-format))
+(defmethod chunk-sanity-checks ((chunk wave-chunk))
+  (if (/= (riff-subtype chunk) +wav-format+)
+      (error 'wav-error :format-control "Not a WAV stream"))
+  chunk)
 
-(defun read-fact-subchunk (reader size)
-  "Reads fact subchunk of size SIZE from reader"
-  (let ((fact (make-fact-subchunk :samples-num (read-bits 32 reader :endianness :little))))
-    (if (/= size 4) (error 'wav-error-subchunk
-                           :format-control "Fact subchunk size is not 4. Do not know what to do"
-                           :rest-bytes (- size 4)
-                           :subchunk fact)
-      fact)))
+(defmethod chunk-sanity-checks ((chunk data-chunk))
+  chunk)
 
-(defreader (read-format-subchunk%) ((make-format-subchunk))
+(defmethod read-body (reader (chunk data-chunk))
+  (read-octet-vector (make-array (riff-size chunk) :element-type '(ub 8)) reader)
+  chunk)
+
+(defmethod read-body :before (reader (chunk data-subchunk))
+  (setf (data-audio-position chunk) (reader-position reader))
+  chunk)
+
+(defreader (read-format-subchunk) (t)
   (format-audio-format (:octets 2) :endianness :little)
   (format-channels-num (:octets 2) :endianness :little)
   (format-samplerate (:octets 4) :endianness :little)
-  (() (:octets 4) :endianness :little) ; byte rate
-  (() (:octets 2) :endianness :little) ; block align
+  (format-byte-rate (:octets 4) :endianness :little)
+  (format-block-align (:octets 2) :endianness :little)
   (format-bps (:octets 2) :endianness :little))
 
-(defreader (read-extended-format) ((make-format-subchunk))
+(defreader (read-extended-format) (t)
   (format-valid-bps (:octets 2) :endianness :little)
   (format-channel-mask (:octets 4) :endianness :little)
   (format-subformat (:octet-vector (make-array 16 :element-type '(unsigned-byte 8)))))
@@ -78,87 +100,86 @@
          +wave-format-extensible+)
       (let ((subformat (format-subformat format)))
         (if (not (equalp (subseq subformat 2) +wave-format-extensible-magick+))
-            (error 'wav-error-subchunk
+            (error 'wav-error-chunk
                    :format-control "Invalid extensible format magick"
                    :rest-bytes 0
-                   :subchunk format))
+                   :chunk format))
         (setf (format-audio-format format)
               (logior (aref subformat 0)
                       (ash (aref subformat 1) 8)))))
   format)
 
-(defun read-format-subchunk (reader size)
-  "Reads format subchunk of size SIZE from reader"
-  (let ((subchunk (read-format-subchunk% reader)))
-    (if (= size 16) subchunk
+(defmethod read-body (reader (chunk format-subchunk))
+  (read-format-subchunk reader chunk)
+  (let ((size (riff-size chunk)))
+    (if (= size 16) chunk
         (let ((extended-size (read-octets 2 reader :endianness :little)))
           ;; Sanity checks
           (if (not (or
                     (and (zerop extended-size) (= size 18))
                     (and (= extended-size 22) (= size 40))))
-              (error 'wav-error-subchunk
+              (error 'wav-error-chunk
                      :format-control "Malformed format subchunk"
                      :rest-bytes (- size 18)
                      :reader reader
-                     :subchunk subchunk))
+                     :chunk chunk))
 
           (when (not (zerop extended-size))
-            (read-extended-format reader subchunk)
-            (check-extensible-audio-format subchunk))))
-    subchunk))
+            (read-extended-format reader chunk)
+            (check-extensible-audio-format chunk))))
+    chunk))
 
-(defun read-subchunks (reader)
-  "Reads all subchunks of wav file begining with
-   format subchunk and ending with data."
-  (let (chunks)
-    (tagbody
-     read-subchunks-loop
-     (let ((type (read-bits 32 reader))
-           (size (read-bits 32 reader :endianness :little)))
+(defmethod read-body (reader (chunk fact-subchunk))
+  (setf (fact-samples-num chunk) (read-octets 4 reader :endianness :little))
+  (if (/= (riff-size chunk) 4)
+      (error 'wav-error-chunk
+             :format-control "Fact subchunk size is not 4. Do not know what to do"
+             :rest-bytes (- (riff-size chunk) 4)
+             :chunk chunk))
+  chunk)
 
-       (easy-audio-early:with-interactive-debug
-           (restart-case
-               (push
-                (cond
-                  ((= type +format-subchunk+)
-                   (read-format-subchunk reader size))
-                  ((= type +fact-subchunk+)
-                   (read-fact-subchunk reader size))
-                  ((= type +data-subchunk+)
-                   (make-data-subchunk :size size))
-                  (t
-                   (error 'wav-error-subchunk
-                          :format-control "Unknown subchunk, type ~x (~s)"
-                          :format-arguments (list type (subchunk-type=>string type))
-                          :reader reader
-                          :rest-bytes size)))
-                chunks)
-             
-             (skip-subchunk (c)
-               :interactive (lambda () (list easy-audio-early:*current-condition*))
-               (if (not (zerop (wav-error-rest-bytes c)))
-                   (read-octets (wav-error-rest-bytes c)
-                                (wav-error-reader c))))))
-       (if (/= type +data-subchunk+) (go read-subchunks-loop))))
-    chunks))
+(defmethod read-body (reader (chunk riff-chunk))
+  (setf (riff-subtype chunk) (read-octets 4 reader))
+  (chunk-sanity-checks chunk)
+
+  (setf (riff-subchunks chunk)
+        (loop
+           with data-read = 8
+           with subchunks = nil
+           while (< data-read (riff-size chunk))
+           do
+             (restart-case
+                 (let ((subchunk (read-body reader (read-chunk-header reader))))
+                   (incf data-read (+ 8 (riff-size subchunk)))
+                   (push subchunk subchunks))
+               (skip-subchunk (c)
+                 :interactive (lambda () (list easy-audio-early:*current-condition*))
+                 (if (not (zerop (wav-error-rest-bytes c)))
+                     (read-octets (wav-error-rest-bytes c)
+                                  (wav-error-reader c)))))
+           finally (return (reverse subchunks))))
+  chunk)
 
 (defun open-wav (stream)
   "Opens a wav stream and returns a bit reader object"
-  (read-chunk-header
-   (make-reader :stream stream)))
+  (make-reader :stream stream))
 
 (defun read-wav-header (reader)
-  "Reads wav file header from @c(reader). Returns a list of subchunks in the stream"
-  (let ((header-subchunks (nreverse (read-subchunks reader))))
-    ;; Sanity checks
-    (let ((format-subchunk (car header-subchunks)))
-      (if (not (typep format-subchunk 'format-subchunk))
-          (error 'wav-error :format-control "First subchunk is not format"))
+  "Read RIFF chunks from an audio stream"
+  (let ((riff-chunk (read-chunk-header reader)))
+    (if (not (typep riff-chunk 'wave-chunk))
+        (error 'wav-error :format-control "Not a WAV stream"))
+    (read-body reader riff-chunk)
 
+    ;; Sanity checks
+    (let* ((subchunks (riff-subchunks riff-chunk))
+           (format-subchunk (car subchunks)))
+      (if (not (typep format-subchunk 'format-subchunk))
+          (error 'wav-error :format-control "First subchunk is not a format subchunk"))
       (if (not (or (= (format-audio-format format-subchunk) +wave-format-pcm+)
-                   (find-if #'(lambda (x) (typep x 'fact-subchunk)) header-subchunks)))
-          (error 'wav-error :format-control "No fact subchunk in compressed wav")))
-    header-subchunks))
+                   (find-if #'(lambda (x) (typep x 'fact-subchunk)) subchunks)))
+          (error 'wav-error :format-control "No fact subchunk in compressed wav"))
+      subchunks)))
 
 ;; Helper function(s)
 (defun samples-num (subchunks)
@@ -168,8 +189,13 @@
         (format (find 'format-subchunk subchunks :key #'type-of)))
     (if fact
         (fact-samples-num fact)
-        (/ (data-size data) (format-channels-num format)
+        (/ (riff-size data) (format-channels-num format)
            (ash (format-bps format) -3)))))
+
+(defun reader-position-to-audio-data (reader subchunks)
+  "Set the reader's position to beginning of audio data"
+  (let ((data (find 'data-subchunk subchunks :key #'type-of)))
+    (reader-position reader (data-audio-position data))))
 
 (defun decompose (buffer channel-buffers)
   (let ((nsamples (length (car channel-buffers)))

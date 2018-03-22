@@ -1,4 +1,4 @@
-;; Copyright (c) 2012-2013, Vasily Postnicov
+;; Copyright (c) 2012-2018, Vasily Postnicov
 ;; All rights reserved.
 
 ;; Redistribution and use in source and binary forms, with or without
@@ -23,6 +23,12 @@
 
 (in-package :easy-audio.wav)
 
+(declaim
+ (type (ub 32)
+       +wav-id+ +wav-format+
+       +format-subchunk+ +data-subchunk+
+       +fact-subchunk+))
+
 ;; General constants
 (defconstant +wav-id+ #x52494646
   "Wav format identifier (`RIFF')")
@@ -39,6 +45,11 @@
 (defconstant +fact-subchunk+ #x66616374
   "Fact subchunk identifier. Contains letters `fact'")
 
+(declaim
+ (type (ub 16)
+       +wave-format-unknown+ +wave-format-pcm+
+       +wave-format-float+ +wave-format-alaw+
+       +wave-format-mulaw+ +wave-format-extensible+))
 ;; Audio formats
 (defconstant +wave-format-unknown+     #x0000)
 (defconstant +wave-format-pcm+         #x0001
@@ -56,25 +67,77 @@
               :element-type '(ub 8)
               :initial-contents '(#x00 #x00 #x00 #x00 #x10 #x00 #x80 #x00 #x00 #xAA #x00 #x38 #x9B #x71)))
 
-;; Subchunk structures
-(defstruct (format-subchunk (:conc-name format-))
-  "Format subchunk, containing info about audio data"
-  audio-format
-  channels-num
-  samplerate
-  bps
-  ;; Extended format
-  valid-bps
-  channel-mask
-  subformat)
+(defclass data-chunk ()
+  ((type :initarg :type
+         :type (ub 32)
+         :accessor riff-type)
+   (size :initarg :size
+         :type (ub 32)
+         :accessor riff-size))
+  (:documentation "Chunk of data with size DATA-SIZE"))
 
-(defstruct (data-subchunk (:conc-name data-))
-  "Size of audio data itself"
-  size)
+(defclass riff-chunk (data-chunk)
+  ((subtype   :initarg :subtype
+              :type (ub 32)
+              :accessor riff-subtype)
+   (subchunks :initform nil
+              :type list
+              :accessor riff-subchunks))
+  (:documentation "RIFF chunk, such as WAVE or LIST chunks"))
 
-(defstruct (fact-subchunk (:conc-name fact-))
-  "Actual number of samples in stream"
-  samples-num)
+(defclass wave-chunk (riff-chunk) ()
+  (:documentation "Main chunk in the .wav file"))
+(defclass list-chunk (riff-chunk) ()
+  (:documentation "Auxiliary container chunk"))
+
+(defclass subchunk (data-chunk) ()
+  (:documentation "Subchunk of data"))
+
+(defclass format-subchunk (subchunk)
+  ((audio-format :type (ub 16)
+                 :accessor format-audio-format
+                 :documentation "Audio format")
+   (channels-num :type (ub 16)
+                 :accessor format-channels-num
+                 :documentation "Number of channels in the stream")
+   (samplerate   :type (ub 32)
+                 :accessor format-samplerate
+                 :documentation "Samplerate in Hertz")
+   (byte-rate    :type (ub 32)
+                 :accessor format-byte-rate)
+   (block-align  :type (ub 16)
+                 :accessor format-block-align)
+   (bps          :type (ub 16)
+                 :accessor format-bps
+                 :documentation "Bits per sample")
+   ;; Extended format
+   (valid-bps    :type (ub 16)
+                 :accessor format-valid-bps
+                 :documentation "Valid bits per sample")
+   (channel-mask :type (ub 32)
+                 :accessor format-channel-mask
+                 :documentation "Channel mask of used channels")
+   (subformat    :type (sa-ub 8)
+                 :accessor format-subformat
+                 :documentation "Extended audio format"))
+  (:documentation "Audio format subchunk"))
+
+(defclass data-subchunk (subchunk)
+  ((audio-position :type unsigned-byte
+                   :accessor data-audio-position
+                   :initarg :audio-position))
+  (:documentation "Audio data subchunk"))
+
+(defclass fact-subchunk (subchunk)
+  ((samples-num    :type (ub 32)
+                   :accessor fact-samples-num
+                   :documentation "Number of interchannel samples"))
+  (:documentation "Subchunk with actual number of samples"))
+
+(defgeneric read-chunk-body (reader chunk)
+  (:documentation "Read the chunk's body from the stream"))
+(defgeneric chunk-sanity-checks (chunk)
+  (:documentation "Sanity checks for a chunk"))
 
 ;; Condition
 (define-condition wav-error (error simple-condition)
@@ -87,11 +150,26 @@
                     (simple-condition-format-arguments c))))
   (:documentation "General Wav error"))
 
-(define-condition wav-error-subchunk (wav-error)
-  ((reader      :initarg :reader
-                :reader wav-error-reader)
-   (rest-bytes  :initarg :rest-bytes
-                :reader wav-error-rest-bytes)
-   (subchunk    :initarg :subchunk
-                :reader wav-error-subchunk))
-  (:documentation "Error reading subchunk"))
+(define-condition wav-error-chunk (wav-error)
+  ((reader     :initarg :reader
+               :reader wav-error-reader)
+   (rest-bytes :initarg :rest-bytes
+               :reader wav-error-rest-bytes)
+   (chunk      :initarg :chunk
+               :reader wav-error-chunk))
+  (:documentation "Error while reading a chunk"))
+
+(define-condition wav-warning (warning simple-condition)
+  ()
+  (:report (lambda (c s)
+             (apply #'format s
+                    (concatenate 'string
+                                 "Wav decoder warning: "
+                                 (simple-condition-format-control c))
+                    (simple-condition-format-arguments c))))
+  (:documentation "General Wav warning"))
+
+(define-condition wav-unknown-chunk (wav-warning)
+  ((chunk      :initarg :chunk
+               :reader wav-warning-chunk))
+  (:documentation "Unknown chunk warning"))

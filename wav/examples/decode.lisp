@@ -35,7 +35,8 @@
           (error "Already contains decoded pcm data"))
       (if (and (/= audio-format +wave-format-alaw+)
                (/= audio-format +wave-format-mulaw+))
-           (error "Wav is not coded with g.711"))
+          (error "Wav is not coded with g.711"))
+      (reader-position-to-audio-data reader subchunks)
 
       ;; Write pcm wav header
       (with-open-file

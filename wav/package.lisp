@@ -28,12 +28,16 @@
            #:+wav-format+
            #:+format-subchunk+
            #:+data-subchunk+
+           #:+fact-subchunk+
 
            #:+wave-format-pcm+
            #:+wave-format-float+
            #:+wave-format-alaw+
            #:+wave-format-mulaw+
            #:+wave-format-extensible+
+
+           #:riff-chunk ; Riff chunk (a container)
+           #:riff-subchunks
 
            #:format-audio-format ; Format subchunk and accessors
            #:format-channels-num
@@ -45,12 +49,15 @@
 
            #:data-subchunk  ; Data subchunk and accessors
            #:data-size
+           #:data-audio-position
 
            #:fact-subchunk ; Fact subchunk and accessors
            #:fact-samples-num
 
            #:wav-error  ; Conditions
-           #:wav-error-subchunk
+           #:wav-error-chunk
+           #:wav-warning
+           #:wav-unknown-chunk
 
            #:skip-subchunk ; Restarts
 
@@ -58,4 +65,5 @@
            #:read-wav-header
            #:read-wav-data
            #:decode-wav-data
+           #:reader-position-to-audio-data
            #:samples-num)) ; Helper function
