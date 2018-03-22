@@ -24,7 +24,10 @@
                (:file "ogg/package" :depends-on ("bitreader/package"))
 	       (:file "ogg/ogg" :depends-on ("ogg/package"))
 
-	       (:file "flac/package" :depends-on ("bitreader/package"))
+               (:file "utils/package" :depends-on ("bitreader/package"))
+               (:file "utils/utils" :depends-on ("wav/definitions"))
+
+	       (:file "flac/package" :depends-on ("utils/package"))
 	       (:file "flac/definitions" :depends-on ("flac/package"))
 	       (:file "flac/flac-reader" :depends-on ("flac/package"))
 	       (:file "flac/metadata" :depends-on ("flac/package"))
@@ -32,9 +35,6 @@
 	       (:file "flac/decode" :depends-on ("flac/package"))
 	       (:file "flac/flac" :depends-on ("flac/package"))
                (:file "flac/flac-ogg" :depends-on ("flac/package"))
-
-               (:file "utils/package" :depends-on ("bitreader/package"))
-               (:file "utils/utils" :depends-on ("wav/definitions"))
 
                (:file "wav/package" :depends-on ("utils/package"))
                (:file "wav/definitions" :depends-on ("wav/package"))

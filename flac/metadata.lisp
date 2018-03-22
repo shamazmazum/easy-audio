@@ -94,22 +94,20 @@
 	    (loop for i below seekpoints-num collect
 		  (read-seekpoint stream))))))
 
-(defmethod read-metadata-body (stream (data streaminfo))
-  (setf (streaminfo-minblocksize data) (read-bits 16 stream)
-	(streaminfo-maxblocksize data) (read-bits 16 stream))
-	      
-  (setf (streaminfo-minframesize data) (read-bits 24 stream)
-	(streaminfo-maxframesize data) (read-bits 24 stream))
-  
-  (setf (streaminfo-samplerate data) (read-bits 20 stream)
-	(streaminfo-channels data) (1+ (read-bits 3 stream))
-	(streaminfo-bitspersample data) (1+ (read-bits 5 stream))
-	(streaminfo-totalsamples data) (read-bits 36 stream))
+(declaim (inline read-streaminfo-body))
+(defreader (read-streaminfo-body) (t)
+  (streaminfo-minblocksize  (:octets 2))
+  (streaminfo-maxblocksize  (:octets 2))
+  (streaminfo-minframesize  (:octets 3))
+  (streaminfo-maxframesize  (:octets 3))
+  (streaminfo-samplerate    (:bits 20))
+  (streaminfo-channels      (:bits 3) :function 1+)
+  (streaminfo-bitspersample (:bits 5) :function 1+)
+  (streaminfo-totalsamples  (:bits 36))
+  (streaminfo-md5           (:octet-vector (make-array (list 16) :element-type '(ub 8)))))
 
-  (let ((md5 (make-array (list 16) :element-type '(ub 8))))
-    (setf (streaminfo-md5 data)
-          (read-octet-vector md5 stream)))
-  data)
+(defmethod read-metadata-body (stream (data streaminfo))
+  (read-streaminfo-body stream data))
 
 (defun read-cuesheet-string (stream length)
   (let ((buffer (make-array (list length) :element-type '(ub 8))))
@@ -157,7 +155,7 @@
   (let ((*data* data))
     (setf (cuesheet-catalog-id data) (read-cuesheet-string stream 128))
     (setf (cuesheet-lead-in data) (read-bits 64 stream))
-    (setf (cuesheet-cdp data) (if (= 1 (read-bit stream)) t nil))
+    (setf (cuesheet-cdp data) (= 1 (read-bit stream)))
     
     (let ((reserved (read-bits #.(+ 7 (* 8 258)) stream)))
       (if (/= 0 reserved) (error 'flac-bad-metadata

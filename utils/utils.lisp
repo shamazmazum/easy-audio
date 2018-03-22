@@ -97,6 +97,13 @@ second sample of each channel until all data is written"
     (write-sequence (integer-to-array size buf4) out-stream))
   t)
 
+(defun reader-function-amount (symbol amount)
+  (let ((read-bit-p (eq symbol :bit)))
+    (if (and (or (not amount) read-bit-p)
+             (or amount (not read-bit-p)))
+        (error "You must specify amount if you do not read :BIT"))
+    (if (not read-bit-p) (list amount))))
+
 (defmacro defreader ((name &optional docstring) (&optional make-form (obj-sym (gensym) obj-sym-given))
                      &rest slots)
   "Generate a reader function to read data from bit-reader into
@@ -108,8 +115,8 @@ second sample of each channel until all data is written"
   instance. Each slot from SLOTS is a list. It has the
   following syntax:
 
-  (ACCESSOR (:OCTETS n)|(:BITS n)|(:OCTET-VECTOR v) [:ENDIANNESS
-            :BIG|:LITTLE] [:FUNCTION FUNC-NAME])
+  (ACCESSOR (:BIT)|(:OCTETS n)|(:BITS n)|(:OCTET-VECTOR v)
+            [:ENDIANNESS :BIG|:LITTLE] [:FUNCTION FUNC-NAME])
 
   (ACCESSOR object) must be a 'place' understandable for setf.
   One and only one of BITS, OCTETS or OCTET-VECTOR must be
@@ -132,18 +139,20 @@ second sample of each channel until all data is written"
                      (t (list reader obj-sym)))
        ,@(if docstring (list docstring) nil)
        ,@(loop for slot-spec in slots collect
-              (destructuring-bind (accessor (read-how read-how-many) . options)
+              (destructuring-bind (accessor (read-how &optional read-how-many) . options)
                   slot-spec
                 (let* ((function-name
                         (ecase read-how
                           (:octets       'bitreader:read-octets)
                           (:bits         'bitreader:read-bits)
+                          (:bit          'bitreader:read-bit)
                           (:octet-vector 'bitreader:read-octet-vector)))
                        (endianness (getf options :endianness))
                        (aux-function (getf options :function))
                        (function-call
                         `(,function-name
-                          ,read-how-many ,reader
+                          ,@(reader-function-amount read-how read-how-many)
+                          ,reader
                           ,@(if endianness (list :endianness endianness))))
                        (read-value
                         (if aux-function
