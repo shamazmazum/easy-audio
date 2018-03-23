@@ -23,16 +23,6 @@
 
 (in-package :easy-audio.wav)
 
-(defun subchunk-type=>string (type)
-  (concatenate
-   'string
-   (mapcar #'code-char
-           (reverse
-            (loop while (/= type 0) collect
-                 (prog1
-                     (logand type #xff)
-                   (setq type (ash type -8))))))))
-
 (defun skip-subchunk (c)
   "Invoke @c(skip-subchank) restart"
   (invoke-restart 'skip-subchunk c))
@@ -47,24 +37,52 @@
                       `(t ,@(cdr case))
                       `((= ,sym ,test) ,@(cdr case)))))))))
 
+(defun chunk-class (chunk)
+  (let ((type (riff-type chunk)))
+    (number-case type
+      (+wav-id+ 'wave-chunk)
+      (+format-subchunk+ 'format-subchunk)
+      (+data-subchunk+   'data-subchunk)
+      (+fact-subchunk+   'fact-subchunk)
+      (+list-chunk+      'list-chunk)
+      (+info-name+       'info-subchunk)
+      (+info-subject+    'info-subchunk)
+      (+info-artist+     'info-subchunk)
+      (+info-comment+    'info-subchunk)
+      (+info-keywords+   'info-subchunk)
+      (+info-software+   'info-subchunk)
+      (+info-engineer+   'info-subchunk)
+      (+info-technician+ 'info-subchunk)
+      (+info-creation+   'info-subchunk)
+      (+info-genre+      'info-subchunk)
+      (+info-copyright+  'info-subchunk)
+      (t (warn 'wav-unknown-chunk
+               :format-control "Unknown chunk type ~x (~s)"
+               :format-arguments (list type
+                                       (code=>string type))
+               :chunk chunk)
+         'data-chunk))))
+
+(defun info-subchunk-key (type)
+  (number-case type
+    (+info-name+       :name)
+    (+info-subject+    :subject)
+    (+info-artist+     :artist)
+    (+info-comment+    :comment)
+    (+info-keywords+   :keywords)
+    (+info-software+   :software)
+    (+info-engineer+   :engineer)
+    (+info-technician+ :technician)
+    (+info-creation+   :creation-time)
+    (+info-genre+      :genre)
+    (+info-copyright+  :copyright)
+    (t (code=>string type))))
+
 (defun read-chunk-header (reader)
   (let* ((type (read-octets 4 reader))
          (size (read-octets 4 reader :endianness :little))
          (chunk (make-instance 'data-chunk :type type :size size)))
-    (change-class
-     chunk
-     (number-case (riff-type chunk)
-       (+wav-id+ 'wave-chunk)
-       (+format-subchunk+ 'format-subchunk)
-       (+data-subchunk+ 'data-subchunk)
-       (+fact-subchunk+ 'fact-subchunk)
-       (+list-chunk+ 'list-chunk)
-       (t (warn 'wav-unknown-chunk
-                 :format-control "Unknown chunk type ~x (~s)"
-                 :format-arguments (list type
-                                         (subchunk-type=>string type))
-                 :chunk chunk)
-          'data-chunk)))))
+    (change-class chunk (chunk-class chunk))))
 
 (defmethod chunk-sanity-checks ((chunk wave-chunk))
   (if (/= (riff-subtype chunk) +wav-format+)
@@ -82,6 +100,22 @@
 (defmethod read-body :before (reader (chunk data-subchunk))
   (setf (data-audio-position chunk)
         (reader-position reader)))
+
+(defmethod read-body (reader (chunk info-subchunk))
+  (setf (info-key chunk) (info-subchunk-key (riff-type chunk)))
+  (let ((string-buffer (read-octet-vector (make-array (riff-size chunk)
+                                                      :element-type '(ub 8))
+                                          reader)))
+    (if (or (every #'zerop string-buffer)
+            (not (zerop (aref string-buffer (1- (riff-size chunk))))))
+        (error 'wav-error-chunk
+               :format-control "Value in INFO subchunk is not a null-terminated string"
+               :rest-bytes 0
+               :chunk chunk))
+    (setf (info-value chunk)
+          (flexi-streams:octets-to-string
+           (subseq string-buffer 0 (1+ (position 0 string-buffer :from-end t :test #'/=))))))
+  chunk)
 
 (defreader (read-format-subchunk) (t)
   (format-audio-format (:octets 2) :endianness :little)
@@ -145,21 +179,24 @@
   (chunk-sanity-checks chunk)
 
   (setf (riff-subchunks chunk)
-        (loop
-           with data-read = 8
-           with subchunks = nil
-           while (< data-read (riff-size chunk))
-           do
-             (restart-case
-                 (let ((subchunk (read-body reader (read-chunk-header reader))))
-                   (incf data-read (+ 8 (riff-size subchunk)))
-                   (push subchunk subchunks))
-               (skip-subchunk (c)
-                 :interactive (lambda () (list easy-audio-early:*current-condition*))
-                 (if (not (zerop (wav-error-rest-bytes c)))
-                     (read-octets (wav-error-rest-bytes c)
-                                  (wav-error-reader c)))))
-           finally (return (reverse subchunks))))
+        (with-interactive-debug
+          (loop
+             with data-read = 8
+             with subchunks = nil
+             while (< data-read (riff-size chunk))
+             do
+               (restart-case
+                   (let ((subchunk (read-body reader (read-chunk-header reader))))
+                     (incf data-read (+ 8 (riff-size subchunk)))
+                     (push subchunk subchunks))
+                 (skip-subchunk (c)
+                   :interactive (lambda () (list easy-audio-early:*current-condition*))
+                   :report "Skip reading subchunk"
+                   (if (not (zerop (wav-error-rest-bytes c)))
+                       (read-octets (wav-error-rest-bytes c)
+                                    (wav-error-reader c)))
+                   (incf data-read (+ 8 (riff-size (wav-error-chunk c))))))
+             finally (return (reverse subchunks)))))
   chunk)
 
 (defun open-wav (stream)
@@ -193,6 +230,17 @@
         (fact-samples-num fact)
         (/ (riff-size data) (format-channels-num format)
            (ash (format-bps format) -3)))))
+
+(defun get-info-metadata (subchunks)
+  "Return metadata in the LIST INFO subchunks as an association list"
+  (let* ((list-chunk (find 'list-chunk subchunks :key #'type-of))
+         (info-subchunks (remove 'info-subchunk (riff-subchunks list-chunk)
+                                 :test-not #'eql
+                                 :key #'type-of)))
+    (mapcar (lambda (info-subchunk)
+              (cons (info-key info-subchunk)
+                    (info-value info-subchunk)))
+            info-subchunks)))
 
 (defun reader-position-to-audio-data (reader subchunks)
   "Set the reader's position to beginning of audio data"

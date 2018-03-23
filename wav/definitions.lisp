@@ -23,6 +23,24 @@
 
 (in-package :easy-audio.wav)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun string=>code (string)
+    (let ((codes (flexi-streams:string-to-octets string)))
+      (loop
+         for code across codes
+         for shift from 0 by 1
+         for mul = (ash 1 (* 8 (- (length codes) 1  shift)))
+         sum
+           (* code mul)))))
+
+(defun code=>string (type)
+  (flexi-streams:octets-to-string
+   (reverse
+    (loop while (/= type 0) collect
+         (prog1
+             (logand type #xff)
+           (setq type (ash type -8)))))))
+
 (declaim
  (type (ub 32)
        +wav-id+ +wav-format+
@@ -31,24 +49,50 @@
        +list-chunk+))
 
 ;; General constants
-(defconstant +wav-id+ #x52494646
+(defconstant +wav-id+ (string=>code "RIFF")
   "Wav format identifier (`RIFF')")
 
-(defconstant +wav-format+ #x57415645
+(defconstant +wav-format+ (string=>code "WAVE")
   "Letters (`WAVE')")
 
-(defconstant +format-subchunk+ #x666d7420
+(defconstant +format-subchunk+ (string=>code "fmt ")
   "Format subchunk identifier. Contains letters `fmt '")
 
-(defconstant +data-subchunk+ #x64617461
+(defconstant +data-subchunk+ (string=>code "data")
   "Data subchunk identifier. Contains letters `data'")
 
-(defconstant +fact-subchunk+ #x66616374
+(defconstant +fact-subchunk+ (string=>code "fact")
   "Fact subchunk identifier. Contains letters `fact'")
 
-(defconstant +list-chunk+ #x4C495354
+(defconstant +list-chunk+ (string=>code "LIST")
   "List chunk (services as a container for other subchunks).
 Contants letters `LIST'")
+
+(defconstant +list-info+ (string=>code "INFO")
+  "INFO list chunk")
+
+(defconstant +info-name+ (string=>code "INAM")
+  "INAM (name) subchunk")
+(defconstant +info-subject+ (string=>code "ISBJ")
+  "ISBJ (subject) subchunk")
+(defconstant +info-artist+ (string=>code "IART")
+  "IART (artist) subchunk")
+(defconstant +info-comment+ (string=>code "ICMT")
+  "ICMT (comment) subchunk")
+(defconstant +info-keywords+ (string=>code "IKEY")
+  "IKEY (keywords) subchunk")
+(defconstant +info-software+ (string=>code "ISFT")
+  "ISFT (software) subchunk")
+(defconstant +info-engineer+ (string=>code "IENG")
+  "IENG (engineer) subchunk")
+(defconstant +info-technician+ (string=>code "ITCH")
+  "ITCH (technician) subchunk")
+(defconstant +info-creation+ (string=>code "ICRD")
+  "ICRD (creation) subchunk")
+(defconstant +info-genre+ (string=>code "GENR")
+  "GENR (genre) subchunk")
+(defconstant +info-copyright+ (string=>code "ICOP")
+  "ICOP (copyright) subchunk")
 
 (declaim
  (type (ub 16)
@@ -97,6 +141,18 @@ Contants letters `LIST'")
 
 (defclass subchunk (data-chunk) ()
   (:documentation "Subchunk of data"))
+
+(defclass info-subchunk (data-chunk)
+  ((key   :initarg :key
+          :accessor info-key
+          :type (or symbol string)
+          :documentation "Key of an info subchunk")
+   (value :initarg :value
+          :accessor info-value
+          :type string
+          :documentation "Value of an info subchunk"))
+  (:documentation "LIST INFO subchunk. Together they constitue key-value metadata
+for the audio stream"))
 
 (defclass format-subchunk (subchunk)
   ((audio-format :type (ub 16)

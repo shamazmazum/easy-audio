@@ -28,7 +28,6 @@
            #:+wav-format+
            #:+format-subchunk+
            #:+data-subchunk+
-           #:+fact-subchunk+
 
            #:+wave-format-pcm+
            #:+wave-format-float+
@@ -59,6 +58,10 @@
            #:fact-subchunk ; Fact subchunk and accessors
            #:fact-samples-num
 
+           #:info-subchunk ; INFO subchunk and accessors
+           #:info-key
+           #:info-value
+
            #:wav-error  ; Conditions
            #:wav-error-chunk
            #:wav-warning
@@ -71,4 +74,6 @@
            #:read-wav-data
            #:decode-wav-data
            #:reader-position-to-audio-data
-           #:samples-num)) ; Helper function
+
+           #:samples-num ; Helper functions
+           #:get-info-metadata))

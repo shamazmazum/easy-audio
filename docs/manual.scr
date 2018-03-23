@@ -125,12 +125,20 @@
 @begin(section)
    @title(Wav)
    This package is for reading Wav audio files (that is if you are lucky
-   enough:). The working process is as simple as always: at first, open a stream
-   with element type @c((unsigned-byte 8)), then create a bitreader with
-   @c(open-wav), then read wav chunks with @c(read-wav-header). You are now
-   ready to read real audio data. To do this, at first reset the bitreader to the starting
-   point of audio data with @c(reader-position-to-audio-data) and then
-    call @c(read-wav-data) and then, optionaly, @c(decode-wav-data).
+   enough:). The working process is as simple as always:
+   @begin(enum)
+      @item(Open the audio stream as an ordinary input stream with element
+            type @c((unsigned-byte 8)).)
+      @item(Create a bitreader object with @c(open-wav).)
+      @item(Read wav chunks with metadata calling @c(read-wav-header).)
+      @item(Because the metadata can be placed @b(after) the audio data itself,
+            rewind the reader to the beginning of audio data calling
+            @c(reader-position-to-audio-data).)
+      @item(Read audio samples with @c(read-wav-data).)
+      @item(Optionaly, @c(decode-wav-data). Usually this step can be ommited because
+            the audio stream already has uncompressed PCM data. @c(decode-wav-data) is
+            no-op in this case.)
+   @end(enum)
 
 @begin(section)
    @title(API)
@@ -140,6 +148,7 @@
       @cl:doc(function read-wav-data)
       @cl:doc(function decode-wav-data)
       @cl:doc(function samples-num)
+      @cl:doc(function get-info-metadata)
       @cl:doc(variable +wave-format-pcm+)
       @cl:doc(variable +wave-format-float+)
       @cl:doc(variable +wave-format-alaw+)
@@ -148,6 +157,7 @@
       @cl:doc(class format-subchunk)
       @cl:doc(class data-subchunk)
       @cl:doc(class fact-subchunk)
+      @cl:doc(class info-subchunk)
       @cl:doc(condition wav-error)
       @cl:doc(condition wav-error-chunk)
       @cl:doc(condition wav-warning)

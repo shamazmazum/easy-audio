@@ -61,7 +61,7 @@
      ,@(if doc-string `((setf (documentation ',var 'variable) ,doc-string)))))
 
 ;; For interactive restarts
-(defvar *current-condition*
+(defvar-unbound *current-condition*
   "*CURRENT-CONDITION* is bound to signaled contition
    when debugger is invoked while within WITH-INTERACTIVE-DEBUG")
 
