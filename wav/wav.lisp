@@ -281,11 +281,14 @@ samples. Optionally, decomposes them into different by-channel arrays if
 @c(decompose) is @c(T)."
   (let* ((channels (format-channels-num format))
          (bps (format-bps format))
+         (audio-format (format-audio-format format))
          (buffer (make-array (* nsamples channels) :element-type '(signed-byte 32))))
     (loop for i below (length buffer) do
          (setf (aref buffer i)
                (let ((sample (read-bits bps reader :endianness :little)))
-                 (if (= bps 8) sample (unsigned->signed sample bps)))))
+                 (if (and (= audio-format +wave-format-pcm+)
+                          (/= bps 8))
+                     (unsigned->signed sample bps) sample))))
     (if decompose
         (decompose buffer
                    (loop repeat channels collect
