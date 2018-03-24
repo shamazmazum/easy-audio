@@ -262,6 +262,18 @@
                     (aref buffer (+ idx offset))))))
   channel-buffers)
 
+(declaim
+ (ftype
+  (function ((unsigned-byte 32) (integer 0 32)) (signed-byte 32))
+  unsigned->signed))
+(defun unsigned->signed (x bps)
+  "Unsigned to signed converter"
+  (declare (optimize (speed 3))
+           (type (integer 0 32) bps)
+           (type (unsigned-byte 32) x))
+  (if (zerop (ldb (byte 1 (1- bps)) x)) x
+      (- (1+ (logxor (1- (ash 1 bps)) x)))))
+
 (defun read-wav-data (reader format nsamples &key decompose)
   "Read a portion of audio data in the wav stream. Requires a @c(bitreader) and
 @c(format) subchunk. Reads exactly @c(nsamples) interchannel
@@ -272,7 +284,8 @@ samples. Optionally, decomposes them into different by-channel arrays if
          (buffer (make-array (* nsamples channels) :element-type '(signed-byte 32))))
     (loop for i below (length buffer) do
          (setf (aref buffer i)
-               (read-bits bps reader :endianness :little)))
+               (let ((sample (read-bits bps reader :endianness :little)))
+                 (if (= bps 8) sample (unsigned->signed sample bps)))))
     (if decompose
         (decompose buffer
                    (loop repeat channels collect
