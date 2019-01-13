@@ -40,7 +40,7 @@
 (defconstant +end-of-stream+ #b100
   "Last page of logical bitstream")
 
-(defstruct (ogg-reader (:conc-name "OGG-")
+(defstruct (ogg-reader (:conc-name #:ogg-)
                        (:include reader))
   (is-continued      nil :type boolean)
   (bos               nil :type boolean)

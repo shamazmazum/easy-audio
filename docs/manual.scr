@@ -205,5 +205,6 @@
    @cl:with-package[name="easy-audio.utils"](
       @cl:doc(function write-pcm-wav-header)
       @cl:doc(function mixchannels)
+      @cl:doc(macro with-output-to-wav)
    )
 @end(section)
