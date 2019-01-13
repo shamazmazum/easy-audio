@@ -46,30 +46,41 @@
   <h1 class="doc-title">Easy Audio » Wav</h1>
   <article id="article" data-section="wav">
     <aside>
-      <ol class="toc"><li><a href="index.html" data-node="overview">Overview</a></li><li><a href="flac.html" data-node="flac">FLAC</a><ol><li><a href="flac.html#api" data-node="api">API</a></li></ol></li><li><a href="wavpack.html" data-node="wavpack">WavPack</a><ol><li><a href="wavpack.html#0-api" data-node="0-api">API</a></li></ol></li><li><a href="wav.html" data-node="wav">Wav</a><ol><li><a href="wav.html#1-api" data-node="1-api">API</a></li></ol></li><li><a href="general-decoders.html" data-node="general-decoders">General decoders</a><ol><li><a href="2-api.html" data-node="2-api">API</a></li></ol></li><li><a href="ape.html" data-node="ape">APE</a><ol><li><a href="3-api.html" data-node="3-api">API</a></li></ol></li><li><a href="utility-functions.html" data-node="utility-functions">Utility functions</a></li></ol>
+      <ol class="toc"><li><a href="index.html" data-node="index">Overview</a></li><li><a href="flac.html" data-node="flac">FLAC</a><ol><li><a href="flac.html#api" data-node="api">API</a></li></ol></li><li><a href="wavpack.html" data-node="wavpack">WavPack</a><ol><li><a href="wavpack.html#0-api" data-node="0-api">API</a></li></ol></li><li><a href="wav.html" data-node="wav">Wav</a><ol><li><a href="wav.html#1-api" data-node="1-api">API</a></li></ol></li><li><a href="general-decoders.html" data-node="general-decoders">General decoders</a><ol><li><a href="2-api.html" data-node="2-api">API</a></li></ol></li><li><a href="ape.html" data-node="ape">APE</a><ol><li><a href="3-api.html" data-node="3-api">API</a></li></ol></li><li><a href="utility-functions.html" data-node="utility-functions">Utility functions</a></li></ol>
     </aside>
     <main class="codex-section">
-      
-   This package is for reading Wav headers (that is if you are lucky
-   enough:). There is nothing to describe here: just open a binary stream with
-   element type <code>(unsigned-byte 8)</code> as always and call <code>wav:read-wav-header</code>.<h1 id="1-api">API</h1>
+      <p>
+   This package is for reading Wav audio files (that is if you are lucky
+   enough:). The working process is as simple as always:
+   </p><ol><li>Open the audio stream as an ordinary input stream with element
+            type <code>(unsigned-byte 8)</code>.</li><li>Create a bitreader object with <code>open-wav</code>.</li><li>Read wav chunks with metadata calling <code>read-wav-header</code>.</li><li>Because the metadata can be placed <b>after</b> the audio data itself,
+            rewind the reader to the beginning of audio data calling
+            <code>reader-position-to-audio-data</code>.</li><li>Read audio samples with <code>read-wav-data</code>.</li><li>Optionaly, <code>decode-wav-data</code>. Usually this step can be ommited because
+            the audio stream already has uncompressed PCM data. <code>decode-wav-data</code> is
+            no-op in this case.</li></ol><h1 id="1-api">API</h1>
    
-      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">read-wav-header</code><code class="codex-lambda-list">(stream)</code><div class="codex-docstring">Reads wav file header from <code>stream</code>. Returns two values:
-   list of subchunks and size of audio data to read.
-   Stream position is set to begining of audio data.</div></div>
-      <div class="codex-doc-node codex-variable"><code class="codex-name">+wave-format-pcm+</code><div class="codex-docstring">PCM audio format</div></div>
-      <div class="codex-doc-node codex-variable"><code class="codex-name">+wave-format-float+</code><div class="codex-docstring">Float audio format</div></div>
-      <div class="codex-doc-node codex-variable"><code class="codex-name">+wave-format-alaw+</code><div class="codex-docstring">A-law coded audio</div></div>
-      <div class="codex-doc-node codex-variable"><code class="codex-name">+wave-format-mulaw+</code><div class="codex-docstring">Mu-law coded audio</div></div>
-      <div class="codex-doc-node codex-variable"><code class="codex-name">+wave-format-extensible+</code><div class="codex-docstring">&lt;No docstring&gt;</div></div>
-      <div class="codex-doc-node codex-record codex-structure"><code class="codex-name">format-subchunk</code><div class="codex-docstring">Format subchunk, containing info about audio data</div><ul class="codex-slot-list"><li class="codex-slot codex-structure-slot"><code class="codex-name">audio-format</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">channels-num</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">samplerate</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">bps</code></li></ul></div>
-      <div class="codex-doc-node codex-record codex-structure"><code class="codex-name">data-subchunk</code><div class="codex-docstring">Size of audio data itself</div><ul class="codex-slot-list"><li class="codex-slot codex-structure-slot"><code class="codex-name">size</code></li></ul></div>
-      <div class="codex-doc-node codex-record codex-structure"><code class="codex-name">fact-subchunk</code><div class="codex-docstring">Actual number of samples in stream</div><ul class="codex-slot-list"><li class="codex-slot codex-structure-slot"><code class="codex-name">samples-num</code></li></ul></div>
-      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">wav-error</code><div class="codex-docstring">General Wav error</div><ul class="codex-slot-list"><li class="codex-slot codex-class-slot"><code class="codex-name">message</code><div class="codex-docstring">&lt;No docstring&gt;</div></li></ul></div>
-      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">wav-error-subchunk</code><div class="codex-docstring">Error reading subchunk</div><ul class="codex-slot-list"><li class="codex-slot codex-class-slot"><code class="codex-name">reader</code><div class="codex-docstring">&lt;No docstring&gt;</div></li><li class="codex-slot codex-class-slot"><code class="codex-name">rest-bytes</code><div class="codex-docstring">&lt;No docstring&gt;</div></li><li class="codex-slot codex-class-slot"><code class="codex-name">subchunk</code><div class="codex-docstring">&lt;No docstring&gt;</div></li></ul></div>
+      <div class="codex-error codex-no-node">No node with name <code>read-wav-header</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>reader-position-to-audio-data</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>read-wav-data</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>decode-wav-data</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>samples-num</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>get-info-metadata</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>+wave-format-pcm+</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>+wave-format-float+</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>+wave-format-alaw+</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>+wave-format-mulaw+</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>+wave-format-extensible+</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>format-subchunk</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>data-subchunk</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>fact-subchunk</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>info-subchunk</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>wav-error</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>wav-error-chunk</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>wav-warning</code>.</div>
+      <div class="codex-error codex-no-node">No node with name <code>wav-unknown-chunk</code>.</div>
    
-
-
+<p>
+</p>
     </main>
   </article>
   <footer>

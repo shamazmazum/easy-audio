@@ -245,6 +245,38 @@ footer .info {
     font-size: 16px;
 }
 
+
+/* Class and struct option and slot option table styling */
+
+.codex-class-struct-slot-option-node {
+    display: block;
+    margin: 15px;
+    align-items: flex-start;
+    padding: 0px 15px 15px 15px;
+}
+
+.codex-class-struct-slot-option-table {
+    font-weight: normal;
+    font-style: normal;
+    font-size: 16px;
+    text-align: left;
+    margin-left: 15px;
+    padding: 5px 5px 5px 5px;
+}
+
+.codex-class-struct-slot-option-row {
+}
+
+.codex-class-struct-slot-option-label-cell {
+    font-style: italic;
+}
+
+.codex-class-struct-slot-option-value-cell {
+}
+
+.codex-class-struct-slot-option-symbol-list-cell {
+}
+
 /* Documentation node colors */
 
 .codex-function {
