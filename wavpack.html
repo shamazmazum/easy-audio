@@ -46,7 +46,7 @@
   <h1 class="doc-title">Easy Audio » WavPack</h1>
   <article id="article" data-section="wavpack">
     <aside>
-      <ol class="toc"><li><a href="index.html" data-node="index">Overview</a></li><li><a href="flac.html" data-node="flac">FLAC</a><ol><li><a href="flac.html#api" data-node="api">API</a></li></ol></li><li><a href="wavpack.html" data-node="wavpack">WavPack</a><ol><li><a href="wavpack.html#0-api" data-node="0-api">API</a></li></ol></li><li><a href="wav.html" data-node="wav">Wav</a><ol><li><a href="1-api.html" data-node="1-api">API</a></li></ol></li><li><a href="general-decoders.html" data-node="general-decoders">General decoders</a><ol><li><a href="2-api.html" data-node="2-api">API</a></li></ol></li><li><a href="ape.html" data-node="ape">APE</a><ol><li><a href="3-api.html" data-node="3-api">API</a></li></ol></li><li><a href="utility-functions.html" data-node="utility-functions">Utility functions</a></li></ol>
+      <ol class="toc"><li><a href="index.html" data-node="overview">Overview</a></li><li><a href="flac.html" data-node="flac">FLAC</a><ol><li><a href="flac.html#api" data-node="api">API</a></li></ol></li><li><a href="wavpack.html" data-node="wavpack">WavPack</a><ol><li><a href="wavpack.html#0-api" data-node="0-api">API</a></li></ol></li><li><a href="wav.html" data-node="wav">Wav</a><ol><li><a href="1-api.html" data-node="1-api">API</a></li></ol></li><li><a href="general-decoders.html" data-node="general-decoders">General decoders</a><ol><li><a href="2-api.html" data-node="2-api">API</a></li></ol></li><li><a href="ape.html" data-node="ape">APE</a><ol><li><a href="3-api.html" data-node="3-api">API</a></li></ol></li><li><a href="utility-functions.html" data-node="utility-functions">Utility functions</a></li></ol>
     </aside>
     <main class="codex-section">
       <p>
@@ -64,35 +64,58 @@
             multiple stereo or mono blocks with <code>wv:read-wv-block-multichannel</code>.</li><li>Decode the block with <code>wv:decode-wv-block</code> and repeat previous step.</li></ol><h1 id="0-api">API</h1>
    <u>Conditions</u>.
    
-      <div class="codex-error codex-no-node">No node with name <code>wavpack-error</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>wavpack-warning</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>block-error</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>lost-sync</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>unknown-metadata</code>.</div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">wavpack-error</code><div class="codex-docstring">General WavPack error</div><ul class="codex-slot-list"></ul></div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">wavpack-warning</code><div class="codex-docstring">General WavPack warning</div><ul class="codex-slot-list"></ul></div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">block-error</code><div class="codex-docstring">Error associated with block reader/decoder error</div><ul class="codex-slot-list"></ul></div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">lost-sync</code><div class="codex-docstring">Error signaled when sync is obviously lost
+                   (e.g. first 4 bytes in block are not Wavpack ID).
+                   Errors signalled when reading a block which cause
+                   loss of sync are not of this type, but of <code>block-error</code>.
+                   Useful for skipping garbage in audio files</div><ul class="codex-slot-list"></ul></div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">unknown-metadata</code><div class="codex-docstring">The reader does not know how to read metadata</div><ul class="codex-slot-list"><li class="codex-slot codex-class-slot"><code class="codex-name">metadata</code><div class="codex-docstring">Metadata object</div></li></ul></div>
    
    <u>Metadata</u>.
    
-      <div class="codex-error codex-no-node">No node with name <code>metadata-riff-header</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>metadata-riff-trailer</code>.</div>
+      <div class="codex-doc-node codex-record codex-class"><code class="codex-name">metadata-riff-header</code><div class="codex-docstring">Contents the original RIFF header in DATA slot</div><ul class="codex-slot-list"></ul></div>
+      <div class="codex-doc-node codex-record codex-class"><code class="codex-name">metadata-riff-trailer</code><div class="codex-docstring">Contents the original RIFF trailer in DATA slot</div><ul class="codex-slot-list"></ul></div>
    
    <u>WavPack blocks</u>.
    WavPack block class has readers/accessors in the form <code>BLOCK-SLOTNAME</code>.
    
-      <div class="codex-error codex-no-node">No node with name <code>wv-block</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>read-wv-block</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>read-wv-block-multichannel</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>decode-wv-block</code>.</div>
+      <div class="codex-doc-node codex-record codex-structure"><code class="codex-name">wv-block</code><div class="codex-docstring">WavPack block structure</div><ul class="codex-slot-list"><li class="codex-slot codex-structure-slot"><code class="codex-name">id</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">size</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">version</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">track-number</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">index-number</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">total-samples</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">block-index</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">block-samples</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">flags</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">crc</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">metadata</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">decorr-passes</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">decorr-samples</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">entropy-median</code></li><li class="codex-slot codex-structure-slot"><code class="codex-name">residual</code></li></ul></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">read-wv-block</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Read the next block in the stream. <code>reader</code>'s position must be set to the
+beginning of this block explicitly (e.g. by calling <code>restore-sync</code>)</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">read-wv-block-multichannel</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Read a list of Wavpack blocks in an multichannel configuration
+   different from 1.0 or 2.0. Each block in the list can itself
+   be mono or stereo. Read the format specification for the
+   details.</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">decode-wv-block</code><code class="codex-lambda-list">(wv-block)</code><div class="codex-docstring">Decode a wavpack block, destructively modifying it.
+   This function returns a list of simple-arrays, each
+   correspoding to a separate channel</div></div>
    
    <u>Other stuff</u>.
    
-      <div class="codex-error codex-no-node">No node with name <code>restore-sync</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>restore-sync-multichannel</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>seek-sample</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>open-wv</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>make-output-buffers</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>*residual-buffers*</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>with-output-buffers</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>read-new-block</code>.</div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">restore-sync</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Restore the reader's position to the first occurring
+   block in the stream</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">restore-sync-multichannel</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Restore sync in multichannel configuration.
+The reader position is set to the beginning of the first channel block.</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">seek-sample</code><code class="codex-lambda-list">(reader number)</code><div class="codex-docstring">Set reader position to beginning of the block
+   which contains a sample with the specified number.
+   Works for readers associated with files.
+   Return a position of the sample in the block</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">open-wv</code><code class="codex-lambda-list">(stream)</code><div class="codex-docstring">Return <code>bitreader</code> handle of Wavpack stream</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">make-output-buffers</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Make output buffers to bind them to <code>*residual-buffers*</code> to reduce consing.</div></div>
+      <div class="codex-doc-node codex-variable"><code class="codex-name">*residual-buffers*</code><div class="codex-docstring">Works with <code>make-output-bufffers</code> to reduce consing.
+Bind this variable to output buffers when you read multiple
+block in a loop to reduce consing.</div></div>
+      <div class="codex-doc-node codex-operator codex-macro"><code class="codex-name">with-output-buffers</code><code class="codex-lambda-list">((reader) &amp;body body)</code><div class="codex-docstring">Calls to <code>read-wv-block</code>, <code>restore-sync</code> etc. can be done inside this macro to
+avoid unnecessary consing if all WavPack blocks in the stream contain the same number
+of samples and have the same number of channels.</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">read-new-block</code><code class="codex-lambda-list">(c)</code><div class="codex-docstring">Function to be supplied to <code>handler-bind</code> in order to deal with <code>lost-sync</code>
+condition. It transfers control to <code>read-new-block-single</code> or to
+<code>read-new-block-multichannel</code> depending on the situation. A newly read block or a
+list of blocks is always returned from <code>handler-bind</code> if <code>bitreader-eof</code> is not
+signalled.</div></div>
    
 <p>
 </p>
