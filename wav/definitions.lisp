@@ -199,6 +199,8 @@ for the audio stream"))
   (:documentation "Read the chunk's body from the stream"))
 (defgeneric chunk-sanity-checks (chunk)
   (:documentation "Sanity checks for a chunk"))
+(defgeneric read-chunk-header (reader parent-chunk)
+  (:documentation "Read WAV chunk type and size"))
 
 ;; Condition
 (define-condition wav-error (error simple-condition)

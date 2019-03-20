@@ -45,17 +45,6 @@
       (+data-subchunk+   'data-subchunk)
       (+fact-subchunk+   'fact-subchunk)
       (+list-chunk+      'list-chunk)
-      (+info-name+       'info-subchunk)
-      (+info-subject+    'info-subchunk)
-      (+info-artist+     'info-subchunk)
-      (+info-comment+    'info-subchunk)
-      (+info-keywords+   'info-subchunk)
-      (+info-software+   'info-subchunk)
-      (+info-engineer+   'info-subchunk)
-      (+info-technician+ 'info-subchunk)
-      (+info-creation+   'info-subchunk)
-      (+info-genre+      'info-subchunk)
-      (+info-copyright+  'info-subchunk)
       (t (warn 'wav-unknown-chunk
                :format-control "Unknown chunk type ~x (~s)"
                :format-arguments (list type
@@ -76,21 +65,51 @@
     (+info-creation+   :creation-time)
     (+info-genre+      :genre)
     (+info-copyright+  :copyright)
-    (t (code=>string type))))
+    (t (intern (code=>string type)
+               (find-package :keyword)))))
 
-(defun read-chunk-header (reader)
+(defmethod read-chunk-header (reader (parent-chunk t))
+  (declare (ignore parent-chunk))
   (let* ((type (read-octets 4 reader))
          (size (read-octets 4 reader :endianness :little))
          (chunk (make-instance 'data-chunk :type type :size size)))
     (change-class chunk (chunk-class chunk))))
+
+;; FIXME: INFO subchunk size is rounded to closest even bigger than (or equal to)
+;; the value in a file.
+(defmethod read-chunk-header (reader (parent-chunk list-chunk))
+  (if (= (riff-subtype parent-chunk)
+         +list-info+)
+      (let ((type (read-octets 4 reader))
+            (size (read-octets 4 reader :endianness :little)))
+        (make-instance 'info-subchunk
+                       :type type
+                       :size (+ size (logand 1 size))))
+      (call-next-method)))
 
 (defmethod chunk-sanity-checks ((chunk wave-chunk))
   (if (/= (riff-subtype chunk) +wav-format+)
       (error 'wav-error :format-control "Not a WAV stream"))
   chunk)
 
+(defmethod chunk-sanity-checks ((chunk list-chunk))
+  (let ((subtype (riff-subtype chunk)))
+    (if (/= subtype +list-info+)
+        (warn 'wav-unknown-chunk
+              :format-control "LIST chunk of unusual subtype ~x (~s)"
+              :format-arguments (list subtype
+                                      (code=>string subtype))
+              :chunk chunk))))
+
 (defmethod chunk-sanity-checks ((chunk data-chunk))
   chunk)
+
+;; FIXME: For debugging
+#+nil
+(defmethod read-body :before (reader (chunk data-chunk))
+  (declare (ignore chunk))
+  (format t "Reader pos: ~x~%" (reader-position reader))
+  (force-output t))
 
 (defmethod read-body (reader (chunk data-chunk))
   (reader-position reader (+ (riff-size chunk)
@@ -186,7 +205,7 @@
              while (< data-read (riff-size chunk))
              do
                (restart-case
-                   (let ((subchunk (read-body reader (read-chunk-header reader))))
+                   (let ((subchunk (read-body reader (read-chunk-header reader chunk))))
                      (incf data-read (+ 8 (riff-size subchunk)))
                      (push subchunk subchunks))
                  (skip-subchunk (c)
@@ -205,7 +224,7 @@
 
 (defun read-wav-header (reader)
   "Read RIFF chunks from an audio stream"
-  (let ((riff-chunk (read-chunk-header reader)))
+  (let ((riff-chunk (read-chunk-header reader nil)))
     (if (not (typep riff-chunk 'wave-chunk))
         (error 'wav-error :format-control "Not a WAV stream"))
     (read-body reader riff-chunk)
