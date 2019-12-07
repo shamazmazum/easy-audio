@@ -39,13 +39,13 @@
 ;; Can it be done with FiveAM itself?
 ;; Maybe it's good idea to create suite registry here?
 (defun run-tests ()
-  "Run all tests"
-  (explain! (run 'bitreader))
-  (explain! (run 'flac))
-  (explain! (run 'ogg))
-  (explain! (run 'decoders))
-  (explain! (run 'wavpack))
-  (explain! (run 'utils)))
+  "Run all tests and return T if all tests have passed"
+  (every #'identity
+         (mapcar (lambda (suite)
+                   (let ((status (run suite)))
+                     (explain! status)
+                     (results-status status)))
+                 '(bitreader flac ogg decoders wavpack utils))))
 (export 'run-tests)
 
 (in-suite bitreader)
