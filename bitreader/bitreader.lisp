@@ -156,7 +156,9 @@
     (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
     (incf (reader-ibyte reader))))
 
-(declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol)) non-negative-fixnum) read-octets))
+(declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol))
+                          non-negative-fixnum)
+                read-octets))
 (defun read-octets (n reader &key (endianness :big))
   "Reads n octets in integer value"
   (let ((res 0))
@@ -172,7 +174,8 @@
               (if (eq endianness :big)
                   (logior (the non-negative-fixnum (ash res 8)) octet)
                   (logior (the non-negative-fixnum
-                               (ash octet (the non-negative-fixnum (ash i 3)))) res))))
+                               (ash octet (the non-negative-fixnum (ash i 3))))
+                          res))))
       (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
       (incf (reader-ibyte reader)))
     res))
@@ -252,7 +255,9 @@
   (let ((stream (reader-stream reader)))
     (if stream (file-length stream) (length (reader-buffer reader)))))
 
-(declaim (ftype (function (non-negative-int reader &key (:endianness symbol)) non-negative-fixnum) read-bits))
+(declaim (ftype (function (non-negative-int reader &key (:endianness symbol))
+                          non-negative-fixnum)
+                read-bits))
 (defun read-bits (bits reader &key (endianness :big))
   "Read any number of bits from reader"
   (declare
