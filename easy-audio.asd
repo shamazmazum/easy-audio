@@ -50,9 +50,9 @@
                (:file "wv/wv-block" :depends-on ("wv/package"))
                (:file "wv/wv-blocks-multichannel" :depends-on ("wv/package"))
                (:file "wv/decode" :depends-on ("wv/package")))
+  :in-order-to ((test-op (load-op "easy-audio-tests")))
   :perform (test-op (op system)
                     (declare (ignore op system))
-                    (asdf:load-system :easy-audio-tests)
                     (funcall
                      (intern "RUN-TESTS" (find-package "EASY-AUDIO-TESTS"))))
   :depends-on (:flexi-streams))
