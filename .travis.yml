@@ -1,3 +1,7 @@
+env:
+  global:
+    secure: "TlOj3I6uQJQd86NmxeeMGyqwSLwVtypMAldJ0+22/Wi9vYiF/rmguNgRBMUY4t1JS5vekNsOIzt802eBd6jWaesplKvtgTySQ/29MPNJYlLA6PkSIA2Cvd/TXM6BJ57PMxXE3c2LXjP6+DqdMPf/Qk/WdipL5lPFgH76bCe6eq0uzNvlGEYv61loBUr4y4TowU2t0NkYuOiULvwhJC2AzK/tq7mhy0/k8f8ehJ3QTdyjitbU8TF6nJwxG0MAfwLuBkrdrk7b85O3HQaPgXOkoPMXlLLCuB3sOwrF2BGGa+sUOyYLGQrWM2ffkAwDrpDsV21crmnjaIzgTe5T8M/eTQ8NW/kaWaxvqKPbmCMIqxbhPWBstbiTn7xCem+NXzq4Krvt5jifI30zpa4U4dGz6d/zHjx9HRExXOPE2xFqL3H6k25+O0D4MeRHnEU6nHfHFQxdd1zHmr4Y/lKPwQh9kL6xtkVk622f1P+i258NMcy361+BJiLQhk9Q2FZziUjJPfl+pzwOdo60fkiU62SB9iS4/DwIJgJTjqP3upp3xcApwSFKufjEBn9TKiz3c87+8UefrV87UfbvuyMqrXOJNs6+U25WmVuGMebezvlNnwrBK+8glXqia91g9mvNLe7/KwQHAcAR8Km7Dwc7JEfLJXnqWZsyEv+zz38FuIEq2RM="
+
 language: common-lisp
 
 env:
@@ -18,3 +22,13 @@ install:
 script:
   - cl -f $TRAVIS_BUILD_DIR/tests/travis.lisp
   - cl -l codex -e '(codex:document :easy-audio :skip-undocumented t)'
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: "$GITHUB_TOKEN"
+  keep_history: true
+  local_dir: "$TRAVIS_BUILD_DIR/docs/build/easy-audio/html"
+  edge: true
+  on:
+    branch: master
