@@ -50,9 +50,34 @@
                (:file "wv/wv-block" :depends-on ("wv/package"))
                (:file "wv/wv-blocks-multichannel" :depends-on ("wv/package"))
                (:file "wv/decode" :depends-on ("wv/package")))
-  :in-order-to ((test-op (load-op "easy-audio-tests")))
+  :in-order-to ((test-op (load-op "easy-audio/tests")))
   :perform (test-op (op system)
                     (declare (ignore op system))
                     (funcall
-                     (intern "RUN-TESTS" (find-package "EASY-AUDIO-TESTS"))))
+                     (intern (symbol-name '#:run-tests)
+                             (find-package '#:easy-audio-tests))))
   :depends-on (:flexi-streams))
+
+(defsystem :easy-audio/tests
+  :name :easy-audio/tests
+  :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
+               (read input))
+  :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
+  :components ((:file "tests/package")
+               (:file "tests/tests" :depends-on ("tests/package")))
+  :depends-on (:easy-audio :fiveam :flexi-streams))
+
+(defsystem :easy-audio/examples
+  :name :easy-audio/examples
+  :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
+               (read input))
+  :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
+  :components ((:file "flac/examples/package")
+               (:file "flac/examples/flac2wav" :depends-on ("flac/examples/package"))
+
+               (:file "wav/examples/package")
+               (:file "wav/examples/decode" :depends-on ("wav/examples/package"))
+
+               (:file "wv/examples/package")
+               (:file "wv/examples/wv2wav" :depends-on ("wv/examples/package")))
+  :depends-on (:easy-audio))
