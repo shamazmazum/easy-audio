@@ -1,5 +1,5 @@
 (defun do-all()
-  (asdf:load-system :easy-audio-tests)
+  (ql:quickload :easy-audio-tests)
   (sb-ext:exit
    :code
    (if (funcall
