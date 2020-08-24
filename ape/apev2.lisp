@@ -74,7 +74,7 @@
       (error 'apev2-tag-error :format-control "Header/footer reserved slot is not zero")))
 
 (defstruct (header/footer
-             (:conc-name "H/F-"))
+             (:conc-name :h/f-))
   preamble
   (version     0 :type (ub 32))
   (size        0 :type (ub 32))
