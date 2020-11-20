@@ -1,6 +1,6 @@
 Easy audio
 ==========
-[![Build Status](https://travis-ci.com/shamazmazum/easy-audio.svg?branch=master)](https://travis-ci.com/shamazmazum/easy-audio)
+[![Build Status](https://api.cirrus-ci.com/github/shamazmazum/easy-audio.svg)](https://cirrus-ci.com/github/shamazmazum/easy-audio)
 
 Overview
 -------
