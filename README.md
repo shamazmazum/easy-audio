@@ -1,6 +1,7 @@
 Easy audio
 ==========
 [![Build Status](https://api.cirrus-ci.com/github/shamazmazum/easy-audio.svg)](https://cirrus-ci.com/github/shamazmazum/easy-audio)
+![CI](https://github.com/shamazmazum/easy-audio/workflows/CI/badge.svg)
 
 Overview
 -------
