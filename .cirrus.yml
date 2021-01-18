@@ -2,15 +2,15 @@ freebsd_instance:
   image_family: freebsd-13-0-snap
 
 env:
-  LISP: sbcl
+  LISP: sbcl-bin
 
 task:
   preinstall_script:
-    - pkg install -y curl git
+    - pkg install -y git roswell gmake
   install_script:
-    - curl -L https://raw.githubusercontent.com/shamazmazum/cl-cirrus/master/install.sh | sh
-    - git clone --depth=1 git://github.com/shamazmazum/codex.git ~/lisp/codex
-    - git clone --depth=1 git://github.com/shamazmazum/docparser.git ~/lisp/docparser
+    - mkdir -p ~/.roswell/local-projects
+    - git clone --depth=1 git://github.com/shamazmazum/codex.git ~/.roswell/local-projects/codex
+    - git clone --depth=1 git://github.com/shamazmazum/docparser.git ~/.roswell/local-projects/docparser
   script:
-    - cl -f $CIRRUS_WORKING_DIR/tests/travis.lisp
-    - cl -l codex -e '(codex:document :easy-audio :skip-undocumented t)'
+    - ros -l $CIRRUS_WORKING_DIR/tests/travis.lisp
+    - ros -s codex -e '(codex:document :easy-audio :skip-undocumented t)'

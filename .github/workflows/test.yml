@@ -6,32 +6,29 @@ jobs:
   test_and_docs:
     runs-on: ubuntu-latest
     env:
-      LISP: sbcl
+      LISP: sbcl-bin
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Install roswell
+        run: |
+          curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh
       - name: Checkout Codex
         uses: actions/checkout@v2
         with:
           repository: shamazmazum/codex
-          path: ~/lisp/codex
+          path: ~/.roswell/local-projects/codex
       - name: Checkout docparser
         uses: actions/checkout@v2
         with:
           repository: shamazmazum/docparser
-          path: ~/lisp/docparser
-      - name: Install dependencies
-        run: |
-          sudo apt-get install info install-info
-      - name: Install CIM
-        run: |
-          curl -L https://raw.githubusercontent.com/shamazmazum/cl-cirrus/github-actions/install-actions.sh | sh
+          path: ~/.roswell/local-projects/docparser
       - name: Run tests
         run: |
-          cl -f $GITHUB_WORKSPACE/tests/travis.lisp
+          ros -l $GITHUB_WORKSPACE/tests/travis.lisp
       - name: Build documentation
         run: |
-          cl -l codex -e '(codex:document :easy-audio :skip-undocumented t)'
+          ros -s codex -e '(codex:document :easy-audio :skip-undocumented t)'
       - name: Deploy to GH pages
         uses: peaceiris/actions-gh-pages@v3
         with:
