@@ -64,7 +64,9 @@
   (flet ((read-comment-string (stream)
 	  (let ((buffer (make-array (list (read-bits 32 stream :endianness :little))
 					   :element-type '(unsigned-byte 8))))
-	    (flexi-streams:octets-to-string (read-octet-vector buffer stream)))))
+	    (flexi-streams:octets-to-string
+             (read-octet-vector buffer stream)
+             :external-format :utf-8))))
     
     (setf (vorbis-vendor-comment data)
 	  (read-comment-string stream))
