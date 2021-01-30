@@ -137,14 +137,16 @@ second sample of each channel until all data is written"
   following syntax:
 
   (ACCESSOR (:BIT)|(:OCTETS n)|(:BITS n)|(:OCTET-VECTOR v)
-            [:ENDIANNESS :BIG|:LITTLE] [:FUNCTION FUNC-NAME])
+            [:ENDIANNESS :BIG|:LITTLE] [:FUNCTION FUNC-NAME]
+            [:COND FORM])
 
   (ACCESSOR object) must be a 'place' understandable for setf.
   One and only one of BITS, OCTETS or OCTET-VECTOR must be
   supplied. Endianness may be supplied and will be passed to
   low-level bitreader function. if FUNC-NAME is supplied,
   readed value will be passed to this function and then
-  assigned to the slot.
+  assigned to the slot. If COND is supplied, data will be read only if
+  FORM evaluates to T.
 
   UPD: If ACCESSOR is NIL, no data will be stored to anywhere,
   but it will be read accordingly to specifications and then lost
@@ -170,6 +172,7 @@ second sample of each channel until all data is written"
                           (:octet-vector 'bitreader:read-octet-vector)))
                        (endianness (getf options :endianness))
                        (aux-function (getf options :function))
+                       (conditional-form (getf options :cond))
                        (function-call
                         `(,function-name
                           ,@(reader-function-amount read-how read-how-many)
@@ -177,10 +180,15 @@ second sample of each channel until all data is written"
                           ,@(if endianness (list :endianness endianness))))
                        (read-value
                         (if aux-function
-                            (list aux-function function-call) function-call)))
-                  (if accessor
-                      (progn
-                        (if only-reading (error "There cannot be any accessors in this reader"))
-                        `(setf (,accessor ,obj-sym) ,read-value))
-                      read-value))))
+                            (list aux-function function-call) function-call))
+                       (read-form
+                         (if accessor
+                             (progn
+                               (when only-reading
+                                 (error "There cannot be any accessors in this reader"))
+                               `(setf (,accessor ,obj-sym) ,read-value))
+                             read-value)))
+                  (if conditional-form
+                      `(if ,conditional-form ,read-form)
+                      read-form))))
        ,(if (or obj-sym-given make-form) obj-sym reader))))

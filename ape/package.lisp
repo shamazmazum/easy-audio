@@ -24,8 +24,14 @@
 (defpackage easy-audio.ape
   (:use #:cl #:bitreader #:easy-audio-early #:utils)
   (:nicknames #:ape)
-  (:export #:read-tag
-           #:read-tag-from-end
-           #:ape-error
-           #:apev2-tag-error
-           #:*apev2-external-format*))
+  (:export
+   ;; Conditions
+   #:ape-error
+   #:apev2-tag-error
+   ;; APE tags
+   #:read-tag
+   #:read-tag-from-end
+   #:*apev2-external-format*
+   ;; APE audio format
+   #:open-ape
+   #:read-metadata))

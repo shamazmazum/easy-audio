@@ -41,6 +41,8 @@
                (:file "wav/wav" :depends-on ("wav/package"))
 
                (:file "ape/package" :depends-on ("utils/package"))
+               (:file "ape/definitions" :depends-on ("ape/package"))
+               (:file "ape/ape" :depends-on ("ape/package"))
                (:file "ape/apev2" :depends-on ("ape/package"))
 
                (:file "wv/package" :depends-on ("utils/package"))
