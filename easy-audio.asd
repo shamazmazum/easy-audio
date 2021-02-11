@@ -44,7 +44,7 @@
                (:file "ape/definitions" :depends-on ("ape/package"))
                (:file "ape/ape" :depends-on ("ape/package"))
                (:file "ape/decode" :depends-on ("ape/package"))
-               (:file "ape/apev2" :depends-on ("ape/package"))
+               (:file "ape/ape-tags-v2" :depends-on ("ape/package"))
 
                (:file "wv/package" :depends-on ("utils/package"))
                (:file "wv/definitions" :depends-on ("wv/package"))
