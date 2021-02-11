@@ -3,7 +3,7 @@
 (defconstant +ape-id+ #x4d414320
   "4-byte value identifying APE file")
 
-(defconstant +ape-min-version+ 3800
+(defconstant +ape-min-version+ 3990
   "Minimal supported APE version")
 
 (defconstant +ape-max-version+ 3990
@@ -20,6 +20,12 @@
   (cond
     ((< version 3980) 0)
     (t 3980)))
+
+(defun bittable-promote-version (version)
+  "Promote version to one suitable for call to READ-BITTABLE"
+  (cond
+    ((< version 3810) 0)
+    (t 3810)))
 
 (declaim (inline read-metadata-header/3980))
 (defreader (read-metadata-header/3980 "Read header (version >= 3980)")
@@ -66,6 +72,14 @@
   (declare (ignore ape-version))
   (read-metadata-header/3980 reader))
 
+(defmethod read-bittable (reader (ape-version (eql 0)))
+  (declare (ignore reader ape-version))
+  (error 'ape-error :format-control "This method is currently unsupported"))
+
+(defmethod read-bittable (reader (ape-version (eql 3810)))
+  ;; No bittable in versions >= 3810
+  nil)
+
 (defun read-metadata (reader)
   (let ((version (read-octets 2 reader :endianness :little)))
     (if (or (< version +ape-min-version+)
@@ -77,16 +91,9 @@
                       reader (metadata-promote-version version)))
            (seektable (make-array (metadata-total-frames metadata)
                                   :element-type '(ub 32))))
-      ;; Read seektable
-      (dotimes (i (length seektable))
-        (setf (aref seektable i)
-              (read-octets 4 reader :endianness :little)))
-      ;; Read bittable (if any)
-      (when (< version 3810)
-        ;; TODO: write actual code
-        t)
       ;; Set auxiliary fields
       (setf (metadata-version metadata) version
+            ;; FIXME: this field is present in the seektable
             (metadata-first-frame metadata)
             (+ (metadata-desc-len metadata)
                (metadata-header-len metadata)
@@ -99,4 +106,40 @@
                (* (metadata-blocks-per-frame metadata)
                   (1- (metadata-total-frames metadata))))
             (metadata-seektable metadata) seektable)
+      ;; A bit of sanity checks
+      (let ((expected-len (ash (metadata-total-frames metadata) 2)))
+        (if (/= (metadata-seektable-len metadata) expected-len)
+            (error 'ape-error
+                   :format-control "Unexpected seektable length (expected ~d, got ~d)"
+                   :format-arguments (list expected-len (metadata-seektable-len metadata)))))
+      ;; COMPRESSION-TYPE must be multiple of 1000
+      (if (not (zerop (rem (metadata-compression-type metadata) 1000)))
+          (error 'ape-error
+                 :format-control "Compression type is not multiple of 1000: ~d"
+                 :format-arguments (list (metadata-compression-type metadata))))
+      ;; Read seektable
+      (dotimes (i (length seektable))
+        (setf (aref seektable i)
+              (read-octets 4 reader :endianness :little)))
+      ;; Read bittable (if any)
+      (setf (metadata-bittable metadata)
+            (read-bittable reader (bittable-promote-version version)))
       metadata)))
+
+;; FIXME: do we really need size?
+(defun tell-frame-start-and-size (metadata n &optional reader)
+  (let* ((seektable (metadata-seektable metadata))
+         (start (aref seektable n))
+         (skip (logand (- start (aref seektable 0)) 3))
+         (size (cond
+                 ((/= (1+ n) (length seektable))
+                  (- (aref seektable (1+ n)) start))
+                 (reader
+                  (logand
+                   (- (reader-length reader)
+                      start
+                      (metadata-wavtail-len metadata))
+                   (lognot 3))))))
+    (values
+     (- start skip)
+     (if size (logand (+ size skip 3) (lognot 3))))))

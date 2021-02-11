@@ -33,7 +33,11 @@
   ;; Derived fields
   (first-frame        0 :type (ub 32))
   (total-samples      0 :type (ub 32))
+  bittable
   seektable)
 
 (defgeneric read-metadata-header (reader ape-version)
   (:documentation "Read and fill METADATA-HEADER structure"))
+
+(defgeneric read-bittable (reader ape-version)
+  (:documentation "Read bittable from the beginning of APE file"))
