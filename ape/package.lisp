@@ -34,4 +34,5 @@
    #:*apev2-external-format*
    ;; APE audio format
    #:open-ape
-   #:read-metadata))
+   #:read-metadata
+   #:read-frame))

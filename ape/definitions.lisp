@@ -36,6 +36,11 @@
   bittable
   seektable)
 
+(defstruct frame
+  (flags  0 :type (ub 32))
+  (buffer 0 :type (ub 8)) ; From rc structure. Why it is called buffer?!
+  crc)
+
 (defgeneric read-metadata-header (reader ape-version)
   (:documentation "Read and fill METADATA-HEADER structure"))
 
