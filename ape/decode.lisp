@@ -18,6 +18,5 @@
 
 
 (defun decode-frame (reader metadata n)
-  ;; FIXME: flushes reader's buffer
   (reader-position reader (tell-frame-start-and-size metadata n))
   t)

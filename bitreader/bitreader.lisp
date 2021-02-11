@@ -208,27 +208,49 @@
           (setf ibit 0)
           (incf ibyte)))))
 
+(declaim (ftype (function (reader &optional) non-negative-fixnum) get-reader-position)
+         (inline get-reader-position))
+(defun get-reader-position (reader)
+  (let ((stream (reader-stream reader)))
+    (if stream
+        (+ (the non-negative-fixnum
+                (file-position (reader-stream reader)))
+           (- (reader-end reader))
+           (reader-ibyte reader))
+        (reader-ibyte reader))))
+
+(declaim (ftype (function (reader non-negative-fixnum &optional)
+                          non-negative-fixnum)
+                set-reader-position)
+         (inline set-reader-position))
+(defun set-reader-position (reader position)
+  (let ((stream (reader-stream reader)))
+    (setf (reader-ibit reader) 0)
+    (cond
+      (stream
+       (let* ((end (reader-end reader))
+              (new-ibyte (+ position end
+                            (the non-negative-fixnum
+                                 (- (file-position stream))))))
+         (declare (type fixnum new-ibyte))
+         (cond
+           ((and (> new-ibyte 0)
+                 (< new-ibyte end))
+            (setf (reader-ibyte reader) new-ibyte))
+           (t
+            (file-position stream position)
+            (fill-buffer reader)))))
+      (t (setf (reader-ibyte reader) position)))
+    position))
+
 (declaim (ftype (function (reader &optional t) non-negative-fixnum) reader-position))
 (defun reader-position (reader &optional val)
   "Returns or sets number of readed octets.
    Similar to file-position
    Sets ibit to zero if val is specified"
-  (let ((stream (reader-stream reader)))
-    (cond
-      (val
-       (cond
-         (stream
-          (file-position stream val)
-          (fill-buffer reader))
-         (t (setf (reader-ibyte reader) val)))
-       val)
-      (t (the non-negative-fixnum
-              (if stream
-                  (+ (the non-negative-fixnum
-                          (file-position (reader-stream reader)))
-                     (- (reader-end reader))
-                     (reader-ibyte reader))
-                  (reader-ibyte reader)))))))
+  (if val
+      (set-reader-position reader val)
+      (get-reader-position reader)))
 
 (declaim (ftype (function (reader (ub 8)) (ub 8)) peek-octet))
 (defun peek-octet (reader octet)
