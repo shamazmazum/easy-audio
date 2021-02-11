@@ -30,35 +30,26 @@
     (let* ((first-block (read-wv-block reader))
            (channels (block-channels first-block))
            (bps (block-bps first-block))
-           (samples (block-block-samples first-block))
-           (out-buf (make-array (* samples channels) :element-type '(signed-byte 32))))
+           (total-samples (block-total-samples first-block))
+           (samplerate (block-samplerate first-block)))
 
       (reader-position reader 0)
       (restore-sync reader)
 
-      (with-open-file (out wav-name
-                           :direction :output
-                           :if-exists :supersede
-                           :if-does-not-exist :create
-                           :element-type '(unsigned-byte 8))
-
-        (let ((riff-header (find 'metadata-riff-header (block-metadata first-block)
-                                 :key #'type-of)))
-          (if riff-header (write-sequence (metadata-data riff-header) out)
-              (write-pcm-wav-header out
-                                    :samplerate (block-samplerate first-block)
-                                    :channels channels
-                                    :bps bps
-                                    :totalsamples (block-total-samples first-block)))))
-
-      (with-open-file (out wav-name
-                           :direction :output
-                           :if-exists :append
-                           :if-does-not-exist :create
-                           :element-type (list 'signed-byte bps))
-        (file-position out (/ (ash 44 3) bps))
+      (with-output-to-wav (out-stream wav-name
+                           :supersede t
+                           :samplerate samplerate
+                           :channels channels
+                           :bps bps
+                           :totalsamples total-samples)
         (with-output-buffers (reader)
           (handler-case
-              (loop while t do
-                   (write-sequence (mixchannels out-buf (decode-wv-block (read-wv-block reader))) out))
-            ((or lost-sync bitreader-eof) () ())))))))
+              (loop with samples-written = 0
+                    while (< samples-written total-samples)
+                    for block = (read-wv-block reader)
+                    for samples = (block-block-samples block)
+                    for buf = (make-array (* samples channels) :element-type '(signed-byte 32))
+                    do
+                       (incf samples-written samples)
+                       (write-sequence (mixchannels buf (decode-wv-block block))
+                                       out-stream))))))))

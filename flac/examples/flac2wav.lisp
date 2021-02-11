@@ -38,7 +38,7 @@
            (channels (streaminfo-channels streaminfo))
            (samplerate (streaminfo-samplerate streaminfo)))
       
-      (if (= 0 totalsamples)
+      (if (zerop totalsamples)
           (error "Number of total samples is unknown"))
       (if (/= minblocksize maxblocksize)
           (error "Block size must be fixed"))
@@ -47,34 +47,15 @@
                    (= 16 bps)))
           (error "Bps must be 16 or 8"))
       
-      (with-open-file
-          (out-stream wav-name
-                      :direction :output
-                      :if-exists :supersede
-                      :if-does-not-exist :create
-                      :element-type '(unsigned-byte 8))
-
-        ;; Fill headers
-        (write-pcm-wav-header out-stream
-                              :samplerate samplerate
-                              :channels channels
-                              :bps bps
-                              :totalsamples totalsamples))
-
-      (with-open-file
-          (out-stream wav-name
-                      :direction :output
-                      :if-exists :append
-                      :element-type (list 'signed-byte bps))
-
-        (file-position out-stream
-                       (/ (ash 44 3) bps))
-
-        (let ((buf (make-array (* blocksize channels)
-                               :element-type '(signed-byte 32))))
-
-          (with-output-buffers (streaminfo)
-            (loop for i below totalsamples
-               by blocksize do
-                 (write-sequence (mixchannels buf (frame-decode (read-frame in-reader streaminfo)))
-                                 out-stream))))))))
+      (with-output-to-wav (out-stream wav-name
+                           :supersede t
+                           :samplerate samplerate
+                           :channels channels
+                           :bps bps
+                           :totalsamples totalsamples)
+        (with-output-buffers (streaminfo)
+          (loop for i below totalsamples by blocksize
+                for bufsize = (min (- totalsamples i) blocksize)
+                for buf = (make-array (* bufsize channels) :element-type '(signed-byte 32)) do
+                  (write-sequence (mixchannels buf (frame-decode (read-frame in-reader streaminfo)))
+                                  out-stream)))))))

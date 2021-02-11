@@ -24,4 +24,5 @@
 (defpackage easy-audio.flac-examples
   (:use #:cl #:easy-audio.flac #:easy-audio.utils)
   (:nicknames #:flac-examples)
-  (:export #:flac2wav))
+  (:export #:flac2wav
+           #:ogg2wav))

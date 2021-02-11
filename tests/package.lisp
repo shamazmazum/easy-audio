@@ -24,5 +24,6 @@
 ;; Comment it out if you do not want restrictions
 
 (defpackage easy-audio-tests
-  (:use :cl :fiveam :flexi-streams))
+  (:use :cl :fiveam :flexi-streams)
+  (:export #:run-tests))
 

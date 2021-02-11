@@ -46,7 +46,6 @@
                      (explain! status)
                      (results-status status)))
                  '(bitreader flac ogg decoders wavpack utils))))
-(export 'run-tests)
 
 (in-suite bitreader)
 (test bitreader-tests
@@ -130,67 +129,41 @@
              (is (= crc (bitreader:get-crc reader))))))))
 
 (in-suite flac)
-(test flac-bitreader-tests
-  "Test advanced bitreader for flac decoder"
-  (with-input-from-sequence (input #(224 170 150   #xc3 #x88   #x7f))
-    (let ((reader (flac:open-flac input)))
-      (is (= (flac::read-utf8-u32 reader) 2710))
-      (is (= (flac::read-utf8-u32 reader) 200))
-      (is (= (flac::read-utf8-u32 reader) 127))))
+(test flac-decode-mono
+  "Decode mono sample file"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample-mono.wav"))
+        (flac-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample-mono.flac")))
+    (flac-examples:flac2wav flac-name tmp-name)
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
 
-  (is (= (flac::unsigned-to-signed 13 4) -3))
-  (is (= (flac::unsigned-to-signed 13 5) 13))
+(test flac-decode-stereo
+  "Decode mono sample file"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample-stereo.wav"))
+        (flac-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample-stereo.flac")))
+    (flac-examples:flac2wav flac-name tmp-name)
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
 
-  (with-input-from-sequence (input #(#x14))
-    (let ((reader (flac:open-flac input)))
-      (is (= (flac::read-rice-signed reader 3) 13))
-      ;; Check is reading operations consumed right amount of input
-      (is (= (bitreader::read-to-byte-alignment reader) 0)))))
-      
-;; TODO in this suite: Flac bitreader is already well-covered. Cover Flac reader
-;; and decoder.
-
-(test read-simple-frame
-  "Read simple stereo frame with silence.
-   Covers only subframe-verbatim and subframe-constant readers."
-  ;; Note that CRC8 (last byte in next line) is actually 0 (it's not checked)
-  ;; 192 samples
-  (with-input-from-sequence (input (prepare-input
-                                    #xff #xf8 #x19 #x12 #x00 #x00           ; Header
-                                    #x00 #x0a                               ; Constant subframe with 8-bit value 10
-                                    #x02 (loop repeat 192 collect #x0b)     ; Verbatim subframe with 8-bit values
-                                    #x4d #x6b))                             ; CRC-16
-    (let* ((reader (flac:open-flac input))
-           (frame  (flac:read-frame reader)))
-      (is (equalp (flac:frame-decode frame)
-                  (list (make-array 192 :initial-element 10)
-                        (make-array 192 :initial-element 11)))))))
+(test flac-seek
+  "Test frame seek"
+  (with-open-file (in (asdf:system-relative-pathname
+                       :easy-audio/tests "tests/sample-stereo.flac")
+                      :element-type '(unsigned-byte 8))
+    (let ((reader (flac:open-flac in)))
+      (map nil
+           (lambda (n) (finishes (flac:seek-sample reader n)))
+           '(10000 20000 30000 40000 50000)))))
 
 (in-suite ogg)
-(test ogg-packets
-  "Test ogg packet reader"
-  (with-input-from-sequence (input (prepare-input
-                                    #x4f #x67 #x67 #x53 ; OggS
-                                    #x00 #x02           ; First page of logical bitstream
-                                    #x00 #x00 #x00 #x00
-                                    #x00 #x00 #x00 #x00 ; 0 absolute granule position
-                                    #xbe #xba #xfe #xca ; Stream serial number
-                                    #x00 #x00 #x00 #x00 ; Page number
-                                    #x93 #x11 #xba #x36 ; CRC
-                                    #x02                ; 2 segments
-                                    #xff #x00           ; 1 255-bytes packet
-                                    (loop repeat 255 collect 1)))
-    (let* ((reader (ogg:open-ogg input))
-           (packet (ogg:read-packet reader)))
-      (is (not (ogg:ogg-is-continued reader)))
-      (is (ogg:ogg-bos reader))
-      (is (not (ogg:ogg-eos reader)))
-      (is (= 0 (ogg:ogg-granule-position reader)))
-      (is (= #xcafebabe (ogg:ogg-stream-serial reader)))
-      (is (= 0 (ogg:ogg-page-number reader)))
-      (is (= 255 (reduce #'+ packet)))
-      (is (ogg:fresh-page reader)))))
-
 (test ogg-restore-sync
   "Test restore sync ability"
   (with-input-from-sequence (input (prepare-input
@@ -209,6 +182,30 @@
       (is (= (ogg:restore-sync reader) 3))
       (is (equalp #(#x03) (ogg:read-packet reader))))))
 
+(test ogg-decode-mono
+  "Decode mono sample file"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample-mono.wav"))
+        (flac-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample-mono.oga")))
+    (flac-examples:ogg2wav flac-name tmp-name)
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
+
+(test ogg-decode-stereo
+  "Decode mono sample file"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample-stereo.wav"))
+        (flac-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample-stereo.oga")))
+    (flac-examples:ogg2wav flac-name tmp-name)
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
+
 (in-suite decoders)
 (test g.711-ulaw
   "Test g.711 uLaw decoder"
@@ -225,32 +222,41 @@
   (is (= (general-decoders:g.711-alaw-decode #x70) #x-2b0)))
 
 (in-suite wavpack)
-(test wavpack-reader
-      "Test wavpack residual reader"
-      ;; RESIDUAL- variants do not support reading from stream
-      (let ((reader (bitreader:make-reader-from-buffer
-                     (make-array 6
-                                 :element-type '(unsigned-byte 8)
-                                 :initial-contents '(#x55 #x01 #xff #xff #x32 #xee)))))
-        (is (= (wv::residual-read-bit reader) 1))
-        (is (= (wv::residual-read-bit reader) 0))
-        (is (= (wv::residual-read-bits 1 reader) 1))
-        (is (= (wv::residual-read-bits 1 reader) 0))
+(test wv-decode-mono
+  "Decode mono sample file"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample-mono.wav"))
+        (flac-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample-mono.wv")))
+    (wv-examples:wv2wav flac-name tmp-name)
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
 
-        (is (= (wv::residual-read-bits 4 reader) 5))
+(test wv-decode-stereo
+  "Decode mono sample file"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample-stereo.wav"))
+        (flac-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample-stereo.wv")))
+    (wv-examples:wv2wav flac-name tmp-name)
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
 
-        (is (= (wv::residual-read-bit reader) 1))
-        (is (= (wv::residual-read-bits 15 reader) #.(ash #xff00 -1)))
-
-        (is (= (wv::read-elias-code reader) #b10011001))
-
-        (is (= (wv::read-code reader 5) 3))   ; Reading 3 bits   - 110
-        (is (= (wv::read-code reader 5) 1))   ; Reading 2 bits   -  01
-        (is (= (wv::residual-read-bits 3 reader) 7))))
-                                              ; Reading the rest - 111
+(test wv-seek
+  "Test frame seek"
+  (with-open-file (in (asdf:system-relative-pathname
+                       :easy-audio/tests "tests/sample-stereo.wv")
+                      :element-type '(unsigned-byte 8))
+    (let ((reader (wv:open-wv in)))
+      (map nil
+           (lambda (n) (finishes (wv:seek-sample reader n)))
+           '(10000 20000 30000 40000 50000)))))
 
 (in-suite utils)
-
 (defun mixed-correctly-p (output a1 a2)
   (every #'identity
          (loop for i below (length a1)
