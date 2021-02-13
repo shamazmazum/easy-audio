@@ -72,10 +72,6 @@
   (declare (ignore ape-version))
   (read-metadata-header/3980 reader))
 
-(defmethod read-bittable (reader (ape-version (eql 0)))
-  (declare (ignore reader ape-version))
-  (error 'ape-error :format-control "This method is currently unsupported"))
-
 (defmethod read-bittable (reader (ape-version (eql 3810)))
   ;; No bittable in versions >= 3810
   nil)

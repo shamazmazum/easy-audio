@@ -36,9 +36,16 @@
   bittable
   seektable)
 
+(defstruct rice-state
+  (k    10    :type (ub 32))
+  (ksum 16384 :type (ub 32)))
+
 (defstruct frame
-  (flags  0 :type (ub 32))
-  (buffer 0 :type (ub 8)) ; From rc structure. Why it is called buffer?!
+  (version 0 :type (ub 16))
+  (samples 0 :type (ub 32))
+  (flags   0 :type (ub 32))
+  (buffer  0 :type (ub 8)) ; From rc structure. Why it is called buffer?!
+  output
   crc)
 
 (defgeneric read-metadata-header (reader ape-version)
@@ -46,3 +53,6 @@
 
 (defgeneric read-bittable (reader ape-version)
   (:documentation "Read bittable from the beginning of APE file"))
+
+(defgeneric entropy-decode (reader frame ape-version)
+  (:documentation "Read entropy in a frame"))
