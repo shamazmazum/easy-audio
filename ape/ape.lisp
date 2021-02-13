@@ -89,14 +89,6 @@
                                   :element-type '(ub 32))))
       ;; Set auxiliary fields
       (setf (metadata-version metadata) version
-            ;; FIXME: this field is present in the seektable
-            (metadata-first-frame metadata)
-            (+ (metadata-desc-len metadata)
-               (metadata-header-len metadata)
-               (metadata-seektable-len metadata)
-               (metadata-wavheader-len metadata)
-               (if (< version 3810)
-                   (metadata-total-frames metadata) 0))
             (metadata-total-samples metadata)
             (+ (metadata-final-frame-blocks metadata)
                (* (metadata-blocks-per-frame metadata)
@@ -122,20 +114,8 @@
             (read-bittable reader (bittable-promote-version version)))
       metadata)))
 
-;; FIXME: do we really need size?
-(defun tell-frame-start-and-size (metadata n &optional reader)
+(defun frame-start (metadata n)
   (let* ((seektable (metadata-seektable metadata))
          (start (aref seektable n))
-         (skip (logand (- start (aref seektable 0)) 3))
-         (size (cond
-                 ((/= (1+ n) (length seektable))
-                  (- (aref seektable (1+ n)) start))
-                 (reader
-                  (logand
-                   (- (reader-length reader)
-                      start
-                      (metadata-wavtail-len metadata))
-                   (lognot 3))))))
-    (values
-     (- start skip)
-     (if size (logand (+ size skip 3) (lognot 3))))))
+         (skip (logand (- start (aref seektable 0)) 3)))
+    (- start skip)))

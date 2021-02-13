@@ -59,7 +59,7 @@
   t)
 
 (defun read-frame (reader metadata n)
-  (reader-position reader (tell-frame-start-and-size metadata n))
+  (reader-position reader (frame-start metadata n))
   (let* ((version (metadata-version metadata))
          ;; Copy version
          (frame (make-frame :version version)))
