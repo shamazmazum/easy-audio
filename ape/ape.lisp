@@ -118,4 +118,5 @@
   (let* ((seektable (metadata-seektable metadata))
          (start (aref seektable n))
          (skip (logand (- start (aref seektable 0)) 3)))
-    (- start skip)))
+    (values (- start skip)
+            skip)))

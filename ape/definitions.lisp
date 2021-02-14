@@ -1,5 +1,6 @@
 (in-package :easy-audio.ape)
 
+;; Conditions
 (define-condition ape-error (error simple-condition) ()
   (:report (lambda (c s)
              (apply #'format s
@@ -11,6 +12,14 @@
 (define-condition apev2-tag-error (ape-error) ()
   (:documentation "APEv2 tag error"))
 
+;; Some constants
+(defconstant +code-bits+ 32)
+(defconstant +top-value+ (ash 1 (1- +code-bits+)))
+(defconstant +shift-bits+ (- +code-bits+ 9))
+(defconstant +extra-bits+ (1+ (rem (- +code-bits+ 2) 8)))
+(defconstant +bottom-value+ (ash +top-value+ -8))
+
+;; Structures
 (defstruct metadata
   (version            0 :type (ub 16))
   (padding1           0 :type (ub 16))
@@ -40,6 +49,13 @@
   (k    10    :type (ub 32))
   (ksum 16384 :type (ub 32)))
 
+(defstruct range-coder
+  (low    0 :type (ub 32))
+  (range  (ash 1 +extra-bits+)
+            :type (ub 32))
+  (help   0 :type (ub 32))
+  (buffer 0 :type (ub 32)))
+
 (defstruct frame
   (version 0 :type (ub 16))
   (samples 0 :type (ub 32))
@@ -48,6 +64,7 @@
   output
   crc)
 
+;; Generic functions
 (defgeneric read-metadata-header (reader ape-version)
   (:documentation "Read and fill METADATA-HEADER structure"))
 
@@ -55,4 +72,4 @@
   (:documentation "Read bittable from the beginning of APE file"))
 
 (defgeneric entropy-decode (reader frame ape-version)
-  (:documentation "Read entropy in a frame"))
+  (:documentation "Read entropy buffer in a frame"))
