@@ -16,6 +16,9 @@
 (defconstant +yadaptcoeffsb+ 10)
 (defconstant +xadaptcoeffsb+  5)
 
+(deftype octet-reader ()
+  '(function (&optional) (ub 8)))
+
 (defparameter *stereo-entropy-versions*
   '#.(reverse '(0 3860 3900 3930 3990)))
 
@@ -41,7 +44,9 @@
   "This function generates a closure that read octets in strange
 reversed order observed in ffmpeg (as if they are part of
 little-endian values)."
+  (declare (optimize (speed 3)))
   (let (octets)
+    (declare (type list octets))
     (lambda ()
       (when (null octets)
         (setq octets
@@ -138,6 +143,8 @@ little-endian values)."
        :last-frame (= n (1- (metadata-total-frames metadata)))))))
 
 (defun range-dec-normalize (reader range-coder)
+  (declare (optimize (speed 3))
+           (type octet-reader reader))
   (with-accessors ((buffer range-coder-buffer)
                    (low    range-coder-low)
                    (range  range-coder-range))
@@ -155,6 +162,8 @@ little-endian values)."
                           #xffffffff)))))
 
 (defun range-decode-culshift (reader range-coder shift)
+  (declare (optimize (speed 3))
+           (type (integer 0 32) shift))
   (range-dec-normalize reader range-coder)
   (with-accessors ((help  range-coder-help)
                    (low   range-coder-low)
@@ -164,6 +173,8 @@ little-endian values)."
     (floor low help)))
 
 (defun range-decode-culfreq (reader range-coder tot-f)
+  (declare (optimize (speed 3))
+           (type (ub 16) tot-f))
   (range-dec-normalize reader range-coder)
   (with-accessors ((help  range-coder-help)
                    (low   range-coder-low)
@@ -173,6 +184,8 @@ little-endian values)."
     (floor low help)))
 
 (defun range-decode-update (range-coder sy-f lt-f)
+  (declare (optimize (speed 3))
+           (type (ub 16) sy-f lt-f))
   (let ((help (range-coder-help range-coder)))
     (decf (range-coder-low range-coder)
           (* help lt-f))
@@ -180,6 +193,8 @@ little-endian values)."
           (* help sy-f))))
 
 (defun range-get-symbol (reader range-coder counts counts-diff)
+  (declare (optimize (speed 3))
+           (type (sa-ub 16) counts counts-diff))
   (let ((cf (range-decode-culshift reader range-coder 16)))
     (declare (type (ub 16) cf))
     (cond
@@ -196,7 +211,8 @@ little-endian values)."
          symbol)))))
 
 (defun range-decode-bits (reader range-coder n)
-  (declare (type (integer 0 16) n))
+  (declare (optimize (speed 3))
+           (type (integer 0 16) n))
   (let ((sym (range-decode-culshift reader range-coder n)))
     (range-decode-update range-coder 1 sym)
     sym))
@@ -205,6 +221,8 @@ little-endian values)."
   (with-accessors ((k    rice-state-k)
                    (ksum rice-state-ksum))
       rice-state
+    (declare (optimize (speed 3))
+             (type (ub 32) x))
     (let ((lim (if (zerop k) 0 (ash 1 (+ 4 k)))))
       (incf ksum (- (ash (1+ x) -1)
                     (ash (+ ksum 16) -5)))
@@ -212,11 +230,12 @@ little-endian values)."
         ((< ksum lim)
          (decf k))
         ((and (< k 24)
-              (>= ksum (ash 1 (+ k 5)))) ;; k is (integer 0 23)
+              (>= ksum (ash 1 (+ k 5))))
          (incf k))))))
 
 (defmethod entropy-decode (reader frame (version (eql 3990)))
-  (declare (ignore version))
+  (declare (ignore version)
+           (optimize (speed 3)))
   (let ((outputs (frame-output frame))
         (samples (frame-samples frame))
         (range-coder (make-range-coder
@@ -254,18 +273,18 @@ little-endian values)."
                                         tmp)))
                                (+ base-low (ash base-hi bbits))))))
                     (x (+ base (* overflow pivot))))
+               (declare (type (ub 32) overflow))
                (update-rice rice-state x)
                (1+ (logxor (ash x -1)
                            (1- (logand x 1)))))))
 
-      (let ((rice-states (mapcar
-                          (lambda (x)
-                            (declare (ignore x))
-                            (make-rice-state))
-                          outputs)))
-        (loop for i below samples do
-          (loop for output in outputs
-                for rice-state in rice-states do
-                  (setf (aref output i)
-                        (read-value rice-state)))))))
+      (let ((rice-states (loop repeat (length outputs)
+                               collect (make-rice-state))))
+        (dotimes (i samples)
+          (mapc
+           (lambda (output rice-state)
+             (declare (type (sa-sb 32) output))
+             (setf (aref output i)
+                   (read-value rice-state)))
+           outputs rice-states)))))
   frame)

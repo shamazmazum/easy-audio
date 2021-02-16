@@ -46,7 +46,7 @@
   seektable)
 
 (defstruct rice-state
-  (k    10    :type (ub 32))
+  (k    10    :type (integer 0 24))
   (ksum 16384 :type (ub 32)))
 
 (defstruct range-coder
@@ -57,11 +57,11 @@
   (buffer 0 :type (ub 32)))
 
 (defstruct frame
-  (version 0 :type (ub 16))
-  (samples 0 :type (ub 32))
-  (flags   0 :type (ub 32))
-  (buffer  0 :type (ub 8)) ; From rc structure. Why it is called buffer?!
-  output
+  (version 0   :type (ub 16))
+  (samples 0   :type (ub 32))
+  (flags   0   :type (ub 32))
+  (buffer  0   :type (ub 8)) ; From rc structure. Why it is called buffer?!
+  (output  nil :type list)
   crc)
 
 ;; Generic functions
