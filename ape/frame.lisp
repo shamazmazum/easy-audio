@@ -33,9 +33,9 @@
 (defparameter *counts-diff-3980*
   (make-array 21
               :element-type '(ub 16)
-              :initial-contents '(19578 16582 12257 7906 4576 2366 1170 536
-                                  261 119 65 31 19 10 6 3
-                                  3 2 1 1 1)))
+              :initial-contents (map 'list #'-
+                                     (subseq *counts-3980* 1)
+                                     *counts-3980*)))
 
 (defun make-swapped-reader (reader)
   "This function generates a closure that read octets in strange
