@@ -73,3 +73,6 @@
 
 (defgeneric entropy-decode (reader frame ape-version)
   (:documentation "Read entropy buffer in a frame"))
+
+(defgeneric predictor-decode (frame ape-version)
+  (:documentation "Apply filters to entropy"))

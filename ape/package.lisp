@@ -35,4 +35,5 @@
    ;; APE audio format
    #:open-ape
    #:read-metadata
-   #:read-frame))
+   #:read-frame
+   #:decode-frame))
