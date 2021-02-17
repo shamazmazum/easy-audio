@@ -89,8 +89,11 @@ little-endian values)."
 
 (defun read-frame% (reader metadata &key last-frame)
   (let* ((version (metadata-version metadata))
-         ;; Copy version
-         (frame (make-frame :version version)))
+         ;; Copy version and calculate compression level
+         (frame (make-frame :version version
+                            :fset (1- (floor
+                                       (metadata-compression-type metadata)
+                                       1000)))))
     ;; Read CRC and frame flags
     (read-crc-and-flags reader frame)
     (when (>= version 3900)

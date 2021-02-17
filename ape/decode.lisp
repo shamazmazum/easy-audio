@@ -16,6 +16,20 @@
 (defparameter *predictor-versions*
   '#.(reverse '(0 3930 3950)))
 
+(defparameter *filter-orders*
+  '(()
+    (16)
+    (64)
+    (32 256)
+    (16 256 1280)))
+
+(defparameter *fracbits*
+  '(()
+    (11)
+    (11)
+    (10 13)
+    (11 13 15)))
+
 (defun predictor-promote-version (version)
   (find version *predictor-versions* :test #'>=))
 
@@ -25,3 +39,7 @@
    (predictor-promote-version
     (frame-version frame)))
   frame)
+
+#+nil
+(defun apply-filter (entropy filter order fracbits)
+  t)
