@@ -190,6 +190,7 @@ little-endian values)."
        (range-decode-update range-coder 1 cf)
        (- cf #.(- 65535 63)))
       (t
+       ;; Position never returns NIL here because cf is less than 65493
        (let ((symbol (max 0 (1- (position cf counts :test #'<)))))
          (declare (type (integer 0 20) symbol))
          (range-decode-update
