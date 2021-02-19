@@ -28,6 +28,7 @@
 (def-suite ogg       :description "ogg container tests")
 (def-suite decoders  :description "General decoders tests")
 (def-suite wavpack   :description "Wavpack tests")
+(def-suite ape       :description "Ape tests")
 (def-suite utils     :description "Utilities tests")
 
 (defun prepare-input (&rest args)
@@ -45,7 +46,7 @@
                    (let ((status (run suite)))
                      (explain! status)
                      (results-status status)))
-                 '(bitreader flac ogg decoders wavpack utils))))
+                 '(bitreader flac ogg decoders wavpack ape utils))))
 
 (in-suite bitreader)
 (test bitreader-tests
@@ -228,9 +229,9 @@
                    :easy-audio/tests "tests/tmp.wav"))
         (wav-name (asdf:system-relative-pathname
                    :easy-audio/tests "tests/sample-mono.wav"))
-        (flac-name (asdf:system-relative-pathname
+        (wv-name (asdf:system-relative-pathname
                     :easy-audio/tests "tests/sample-mono.wv")))
-    (wv-examples:wv2wav flac-name tmp-name)
+    (wv-examples:wv2wav wv-name tmp-name)
     (is (equalp (md5:md5sum-file wav-name)
                 (md5:md5sum-file tmp-name)))))
 
@@ -240,9 +241,9 @@
                    :easy-audio/tests "tests/tmp.wav"))
         (wav-name (asdf:system-relative-pathname
                    :easy-audio/tests "tests/sample-stereo.wav"))
-        (flac-name (asdf:system-relative-pathname
+        (wv-name (asdf:system-relative-pathname
                     :easy-audio/tests "tests/sample-stereo.wv")))
-    (wv-examples:wv2wav flac-name tmp-name)
+    (wv-examples:wv2wav wv-name tmp-name)
     (is (equalp (md5:md5sum-file wav-name)
                 (md5:md5sum-file tmp-name)))))
 
@@ -255,6 +256,19 @@
       (map nil
            (lambda (n) (finishes (wv:seek-sample reader n)))
            '(10000 20000 30000 40000 50000)))))
+
+(in-suite ape)
+(test ape-decode-stereo
+  "Decode stereo sample file"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample-stereo.wav"))
+        (ape-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample-stereo.ape")))
+    (ape-examples:ape2wav ape-name tmp-name)
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
 
 (in-suite utils)
 (defun mixed-correctly-p (output a1 a2)
