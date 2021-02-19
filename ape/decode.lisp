@@ -58,6 +58,7 @@
   (min (max x min) max))
 
 (defun decode-frame (frame)
+  (declare (optimize (speed 3)))
   (let ((mode (if (= (length (frame-output frame)) 2)
                   :stereo :mono)))
     ;; Apply predictor filters
@@ -105,7 +106,9 @@
   (declare (type (sa-sb 32) entropy)
            (type (integer 1 15) fracbits)
            (type non-negative-fixnum order)
-           (optimize (speed 3)))
+           (optimize (speed 3)
+                     #+easy-audio-unsafe-code
+                     (safety 0)))
   (let ((coeffs (zeros order :type '(sb 32)))
         (buffer (zeros (+ +history-size+ (ash order 1))
                        :type '(sb 32)))
@@ -166,7 +169,9 @@
 (defun make-predictor-updater (history delay-a delay-b adapt-a adapt-b)
   (declare (type (sa-sb 32) history)
            (type (sb 32) delay-a delay-b adapt-a adapt-b)
-           (optimize (speed 3)))
+           (optimize (speed 3)
+                     #+easy-audio-unsafe-code
+                     (safety 0)))
   (let ((last-a   0)
         (filter-a 0)
         (filter-b 0)
@@ -228,7 +233,8 @@
 (defmethod predictor-update (frame
                              (version (eql 3950))
                              (channels (eql :stereo)))
-  (declare (ignore version channels))
+  (declare (ignore version channels)
+           (optimize (speed 3)))
   ;; Seems like this function cannot be applyed to all channels
   ;; independently (like APPLY-FILTER)
   (let* ((history (zeros (+ +history-size+ +predictor-size+)))
@@ -238,7 +244,7 @@
                     history +xdelaya+ +xdelayb+ +xadaptcoeffsa+ +xadaptcoeffsb+))
          (y (first  (frame-output frame)))
          (x (second (frame-output frame))))
-    (declare (type (sa-sb 32) history)
+    (declare (type (sa-sb 32) history x y)
              (type function update-x update-y))
     (loop with channels = (frame-output frame)
           for i below (frame-samples frame) do
