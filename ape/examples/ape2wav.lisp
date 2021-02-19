@@ -9,7 +9,6 @@
            (bps (metadata-bps meta))
            (channels (metadata-channels meta))
            (samplerate (metadata-samplerate meta)))
-      
       (with-output-to-wav (out-stream wav-name
                            :supersede t
                            :samplerate samplerate
