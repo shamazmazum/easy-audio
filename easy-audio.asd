@@ -72,6 +72,9 @@
                (:file "wav/examples/package")
                (:file "wav/examples/decode" :depends-on ("wav/examples/package"))
 
+               (:file "ape/examples/package")
+               (:file "ape/examples/ape2wav" :depends-on ("ape/examples/package"))
+
                (:file "wv/examples/package")
                (:file "wv/examples/wv2wav" :depends-on ("wv/examples/package")))
   :depends-on (:easy-audio))
