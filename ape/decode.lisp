@@ -58,12 +58,42 @@
   (min (max x min) max))
 
 (defun decode-frame (frame)
-  (predictor-decode
-   frame
-   (predictor-promote-version
-    (frame-version frame))
-   (if (= (length (frame-output frame)) 2)
-       :stereo :mono)))
+  (let ((mode (if (= (length (frame-output frame)) 2)
+                  :stereo :mono)))
+    ;; Apply predictor filters
+    (predictor-decode
+     frame
+     (predictor-promote-version
+      (frame-version frame))
+     mode)
+    ;; Decorrelate channels
+    (when (eq mode :stereo)
+      (let ((left  (first  (frame-output frame)))
+            (right (second (frame-output frame))))
+        (declare (type (sa-sb 32) left right))
+        (loop for i below (frame-samples frame) do
+          (symbol-macrolet ((x (aref right i))
+                            (y (aref left  i)))
+            ;; Can I use psetf here without getting rounding problems?
+            (let* ((y% (- x (truncate y 2)))
+                   (x% (+ y% y)))
+              (setf x x% y y%))))))
+    ;; Scale output
+    (mapcar
+     (lambda (channel)
+       (declare (type (sa-sb 32) channel))
+       (map-into
+        channel
+        (case (frame-bps frame)
+          (8 (lambda (x)
+               (declare (type (sb 32) x))
+               (logand #xff (+ #x80 x))))
+          (24 (lambda (x)
+                (declare (type (sb 32) x))
+                (ash x 8)))
+          (t #'identity))
+        channel))
+     (frame-output frame))))
 
 (declaim (inline zeros))
 (defun zeros (n &key (type '(sb 32)))
@@ -211,7 +241,7 @@
     (declare (type (sa-sb 32) history)
              (type function update-x update-y))
     (loop with channels = (frame-output frame)
-          for i below (length (first channels)) do
+          for i below (frame-samples frame) do
             (when (zerop (rem i +history-size+))
               (loop for j below +predictor-size+ do
                 (setf (aref history j)

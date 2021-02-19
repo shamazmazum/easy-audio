@@ -91,6 +91,7 @@ little-endian values)."
   (let* ((version (metadata-version metadata))
          ;; Copy version and calculate compression level
          (frame (make-frame :version version
+                            :bps (metadata-bps metadata)
                             :fset (1- (floor
                                        (metadata-compression-type metadata)
                                        1000)))))

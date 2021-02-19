@@ -60,6 +60,7 @@
   (version 0   :type (ub 16))
   (fset    0   :type (integer 0 4)) ; Compression level
   (samples 0   :type (ub 32))
+  (bps     0   :type (ub 16))
   (flags   0   :type (ub 32))
   (buffer  0   :type (ub 8)) ; From rc structure. Why it is called buffer?!
   (output  nil :type list)
