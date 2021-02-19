@@ -42,14 +42,13 @@
                            :channels channels
                            :bps bps
                            :totalsamples total-samples)
-        (with-output-buffers (reader)
-          (handler-case
-              (loop with samples-written = 0
-                    while (< samples-written total-samples)
-                    for block = (read-wv-block reader)
-                    for samples = (block-block-samples block)
-                    for buf = (make-array (* samples channels) :element-type '(signed-byte 32))
-                    do
-                       (incf samples-written samples)
-                       (write-sequence (mixchannels buf (decode-wv-block block))
-                                       out-stream))))))))
+        (handler-case
+            (loop with samples-written = 0
+                  while (< samples-written total-samples)
+                  for block = (read-wv-block reader)
+                  for samples = (block-block-samples block)
+                  for buf = (make-array (* samples channels) :element-type '(signed-byte 32))
+                  do
+                     (incf samples-written samples)
+                     (write-sequence (mixchannels buf (decode-wv-block block))
+                                     out-stream)))))))
