@@ -2,6 +2,7 @@
 
 (defconstant +history-size+ 512)
 (defconstant +predictor-order+ 8)
+(defconstant +predictor-size+ 50)
 
 (defconstant +ydelaya+ (+ 18 (* +predictor-order+ 4)))
 (defconstant +ydelayb+ (+ 18 (* +predictor-order+ 3)))
@@ -30,6 +31,11 @@
     (10 13)
     (11 13 15)))
 
+(defparameter *coeffs-3930*
+  (make-array 4
+              :element-type '(sb 32)
+              :initial-contents '(360 317 -109 98)))
+
 (defun predictor-promote-version (version)
   (find version *predictor-versions* :test #'>=))
 
@@ -53,7 +59,9 @@
   (predictor-decode
    frame
    (predictor-promote-version
-    (frame-version frame))))
+    (frame-version frame))
+   (if (= (length (frame-output frame)) 2)
+       :stereo :mono)))
 
 (defun apply-filter (entropy order fracbits)
   (declare (type (sa-sb 32) entropy)
@@ -120,9 +128,16 @@
                 x-8 (ash x-8 -1)))))))
   entropy)
 
-(defmethod predictor-decode (frame (version (eql 3950)))
-  (declare (ignore version)
-           (optimize (speed 3)))
+(defmethod predictor-update (frame
+                             (version (eql 3950))
+                             (channels (eql :stereo)))
+  (declare (ignore version channels))
+  ;; Seems like this function cannot be applyed to all channels
+  ;; independently (like APPLY-FILTER)
+  frame)
+
+(defmethod predictor-decode (frame (version (eql 3950)) channels)
+  (declare (optimize (speed 3)))
   (let ((orders   (nth (frame-fset frame) *filter-orders*))
         (fracbits (nth (frame-fset frame) *fracbits*)))
     (flet ((apply-filter-channels (order fracbits)
@@ -130,4 +145,4 @@
                      (apply-filter channel order fracbits))
                    (frame-output frame))))
       (mapc #'apply-filter-channels orders fracbits)))
-  frame)
+  (predictor-update frame version channels))
