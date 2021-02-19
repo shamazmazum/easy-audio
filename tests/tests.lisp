@@ -82,25 +82,25 @@
     (let ((bitreader::*buffer-size* 4)
           (reader (bitreader:make-reader :stream input)))
       (is (= (bitreader:read-octet reader) 1))
-      (is (= (bitreader:reader-position reader 1)))
+      (is (= (bitreader:reader-position reader) 1))
       (is (= (bitreader:read-octet reader) 2))
-      (is (= (bitreader:reader-position reader 2)))
+      (is (= (bitreader:reader-position reader) 2))
       ;; Short jump backwards
       (bitreader:reader-position reader 1)
       (is (= (bitreader:read-octet reader) 2))
-      (is (= (bitreader:reader-position reader 2)))
+      (is (= (bitreader:reader-position reader) 2))
       ;; Short jump forwards
       (bitreader:reader-position reader 3)
       (is (= (bitreader:read-octet reader) 4))
-      (is (= (bitreader:reader-position reader 4)))
+      (is (= (bitreader:reader-position reader) 4))
       ;; Long jump forwards
       (bitreader:reader-position reader 9)
       (is (= (bitreader:read-octet reader) 10))
-      (is (= (bitreader:reader-position reader 10)))
+      (is (= (bitreader:reader-position reader) 10))
       ;; Long jump backwards
       (bitreader:reader-position reader 2)
       (is (= (bitreader:read-octet reader) 3))
-      (is (= (bitreader:reader-position reader 3))))))
+      (is (= (bitreader:reader-position reader) 3)))))
 
 (test bitreader-little-endian
   "Test low-level bitreader functions"
