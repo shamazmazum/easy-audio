@@ -120,3 +120,9 @@
          (skip (logand (- start (aref seektable 0)) 3)))
     (values (- start skip)
             skip)))
+
+(defmacro with-open-ape ((reader name) &body body)
+  (let ((stream (gensym)))
+    `(with-open-file (,stream ,name :element-type '(unsigned-byte 8))
+       (let ((,reader (open-ape ,stream)))
+         ,@body))))

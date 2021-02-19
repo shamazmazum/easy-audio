@@ -40,7 +40,6 @@
   (channels           0 :type (ub 16))
   (samplerate         0 :type (ub 32))
   ;; Derived fields
-  (first-frame        0 :type (ub 32))
   (total-samples      0 :type (ub 32))
   bittable
   seektable)

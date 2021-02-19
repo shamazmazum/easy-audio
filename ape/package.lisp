@@ -28,6 +28,8 @@
    ;; Conditions
    #:ape-error
    #:apev2-tag-error
+   ;; Macros
+   #:with-open-ape
    ;; APE tags
    #:read-tag
    #:read-tag-from-end
@@ -36,4 +38,15 @@
    #:open-ape
    #:read-metadata
    #:read-frame
-   #:decode-frame))
+   #:decode-frame
+   ;; Metadata accessors
+   #:metadata-version
+   #:metadata-compression-type
+   #:metadata-blocks-per-frame
+   #:metadata-final-frame-blocks
+   #:metadata-total-frames
+   #:metadata-bps
+   #:metadata-channels
+   #:metadata-samplerate
+   #:metadata-total-samples
+   #:frame-samples))
