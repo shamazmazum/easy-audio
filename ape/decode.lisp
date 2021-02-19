@@ -31,17 +31,19 @@
     (10 13)
     (11 13 15)))
 
+(declaim (type (sa-sb 32) *coeffs-3930*))
 (defparameter *coeffs-3930*
-  (make-array 4
-              :element-type '(sb 32)
-              :initial-contents '(360 317 -109 98)))
+  (make-array
+   4
+   :element-type '(sb 32)
+   :initial-contents '(98 -109 317 360)))
 
 (defun predictor-promote-version (version)
   (find version *predictor-versions* :test #'>=))
 
 (declaim (inline dot-product))
 (defun dot-product (x y &key (start1 0) (start2 0))
-  (declare (type (sa-sb 16) x y)
+  (declare (type (sa-sb 32) x y)
            (type fixnum start1 start2)
            (optimize (speed 3)))
   (loop
@@ -63,19 +65,22 @@
    (if (= (length (frame-output frame)) 2)
        :stereo :mono)))
 
+(declaim (inline zeros))
+(defun zeros (n &key (type '(sb 32)))
+  (make-array n
+              :element-type type
+              :initial-element 0))
+
 (defun apply-filter (entropy order fracbits)
   (declare (type (sa-sb 32) entropy)
            (type (integer 1 15) fracbits)
            (type non-negative-fixnum order)
            (optimize (speed 3)))
-  (let ((coeffs (make-array order
-                            :element-type '(sb 16)
-                            :initial-element 0))
-        (buffer (make-array (+ +history-size+ (ash order 1))
-                            :element-type '(sb 16)
-                            :initial-element 0))
+  (let ((coeffs (zeros order :type '(sb 32)))
+        (buffer (zeros (+ +history-size+ (ash order 1))
+                       :type '(sb 32)))
         (avg 0))
-    (declare (type (sa-sb 16) coeffs buffer)
+    (declare (type (sa-sb 32) coeffs buffer)
              (type (sb 32) avg))
     (dotimes (i (length entropy))
       (let ((buffer-idx (rem i +history-size+))
@@ -128,12 +133,93 @@
                 x-8 (ash x-8 -1)))))))
   entropy)
 
+(defun make-predictor-updater (history delay-a delay-b adapt-a adapt-b)
+  (declare (type (sa-sb 32) history)
+           (type (sb 32) delay-a delay-b adapt-a adapt-b)
+           (optimize (speed 3)))
+  (let ((last-a   0)
+        (filter-a 0)
+        (filter-b 0)
+        (coeffs-a (copy-seq *coeffs-3930*))
+        (coeffs-b (zeros 5)))
+    (declare (type (sb 32) last-a filter-a filter-b)
+             (type (sa-sb 32) coeffs-a coeffs-b))
+    (flet ((do-update% (x other-x idx)
+             (declare (type (sb 32) x other-x)
+                      (type non-negative-fixnum idx))
+             (let ((history-idx (rem idx +history-size+)))
+               (symbol-macrolet
+                   ;; Oh shit, this is almost C stuff translated as is
+                   ;; Can this be rewritten in more lispy way?
+                   ((hist-delay-a   (aref history (+ history-idx delay-a)))
+                    (hist-delay-a-1 (aref history (+ history-idx delay-a -1)))
+
+                    (hist-delay-b   (aref history (+ history-idx delay-b)))
+                    (hist-delay-b-1 (aref history (+ history-idx delay-b -1)))
+
+                    (hist-adapt-a   (aref history (+ history-idx adapt-a)))
+                    (hist-adapt-a-1 (aref history (+ history-idx adapt-a -1)))
+
+                    (hist-adapt-b   (aref history (+ history-idx adapt-b)))
+                    (hist-adapt-b-1 (aref history (+ history-idx adapt-b -1))))
+                 (let ((shit (- other-x (ash (* 31 filter-b) -5))))
+                   (declare (type (sb 32) shit))
+                   (setf hist-delay-a last-a
+                         hist-adapt-a (* -1 (signum last-a))
+                         hist-delay-a-1 (- last-a hist-delay-a-1)
+                         hist-adapt-a-1 (* -1 (signum hist-delay-a-1))
+                         hist-delay-b shit
+                         hist-adapt-b (* -1 (signum shit))
+                         hist-delay-b-1 (- shit hist-delay-b-1)
+                         hist-adapt-b-1 (* -1 (signum hist-delay-b-1))
+                         filter-b other-x)
+                   (let ((prediction-a (dot-product history coeffs-a
+                                                    :start1 (+ history-idx delay-a -3)))
+                         (prediction-b (dot-product history coeffs-b
+                                                    :start1 (+ history-idx delay-b -4))))
+                     (declare (type (sb 32) prediction-a prediction-b))
+                     (setf last-a
+                           (+ x (ash (+ prediction-a (ash prediction-b -1)) -10))
+                           filter-a
+                           (+ last-a (ash (* 31 filter-a) -5)))))
+
+                 (let ((sign (signum x)))
+                   (dotimes (i 4)
+                     (declare (type fixnum i))
+                     (decf (aref coeffs-a (- 3 i))
+                           (* sign (aref history (+ history-idx adapt-a (- i))))))
+                   (dotimes (i 5)
+                     (declare (type fixnum i))
+                     (decf (aref coeffs-b (- 4 i))
+                           (* sign (aref history (+ history-idx adapt-b (- i)))))))))
+             filter-a))
+      #'do-update%)))
+
 (defmethod predictor-update (frame
                              (version (eql 3950))
                              (channels (eql :stereo)))
   (declare (ignore version channels))
   ;; Seems like this function cannot be applyed to all channels
   ;; independently (like APPLY-FILTER)
+  (let* ((history (zeros (+ +history-size+ +predictor-size+)))
+         (update-y (make-predictor-updater
+                    history +ydelaya+ +ydelayb+ +yadaptcoeffsa+ +yadaptcoeffsb+))
+         (update-x (make-predictor-updater
+                    history +xdelaya+ +xdelayb+ +xadaptcoeffsa+ +xadaptcoeffsb+))
+         (y (first  (frame-output frame)))
+         (x (second (frame-output frame))))
+    (declare (type (sa-sb 32) history)
+             (type function update-x update-y))
+    (loop with channels = (frame-output frame)
+          for i below (length (first channels)) do
+            (when (zerop (rem i +history-size+))
+              (loop for j below +predictor-size+ do
+                (setf (aref history j)
+                      (aref history (+ j +history-size+)))))
+            (setf (aref y i)
+                  (funcall update-y (aref y i) (if (zerop i) 0 (aref x (1- i))) i)
+                  (aref x i)
+                  (funcall update-x (aref x i) (aref y i) i))))
   frame)
 
 (defmethod predictor-decode (frame (version (eql 3950)) channels)
