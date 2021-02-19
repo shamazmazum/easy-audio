@@ -33,27 +33,20 @@
 (defun predictor-promote-version (version)
   (find version *predictor-versions* :test #'>=))
 
-;;(declaim (inline make-dispaced-array))
-(defun make-displaced-array (array offset size)
-  (declare (type simple-array array))
-  (make-array size
-              :element-type (array-element-type array)
-              :displaced-to array
-              :displaced-index-offset offset))
+(declaim (inline dot-product))
+(defun dot-product (x y &key (start1 0) (start2 0))
+  (declare (type (sa-sb 16) x y)
+           (type fixnum start1 start2)
+           (optimize (speed 3)))
+  (loop
+    for i from start1 below (length x)
+    for j from start2 below (length y)
+    sum (* (aref x i) (aref y j)) fixnum))
 
-;;(declaim (inline dot-product))
-(defun dot-product (x y)
-  (declare (type (array (sb 16)) x y))
-  (reduce
-   #'+
-   (map-into
-    (make-array (length x)
-                :element-type '(sb 32))
-    #'* x y)))
-
-;;(declaim (inline clamp))
+(declaim (inline clamp))
 (defun clamp (x min max)
-  (declare (type (sb 32) x min max))
+  (declare (type (sb 32) x min max)
+           (optimize (speed 3)))
   (min (max x min) max))
 
 (defun decode-frame (frame)
@@ -65,7 +58,8 @@
 (defun apply-filter (entropy order fracbits)
   (declare (type (sa-sb 32) entropy)
            (type (integer 1 15) fracbits)
-           (type non-negative-fixnum order))
+           (type non-negative-fixnum order)
+           (optimize (speed 3)))
   (let ((coeffs (make-array order
                             :element-type '(sb 16)
                             :initial-element 0))
@@ -76,59 +70,59 @@
     (declare (type (sa-sb 16) coeffs buffer)
              (type (sb 32) avg))
     (dotimes (i (length entropy))
-      (let* ((buffer-idx (rem i +history-size+))
-             (history (make-displaced-array buffer buffer-idx order))
-             (adapt (make-displaced-array buffer (+ buffer-idx order) order))
-             (current-data (aref entropy i)))
+      (let ((buffer-idx (rem i +history-size+))
+            (current-data (aref entropy i)))
 
         ;; Copy data from back to start when... we need to
         (when (zerop buffer-idx)
-          (map-into buffer #'identity
-                    (make-displaced-array
-                     buffer +history-size+
-                     (ash order 1))))
+          (loop for i below (ash order 1) do
+            (setf (aref buffer i)
+                  (aref buffer (+ i +history-size+)))))
 
         ;; Decoded output
         (let ((new-data
                 (+ current-data
                    (ash (+ (ash 1 (1- fracbits))
-                           (dot-product coeffs adapt))
+                           (dot-product
+                            coeffs buffer
+                            :start2 (+ buffer-idx order)))
                         (- fracbits)))))
 
           ;; Update filter coeffs
-          (map-into coeffs
-                    (lambda (x y)
-                      (declare (type (sb 16) x y))
-                      (- x (* y (signum current-data))))
-                    coeffs history)
+          (loop for i below order do
+            (setf (aref coeffs i)
+                  (- (aref coeffs i)
+                     (* (aref buffer (+ buffer-idx i))
+                        (signum current-data)))))
 
           (setf (aref entropy i)
                 new-data
                 (aref buffer (+ buffer-idx (ash order 1)))
                 (clamp new-data -32768 32767)
-                (aref adapt 0)
+                (aref buffer (+ buffer-idx order))
                 (cond
                   ((<= (abs new-data)
                        (truncate (* avg 4) 3))
-                   (* -8 (signum new-data)))
+                   (- (ash (signum new-data) 3)))
                   ((<= (abs new-data)
                        (* avg 3))
-                   (* -16 (signum new-data)))
+                   (- (ash (signum new-data) 4)))
                   (t
-                   (* -32 (signum new-data)))))
+                   (- (ash (signum new-data) 5)))))
           (incf avg (truncate (- (abs new-data) avg) 16))
 
         (symbol-macrolet
-            ((x-1 (aref history (+ order -1)))
-             (x-2 (aref history (+ order -2)))
-             (x-8 (aref history (+ order -8))))
+            ((x-1 (aref buffer (+ buffer-idx order -1)))
+             (x-2 (aref buffer (+ buffer-idx order -2)))
+             (x-8 (aref buffer (+ buffer-idx order -8))))
           (setf x-1 (ash x-1 -1)
                 x-2 (ash x-2 -1)
                 x-8 (ash x-8 -1)))))))
   entropy)
 
 (defmethod predictor-decode (frame (version (eql 3950)))
-  (declare (ignore version))
+  (declare (ignore version)
+           (optimize (speed 3)))
   (let ((orders   (nth (frame-fset frame) *filter-orders*))
         (fracbits (nth (frame-fset frame) *fracbits*)))
     (flet ((apply-filter-channels (order fracbits)
