@@ -126,3 +126,14 @@
     `(with-open-file (,stream ,name :element-type '(unsigned-byte 8))
        (let ((,reader (open-ape ,stream)))
          ,@body))))
+
+(defun seconds=>frame-number (metadata seconds)
+  (let ((samplerate (metadata-samplerate metadata))
+        (total-samples (metadata-total-samples metadata))
+        (frame-size (metadata-blocks-per-frame metadata)))
+    (let ((sample-number (* seconds samplerate)))
+      (if (>= sample-number total-samples)
+          (error 'ape-error
+                 :format-control "Sample ~d is requested, but maximal value is ~d"
+                 :format-arguments (list sample-number total-samples)))
+      (floor sample-number frame-size))))
