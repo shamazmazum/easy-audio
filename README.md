@@ -16,9 +16,11 @@ It has:
    metadata blocks (though they are not as useful as in FLAC).
  * Partial wav container support, can read uncompressed, a-law compressed
    and mu-law compressed audio data.
- * OGG container support, but, unfortunately, without Vorbis support.
+ * OGG container support, but, unfortunately, without Vorbis decoder.
    Can read FLAC compressed data inside OGG container.
- * APEv2 tags support.
+ * APEv2 tags support (currently only in wavpack files).
+ * Partial APE support. Only the most recent version (3.99) is supported, also
+   mono audio is not supported. Also there is no integrity checks.
 
 It has minimum dependencies (only `flexi-streams` for reading UTF-8 coded
 values from metadata) and written entirely in Common Lisp. It contains

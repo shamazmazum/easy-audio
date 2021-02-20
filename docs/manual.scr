@@ -4,6 +4,8 @@
    can get it from @link[uri="http://github.com/shamazmazum/easy-audio"](GitHub).
    Here is the documentation covering various parts of this collection. All
    decoders work with binary streams with element type @c((unsigned-byte 8)).
+   If this documenation is insufficient look at the examples in @c(examples)
+   directory for each decoder.
 @end(section)
 
 @begin(section)
@@ -19,7 +21,7 @@
             step to @c(flac:read-metadata).)
       @item(Do whatever you want with metadata and read the first audio frame with
             @c(flac:read-frame).)
-      @item(Decode the frame with @c(flac:decode-frame) and repeat previous step
+      @item(Decode the frame with @c(flac:frame-decode) and repeat previous step
             until all data is read and decoded.)
    @end(enum)
    @b(NB): You can reduce consing when reading frames by binding
@@ -178,12 +180,55 @@
 @end(section)
 @end(section)
 
+@begin[ref=ape](section)
+   @title(Monkey's Audio)
+   To read and decode Monkey's Audio you need to follow these steps (these steps
+   are roughly the same as in the section dedicated to flac):
+   @begin(enum)
+      @item(Open an .ape file with element type @c((unsigned-byte 8)).)
+      @item(Pass the stream to @c(ape:open-ape) function which will create and
+            return @c(bitreader:reader) object.)
+      @item(Read metadata blocks, passing the object from previous step to
+            @c(ape:read-metadata).)
+      @item(Read frames with @c(ape:read-frame). This method accept the number
+            of frame you wish to be read as the third argument. Total number of
+            frames in the file can be accessed through @c(metadata-total-frames)
+            function.)
+      @item(Decode the frame with @c(ape:decode-frame) and repeat the previous
+            step until all data is read and decoded.)
+   @end(enum)
+
 @begin(section)
-   @title(APE)
-   This package will be for APE decoding one day, but now its only for reading
-   APEv2 tags. You can read a tag by @c(read-tag) passing a bitreader to it. It
-   will return a list of tag items in format
-   @code(((KEY-1 VALUE-1 :UTF-8 utf-8-p :r/w r/w-p)
+   @title(API)
+   @u(Conditions).
+   @cl:with-package[name="easy-audio.ape"](
+      @cl:doc(condition ape-error)
+   )
+   @u(Metadata structure).
+   @cl:with-package[name="easy-audio.ape"](
+      @cl:doc(struct metadata)
+   )
+   @u(Reading and decoding).
+   @cl:with-package[name="easy-audio.ape"](
+      @cl:doc(function open-ape)
+      @cl:doc(function read-metadata)
+      @cl:doc(function read-frame)
+      @cl:doc(function decode-frame)
+   )
+   @u(Helpers).
+   @cl:with-package[name="easy-audio.ape"](
+      @cl:doc(macro with-open-ape)
+      @cl:doc(function seconds=>frame-number)
+   )
+@end(section)
+@end(section)
+
+@begin(section)
+   @title(APE tags)
+   @c(easy-audio) also has support for APEv2 tags. You can read a tag by
+   @c(ape:read-tag) passing a bitreader to it. It will return a list of tag
+   items in this format:
+@code(((KEY-1 VALUE-1 :UTF-8 utf-8-p :r/w r/w-p)
  (KEY-2 VALUE-2 :UTF-8 utf-8-p :r/w r/w-p)))
    @c(:utf-8-p) is @c(t) when value is a text, not a binary, @c(r/w-p) is @c(t)
    when readonly flag is not set on that item.

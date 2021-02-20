@@ -58,6 +58,8 @@
   (min (max x min) max))
 
 (defun decode-frame (frame)
+  "Decode an audio frame. Return a list of decoded channels. Each
+channel is a simple array with elements of type @c((signed-byte 32))."
   (declare (optimize (speed 3)))
   (let ((mode (if (= (length (frame-output frame)) 2)
                   :stereo :mono)))

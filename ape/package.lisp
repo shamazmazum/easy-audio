@@ -39,7 +39,9 @@
    #:read-metadata
    #:read-frame
    #:decode-frame
+   #:seconds=>frame-number
    ;; Metadata accessors
+   #:metadata
    #:metadata-version
    #:metadata-compression-type
    #:metadata-blocks-per-frame

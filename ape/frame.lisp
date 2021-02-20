@@ -121,6 +121,8 @@ little-endian values)."
         (read-mono-frame reader frame))))
 
 (defun read-frame (reader metadata n)
+  "Read the @c(n)-th audio frame from @c(reader). @c(metadata) is the
+metadata structure for this audio file."
   (multiple-value-bind (start skip)
       (frame-start metadata n)
     ;; Seek to the start of a frame

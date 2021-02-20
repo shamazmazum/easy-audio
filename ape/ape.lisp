@@ -10,6 +10,7 @@
   "Maximal supported APE version")
 
 (defun open-ape (stream)
+  "Open ape audio file and return bitreader for further operations"
   (let ((reader (make-reader :stream stream)))
     (if (/= (read-octets 4 reader) +ape-id+)
         (error 'ape-error :format-control "Not an APE stream"))
@@ -77,6 +78,7 @@
   nil)
 
 (defun read-metadata (reader)
+  "Read ape metadata using @c(reader) returned by @c(open-ape)"
   (let ((version (read-octets 2 reader :endianness :little)))
     (if (or (< version +ape-min-version+)
             (> version +ape-max-version+))
@@ -122,12 +124,17 @@
             skip)))
 
 (defmacro with-open-ape ((reader name) &body body)
+  "Open ape file with the pathname @c(name) and creates @c(reader)
+for that file. The file is closed when the control leaves body of this
+macro."
   (let ((stream (gensym)))
     `(with-open-file (,stream ,name :element-type '(unsigned-byte 8))
        (let ((,reader (open-ape ,stream)))
          ,@body))))
 
 (defun seconds=>frame-number (metadata seconds)
+  "Return the number of a frame whose play time is @c(seconds) from
+the beginning of file."
   (let ((samplerate (metadata-samplerate metadata))
         (total-samples (metadata-total-samples metadata))
         (frame-size (metadata-blocks-per-frame metadata)))
