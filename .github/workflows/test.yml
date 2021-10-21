@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   test_and_docs:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
     env:
       LISP: sbcl-bin
     steps:
