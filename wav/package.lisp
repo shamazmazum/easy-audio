@@ -22,7 +22,7 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-audio.wav
-  (:use #:cl #:bitreader #:utils #:easy-audio-early)
+  (:use #:cl #:bitreader #:utils #:easy-audio-core)
   (:nicknames #:wav)
   (:export #:+wav-id+   ; Useful constants which can be used in examples
            #:+wav-format+
@@ -76,4 +76,7 @@
            #:reader-position-to-audio-data
 
            #:samples-num ; Helper functions
-           #:get-info-metadata))
+           #:get-info-metadata
+
+           #:write-pcm-wav-header ;; Simple writing
+           #:with-output-to-wav))

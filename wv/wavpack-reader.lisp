@@ -54,7 +54,7 @@
 
 ;; Next two functions are just a KLUDGE and almost copy functionality of the bitreader.
 ;; Try to develop more flexible bitreader instead
-(declaim (ftype (function (reader) bit-value) residual-read-bit))
+(declaim (ftype (function (reader) bit) residual-read-bit))
 (defun residual-read-bit (reader)
   (declare (optimize #+easy-audio-unsafe-code
                      (safety 0) (speed 3)))
@@ -72,7 +72,7 @@
       (error 'bitreader-eof :bitreader reader))))
 
 ;; Will always return fixnum on x86-64
-(declaim (ftype (function (non-negative-int reader) non-negative-fixnum) residual-read-bits))
+(declaim (ftype (function (non-negative-integer reader) non-negative-fixnum) residual-read-bits))
 (defun residual-read-bits (bits reader)
   (declare (optimize #+easy-audio-unsafe-code
                      (safety 0) (speed 3))

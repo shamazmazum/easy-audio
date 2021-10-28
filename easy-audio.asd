@@ -4,67 +4,159 @@
   #+nil
   (pushnew :easy-audio-check-crc   *features*))
 
+(defsystem :easy-audio/core
+  :name :easy-audio/core
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :components ((:file "easy-audio-core")))
+
+(defsystem :easy-audio/general-decoders
+  :name :easy-audio/general-decoders
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :pathname "general-decoders/"
+  :components ((:file "package")
+               (:file "g.711"))
+  :depends-on (:easy-audio/core))
+
+(defsystem :easy-audio/bitreader
+  :name :easy-audio/bitreader
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :pathname "bitreader/"
+  :components ((:file "package")
+               (:file "bitreader")
+               #+easy-audio-check-crc
+               (:file "crc")
+               (:file "macros"))
+  :depends-on (:easy-audio/core :alexandria))
+
+(defsystem :easy-audio/ogg
+  :name :easy-audio/ogg
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :pathname "ogg/"
+  :components ((:file "package")
+               (:file "ogg"))
+  :depends-on (:easy-audio/core
+               :easy-audio/bitreader
+               :alexandria))
+
+(defsystem :easy-audio/utils
+  :name :easy-audio/utils
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :pathname "utils/"
+  :components ((:file "package")
+               (:file "utils"))
+  :depends-on (:easy-audio/core))
+
+(defsystem :easy-audio/flac
+  :name :easy-audio/flac
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :pathname "flac/"
+  :components ((:file "package")
+               (:file "definitions")
+               (:file "flac-reader")
+	       (:file "metadata")
+	       (:file "frame")
+	       (:file "decode")
+	       (:file "flac")
+               (:file "flac-ogg"))
+  :depends-on (:easy-audio/core
+               :easy-audio/bitreader
+               :easy-audio/utils
+               :alexandria
+               :flexi-streams))
+
+(defsystem :easy-audio/wav
+  :name :easy-audio/wav
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :pathname "wav/"
+  :components ((:file "package")
+               (:file "definitions")
+               (:file "wav")
+               (:file "write-header"))
+  :depends-on (:easy-audio/core
+               :easy-audio/bitreader
+               :easy-audio/general-decoders
+               :flexi-streams))
+
+(defsystem :easy-audio/ape
+  :name :easy-audio/ape
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :pathname "ape/"
+  :components ((:file "package")
+               (:file "definitions")
+               (:file "ape")
+               (:file "frame")
+               (:file "decode")
+               (:file "ape-tags-v2"))
+  :depends-on (:easy-audio/core
+               :easy-audio/bitreader
+               :easy-audio/utils
+               :alexandria
+               :flexi-streams))
+
+(defsystem :easy-audio/wv
+  :name :easy-audio/wv
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
+  :licence "2-clause BSD"
+  :serial t
+  :pathname "wv/"
+  :components ((:file "package")
+               (:file "definitions")
+               (:file "wavpack-reader")
+               (:file "metadata")
+               (:file "wv-block")
+               (:file "wv-blocks-multichannel")
+               (:file "decode"))
+  :depends-on (:easy-audio/core
+               :easy-audio/bitreader
+               :easy-audio/utils
+               :alexandria))
+
 (defsystem :easy-audio
   :name :easy-audio
-  :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
-               (read input))
-  :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :description "A pack of audio decoders for FLAC, WavPack and other formats"
   :licence "2-clause BSD"
-  :components ((:file "easy-audio-early")
-               
-               (:file "general-decoders/package")
-	       (:file "general-decoders/g.711" :depends-on ("general-decoders/package"))
-
-               (:file "bitreader/package")
-	       (:file "bitreader/bitreader" :depends-on ("bitreader/package"))
-               #+easy-audio-check-crc
-               (:file "bitreader/crc" :depends-on ("bitreader/package"))
-
-               (:file "ogg/package" :depends-on ("bitreader/package"))
-	       (:file "ogg/ogg" :depends-on ("ogg/package"))
-
-               (:file "utils/package" :depends-on ("bitreader/package"))
-               (:file "utils/utils" :depends-on ("wav/definitions"))
-
-	       (:file "flac/package" :depends-on ("utils/package"))
-	       (:file "flac/definitions" :depends-on ("flac/package"))
-	       (:file "flac/flac-reader" :depends-on ("flac/package"))
-	       (:file "flac/metadata" :depends-on ("flac/package"))
-	       (:file "flac/frame" :depends-on ("flac/package"))
-	       (:file "flac/decode" :depends-on ("flac/package"))
-	       (:file "flac/flac" :depends-on ("flac/package"))
-               (:file "flac/flac-ogg" :depends-on ("flac/package"))
-
-               (:file "wav/package" :depends-on ("utils/package"))
-               (:file "wav/definitions" :depends-on ("wav/package"))
-               (:file "wav/wav" :depends-on ("wav/package"))
-
-               (:file "ape/package" :depends-on ("utils/package"))
-               (:file "ape/definitions" :depends-on ("ape/package"))
-               (:file "ape/ape" :depends-on ("ape/package"))
-               (:file "ape/frame" :depends-on ("ape/package"))
-               (:file "ape/decode" :depends-on ("ape/package"))
-               (:file "ape/ape-tags-v2" :depends-on ("ape/package"))
-
-               (:file "wv/package" :depends-on ("utils/package"))
-               (:file "wv/definitions" :depends-on ("wv/package"))
-               (:file "wv/wavpack-reader" :depends-on ("wv/package"))
-               (:file "wv/metadata" :depends-on ("wv/package"))
-               (:file "wv/wv-block" :depends-on ("wv/package"))
-               (:file "wv/wv-blocks-multichannel" :depends-on ("wv/package"))
-               (:file "wv/decode" :depends-on ("wv/package")))
   :in-order-to ((test-op (load-op "easy-audio/tests")))
   :perform (test-op (op system)
                     (declare (ignore op system))
                     (uiop:symbol-call :easy-audio-tests '#:run-tests))
-  :depends-on (:flexi-streams))
+  :depends-on (:easy-audio/ogg
+               :easy-audio/flac
+               :easy-audio/wav
+               :easy-audio/ape
+               :easy-audio/wv
+               :easy-audio/utils))
 
 (defsystem :easy-audio/examples
   :name :easy-audio/examples
-  :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
-               (read input))
-  :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :components ((:file "flac/examples/package")
                (:file "flac/examples/flac2wav" :depends-on ("flac/examples/package"))
                (:file "flac/examples/ogg2wav" :depends-on ("flac/examples/package"))
@@ -81,9 +173,8 @@
 
 (defsystem :easy-audio/tests
   :name :easy-audio/tests
-  :version #.(with-open-file (input (merge-pathnames "version.lisp-expr" *load-truename*))
-               (read input))
-  :author "Vasily Postnicov <shamaz.mazum at gmail dot com>"
+  :version "1.0"
+  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :components ((:file "tests/package")
                (:file "tests/tests" :depends-on ("tests/package")))
   :depends-on (:easy-audio/examples :fiveam :md5))

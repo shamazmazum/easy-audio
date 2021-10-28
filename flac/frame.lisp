@@ -25,7 +25,7 @@
 
 (declaim (optimize (speed 3)))
 
-(easy-audio-early:defvar-unbound *out-buffer*
+(defvar-unbound *out-buffer*
     "Output buffer for exactly one subframe")
 (defvar *out-buffers* nil
   "Output buffers for stream with a fixed block size")

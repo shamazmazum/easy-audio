@@ -22,7 +22,11 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-audio.flac
-  (:use #:cl #:bitreader #:easy-audio.utils #:easy-audio-early)
+  (:use #:cl
+        #:bitreader
+        #:easy-audio.utils
+        #:easy-audio-core
+        #:alexandria)
   (:nicknames #:flac)
   (:export #:streaminfo ; Metadata
 	   #:streaminfo-minblocksize

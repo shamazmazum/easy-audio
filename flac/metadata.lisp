@@ -25,7 +25,7 @@
 
 ;; For signaling errors from functions called from body-readers
 ;; (they usual requires just a stream, so no need pass data object as argument)
-(easy-audio-early:defvar-unbound *data*
+(defvar-unbound *data*
     "READ-METADATA-BODY bounds this var to metadata block
      it is reading at the moment")
 

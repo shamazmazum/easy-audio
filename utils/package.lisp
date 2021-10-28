@@ -1,7 +1,6 @@
 (defpackage easy-audio.utils
   (:nicknames #:utils)
-  (:use #:cl #:easy-audio-early)
+  (:use #:cl #:easy-audio-core)
   (:export #:mixchannels
-           #:write-pcm-wav-header
-           #:with-output-to-wav
-           #:defreader))
+           #:integer-to-array
+           #:integer-to-array-be))

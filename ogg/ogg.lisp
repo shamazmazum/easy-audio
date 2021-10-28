@@ -46,7 +46,7 @@
   (bos               nil :type boolean)
   (eos               nil :type boolean)
   (granule-position  0   :type (or (integer -1 -1)
-                                   non-negative-int))
+                                   non-negative-integer))
   (stream-serial     0   :type (ub 32))
   (page-number       0   :type (ub 32))
   #+easy-audio-check-crc

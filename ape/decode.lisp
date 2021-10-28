@@ -51,12 +51,6 @@
     for j from start2 below (length y)
     sum (* (aref x i) (aref y j)) fixnum))
 
-(declaim (inline clamp))
-(defun clamp (x min max)
-  (declare (type (sb 32) x min max)
-           (optimize (speed 3)))
-  (min (max x min) max))
-
 (defun decode-frame (frame)
   "Decode an audio frame. Return a list of decoded channels. Each
 channel is a simple array with elements of type @c((signed-byte 32))."

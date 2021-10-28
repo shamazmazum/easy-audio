@@ -21,36 +21,25 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage easy-audio-early
+(defpackage easy-audio-core
   (:use :cl)
   (:export #:*current-condition*
            #:with-interactive-debug
            #:defvar-unbound
 
            ;; Types
-           #:non-negative-fixnum
-           #:positive-fixnum
-           #:non-negative-int
-           #:positive-int
            #:bit-counter
            #:ub
            #:sb
            #:sa-ub
-           #:sa-sb
-           #:bit-value))
+           #:sa-sb))
+(in-package :easy-audio-core)
 
-(in-package :easy-audio-early)
-
-(deftype non-negative-fixnum () '(integer 0 #.most-positive-fixnum))
-(deftype positive-fixnum () '(integer 1 #.most-positive-fixnum))
-(deftype non-negative-int () '(integer 0))
-(deftype positive-int () '(integer 1))
 (deftype bit-counter () '(integer 0 8))
 (deftype ub (n) `(unsigned-byte ,n))
 (deftype sb (n) `(signed-byte ,n))
 (deftype sa-ub (n) `(simple-array (ub ,n) (*)))
 (deftype sa-sb (n) `(simple-array (sb ,n) (*)))
-(deftype bit-value () '(integer 0 1))
 
 ;; Definition of documented unbound variables
 (defmacro defvar-unbound (var &optional doc-string)

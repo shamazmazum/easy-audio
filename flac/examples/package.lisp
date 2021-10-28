@@ -22,7 +22,10 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-audio.flac-examples
-  (:use #:cl #:easy-audio.flac #:easy-audio.utils)
+  (:use #:cl
+        #:easy-audio.flac
+        #:easy-audio.wav
+        #:easy-audio.utils)
   (:nicknames #:flac-examples)
   (:export #:flac2wav
            #:ogg2wav))

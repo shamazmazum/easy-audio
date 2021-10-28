@@ -22,6 +22,10 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-audio.wv-examples
-  (:use #:cl #:easy-audio.wv #:easy-audio.utils #:bitreader)
+  (:use #:cl
+        #:easy-audio.wv
+        #:easy-audio.wav
+        #:easy-audio.utils
+        #:bitreader)
   (:nicknames #:wv-examples)
   (:export #:wv2wav))

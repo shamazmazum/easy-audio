@@ -134,7 +134,7 @@
       (if (not (fill-buffer reader))
           (error 'bitreader-eof :reader reader))))
 
-(declaim (ftype (function (reader) bit-value) read-bit))
+(declaim (ftype (function (reader) bit) read-bit))
 (defun read-bit (reader)
   "Read a single bit from READER"
   (ensure-data-available reader)
@@ -256,7 +256,7 @@
            finally (return pos)))
   octet)
 
-(declaim (ftype (function (reader) non-negative-int) reader-length))
+(declaim (ftype (function (reader) non-negative-integer) reader-length))
 (defun reader-length (reader)
   "Returns length of a stream in octets.
 
@@ -265,7 +265,7 @@
   (let ((stream (reader-stream reader)))
     (if stream (file-length stream) (length (reader-buffer reader)))))
 
-(declaim (ftype (function (non-negative-int reader &key (:endianness symbol))
+(declaim (ftype (function (non-negative-integer reader &key (:endianness symbol))
                           non-negative-fixnum)
                 read-bits))
 (defun read-bits (bits reader &key (endianness :big))

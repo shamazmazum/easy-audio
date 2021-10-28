@@ -58,14 +58,14 @@
                     :documentation "T if this metadata block is the last in file")
    (length          :initarg :length
                     :accessor metadata-length
-                    :type positive-int
+                    :type positive-integer
                     :documentation "Length of this metadata block in bytes (with exclusion of
 header)")
    (rawdata         :initarg :rawdata
                     :type (sa-ub 8))
    (start-position  :initarg :start-position
                     :documentation "Strart position of metadata block"
-		    :type non-negative-int
+		    :type non-negative-integer
 		    :accessor metadata-start-position))
   (:documentation "Class for storing flac metadata. Instance of this class means unknown
 metadata type"))
@@ -94,7 +94,7 @@ metadata type"))
 		  :type non-negative-fixnum
                   :documentation "Bits per sample (from 4 to 32)")
    (totalsamples  :accessor streaminfo-totalsamples
-		  :type positive-int
+		  :type positive-integer
                   :documentation "Total samples in stream. May be 0 if unknown.")
    (md5           :accessor streaminfo-md5
                   :documentation "MD5 checksum of the whole unencoded data"))
@@ -164,16 +164,16 @@ metadata type"))
    (description    :type string
                    :accessor picture-description
                    :documentation "Picture description (UTF-8 coded string)")
-   (width          :type positive-int
+   (width          :type positive-integer
                    :accessor picture-width
                    :documentation "Picture width")
-   (height         :type positive-int
+   (height         :type positive-integer
                    :accessor picture-height
                    :documentation "Picture height")
-   (depth          :type positive-int
+   (depth          :type positive-integer
                    :accessor picture-depth
                    :documentation "Picture color depth")
-   (color-num      :type non-negative-int
+   (color-num      :type non-negative-integer
                    :accessor picture-color-num
                    :documentation "Number of colors in indexed picture, 0 for non-indexed")
    (picture        :type (sa-ub 8)

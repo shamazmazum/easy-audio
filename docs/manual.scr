@@ -141,6 +141,8 @@
             the audio stream already has uncompressed PCM data. @c(decode-wav-data) is
             no-op in this case.)
    @end(enum)
+   Also you can write simple PCM WAV headers with @c(write-pcm-wav-header)
+   function and @c(with-output-to-wav) macro.
 
 @begin(section)
    @title(API)
@@ -164,6 +166,8 @@
       @cl:doc(condition wav-error-chunk)
       @cl:doc(condition wav-warning)
       @cl:doc(condition wav-unknown-chunk)
+      @cl:doc(function write-pcm-wav-header)
+      @cl:doc(macro with-output-to-wav)
    )
 @end(section)
 @end(section)
@@ -248,8 +252,6 @@
    @title(Utility functions)
    Package @c(easy-audio.utils) contains some useful functions. Here they are.
    @cl:with-package[name="easy-audio.utils"](
-      @cl:doc(function write-pcm-wav-header)
       @cl:doc(function mixchannels)
-      @cl:doc(macro with-output-to-wav)
    )
 @end(section)

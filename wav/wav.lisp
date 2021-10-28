@@ -209,7 +209,7 @@
                      (incf data-read (+ 8 (riff-size subchunk)))
                      (push subchunk subchunks))
                  (skip-subchunk (c)
-                   :interactive (lambda () (list easy-audio-early:*current-condition*))
+                   :interactive (lambda () (list *current-condition*))
                    :report "Skip reading subchunk"
                    (if (not (zerop (wav-error-rest-bytes c)))
                        (read-octets (wav-error-rest-bytes c)

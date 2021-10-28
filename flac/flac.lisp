@@ -67,21 +67,21 @@
   (do (last-block metadata-list)
       (last-block (reverse metadata-list))
     (setq last-block
-          (easy-audio-early:with-interactive-debug
+          (with-interactive-debug
             (restart-case
                 (let ((metadata (read-metadata-block bitreader)))
                   (push metadata metadata-list)
                   (metadata-last-block-p metadata))
                    
               (skip-malformed-metadata (c)
-                :interactive (lambda () (list easy-audio-early:*current-condition*))
+                :interactive (lambda () (list *current-condition*))
                 :report "Skip malformed metadata"
                 (let ((metadata (flac-metadata c)))
                   (fix-stream-position bitreader metadata)
                   (metadata-last-block-p metadata)))
                    
               (read-raw-block (c)
-                :interactive (lambda () (list easy-audio-early:*current-condition*))
+                :interactive (lambda () (list *current-condition*))
                 :report "Interprete as unknown metadata block"
                 (let ((metadata (flac-metadata c)))
                   (read-block-and-fix bitreader metadata)
