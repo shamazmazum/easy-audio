@@ -52,12 +52,10 @@
       
    Package <code>easy-audio.utils</code> contains some useful functions. Here they are.
    
-      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">write-pcm-wav-header</code><code class="codex-lambda-list">(out-stream &amp;key samplerate channels bps totalsamples)</code><div class="codex-docstring">Writes header of uncompressed wav into stream</div></div>
       <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">mixchannels</code><code class="codex-lambda-list">(out buffers)</code><div class="codex-docstring">Maps a list of <code>buffers</code>(each one for each channel) into one buffer <code>out</code>
 writing sequentially the first sample of the first channel then the first sample of
 second channel and so on until final channel is reached. When process repeats for
 second sample of each channel until all data is written</div></div>
-      <div class="codex-doc-node codex-operator codex-macro"><code class="codex-name">with-output-to-wav</code><code class="codex-lambda-list">((stream filename &amp;key supersede samplerate channels bps totalsamples) &amp;body body)</code><div class="codex-docstring">Opens a STREAM and writes PCM-coded (uncompressed) WAV header to a file with filename FILENAME</div></div>
    
 
     </main>
