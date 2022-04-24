@@ -28,6 +28,7 @@
         #:easy-audio-core
         #:alexandria)
   (:nicknames #:flac)
+  (:local-nicknames (:sera :serapeum))
   (:export #:streaminfo ; Metadata
 	   #:streaminfo-minblocksize
 	   #:streaminfo-maxblocksize

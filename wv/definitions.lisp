@@ -193,8 +193,8 @@
   int32-info
   wvx-bits)
 
-(defvar-unbound *current-block*
-    "Bound to block currently being readed by block reader")
+(sera:defvar-unbound *current-block*
+  "Bound to block currently being readed by block reader")
 
 (defconstant +flags-1-byte/sample+     #x00000000)
 (defconstant +flags-2-byte/sample+     #x00000001)

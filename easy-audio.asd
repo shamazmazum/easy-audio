@@ -10,6 +10,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
+  :depends-on (:serapeum)
   :components ((:file "easy-audio-core")))
 
 (defsystem :easy-audio/general-decoders
@@ -80,6 +81,7 @@
                :easy-audio/bitreader
                :easy-audio/utils
                :alexandria
+               :serapeum
                :flexi-streams))
 
 (defsystem :easy-audio/wav
@@ -134,7 +136,8 @@
   :depends-on (:easy-audio/core
                :easy-audio/bitreader
                :easy-audio/utils
-               :alexandria))
+               :alexandria
+               :serapeum))
 
 (defsystem :easy-audio
   :name :easy-audio

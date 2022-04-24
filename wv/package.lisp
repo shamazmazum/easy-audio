@@ -28,6 +28,7 @@
         #:easy-audio-core
         #:utils)
   (:nicknames #:wv)
+  (:local-nicknames (:sera :serapeum))
   (:export #:wavpack-error ; Conditions
            #:wavpack-warning
            #:block-error

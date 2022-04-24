@@ -23,9 +23,9 @@
 
 (defpackage easy-audio-core
   (:use :cl)
+  (:local-nicknames (:sera :serapeum))
   (:export #:*current-condition*
            #:with-interactive-debug
-           #:defvar-unbound
 
            ;; Types
            #:bit-counter
@@ -41,16 +41,8 @@
 (deftype sa-ub (n) `(simple-array (ub ,n) (*)))
 (deftype sa-sb (n) `(simple-array (sb ,n) (*)))
 
-;; Definition of documented unbound variables
-(defmacro defvar-unbound (var &optional doc-string)
-  "Defines special unbound variable with defvar,
-   also assigning documentation string if supported."
-  `(progn
-     (defvar ,var)
-     ,@(if doc-string `((setf (documentation ',var 'variable) ,doc-string)))))
-
 ;; For interactive restarts
-(defvar-unbound *current-condition*
+(sera:defvar-unbound *current-condition*
   "*CURRENT-CONDITION* is bound to signaled contition
    when debugger is invoked while within WITH-INTERACTIVE-DEBUG")
 
