@@ -60,6 +60,7 @@
       @cl:doc(function seek-sample)
       @cl:doc(function metadata-find-seektable)
       @cl:doc(function make-output-buffers)
+      @cl:doc(macro with-output-buffers)
    )
    It also can decode FLAC data from OGG container. There are
    @c(flac:open-ogg-flac), @c(flac:read-ogg-metadata) and @c(flac:read-ogg-frame)
