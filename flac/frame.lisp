@@ -159,27 +159,22 @@
     
     (let ((precision (1+ (read-bits 4 bit-reader))))
       (declare (type (integer 1 16) precision))
-      (if (= #b10000 precision)
-	  (error 'flac-bad-frame
-		 :format-control "lpc coefficients precision cannot be 16")
-	(setf (subframe-lpc-precision subframe) precision))
-      
-      (setf (subframe-lpc-coeff-shift subframe)
-	    (unsigned-to-signed (read-bits 5 bit-reader) 5))
-
-      (setf (subframe-lpc-predictor-coeff subframe)
+      (when (= #b10000 precision)
+	(error 'flac-bad-frame
+	       :format-control "lpc coefficients precision cannot be 16"))
+      (setf (subframe-lpc-precision subframe) precision
+            (subframe-lpc-coeff-shift subframe)
+	    (unsigned-to-signed (read-bits 5 bit-reader) 5)
+            (subframe-lpc-predictor-coeff subframe)
 	    (read-bits-array bit-reader
 			     coeff-buf precision :signed t)))
-
     (read-residual bit-reader subframe frame out-buf)))
 
 (defmethod read-subframe-body (bit-reader (subframe subframe-fixed) frame)
   (let ((bps (subframe-actual-bps subframe))
 	(warm-up-samples (subframe-order subframe))
 	(out-buf (subframe-out-buf subframe)))
-    
     (read-bits-array bit-reader out-buf bps :signed t :len warm-up-samples)
-
     (read-residual bit-reader subframe frame out-buf)))
 
 (defmethod read-subframe-body (bit-reader (subframe subframe-constant) frame)
@@ -193,52 +188,50 @@
 (defmethod read-subframe-body (bit-reader (subframe subframe-verbatim) frame)
   (declare (ignore frame))
   (let ((bps (subframe-actual-bps subframe)))
-
     (with-slots (out-buf) subframe
-		(setf out-buf
-		      (read-bits-array bit-reader out-buf bps :signed t)))))
+      (setf out-buf
+	    (read-bits-array bit-reader out-buf bps :signed t)))))
 
 (defun read-subframe (stream frame actual-bps)
   (declare (type (integer 4 33) actual-bps))
-  (if (/= (read-bit stream) 0) (error 'flac-bad-frame
-				      :format-control "Error reading subframe"))
-    (let* ((type-num (read-bits 6 stream))
-	   (subframe
-	    (cond
-	     ((= type-num 0) (make-instance 'subframe-constant))         ; 000000
-	     ((= type-num 1) (make-instance 'subframe-verbatim))         ; 000001
-	     ((and
-	       (>= type-num 8)
-	       (<= type-num 12))
-	      (make-instance 'subframe-fixed :order (logand type-num #b111)))     ; 001000-001100
-	     ((and
-	       (>= type-num 32)
-	       (<= type-num 63))
-	      (make-instance 'subframe-lpc :order (1+ (logand type-num #b11111)))) ; 100000-111111
-	     (t (error 'flac-bad-frame
-		       :format-control "Error subframe type"))))
-           (wasted-bits
-            (let ((lead-in-bit (read-bit stream)))
-              (if (= lead-in-bit 1)
-                  (1+ (count-zeros stream))
-                0)))
-           (blocksize (frame-block-size frame)))
-      (declare (type non-negative-fixnum wasted-bits))
+  (unless (zerop (read-bit stream))
+    (error 'flac-bad-frame
+	   :format-control "Error reading subframe"))
+  (let* ((type-num (read-bits 6 stream))
+	 (subframe
+	  (cond
+	    ((= type-num 0) (make-instance 'subframe-constant))         ; 000000
+	    ((= type-num 1) (make-instance 'subframe-verbatim))         ; 000001
+	    ((and
+	      (>= type-num 8)
+	      (<= type-num 12))
+	     (make-instance 'subframe-fixed :order (logand type-num #b111)))     ; 001000-001100
+	    ((and
+	      (>= type-num 32)
+	      (<= type-num 63))
+	     (make-instance 'subframe-lpc :order (1+ (logand type-num #b11111)))) ; 100000-111111
+	    (t (error 'flac-bad-frame
+		      :format-control "Error subframe type"))))
+         (wasted-bits
+          (let ((lead-in-bit (read-bit stream)))
+            (if (= lead-in-bit 1)
+                (1+ (count-zeros stream)) 0)))
+         (blocksize (frame-block-size frame)))
+    (declare (type non-negative-fixnum wasted-bits))
 
-      (setf (subframe-wasted-bps subframe) wasted-bits            
-            (subframe-actual-bps subframe)
-            (- actual-bps wasted-bits)
+    (setf (subframe-wasted-bps subframe) wasted-bits            
+          (subframe-actual-bps subframe)
+          (- actual-bps wasted-bits)
+          (subframe-out-buf subframe)
+          (if (and *out-buffer*
+                   (= (length (the (sa-sb 32) *out-buffer*)) blocksize))
+              *out-buffer*
+              (make-array
+               (list blocksize)
+               :element-type '(sb 32))))
 
-            (subframe-out-buf subframe)
-            (if (and *out-buffer*
-                     (= (length (the (sa-sb 32) *out-buffer*)) blocksize))
-                *out-buffer*
-                (make-array
-                 (list blocksize)
-                 :element-type '(sb 32))))
-
-      (read-subframe-body stream subframe frame)
-      subframe))
+    (read-subframe-body stream subframe frame)
+    subframe))
 
 (defmethod read-frame :around (stream &optional streaminfo)
   (restart-case
@@ -255,34 +248,34 @@
   (let ((frame (make-instance 'frame)))
     #+easy-audio-check-crc
     (init-crc stream)
-    (if (/= +frame-sync-code+ (read-bits 14 stream))
-        (error 'flac-bad-frame
-               :format-control "Frame sync code is not 11111111111110"))
-    (if (/= 0 (read-bit stream)) (error 'flac-bad-frame
-					:format-control "Error reading frame"))
+    (when (/= +frame-sync-code+ (read-bits 14 stream))
+      (error 'flac-bad-frame
+             :format-control "Frame sync code is not 11111111111110"))
+    (unless (zerop (read-bit stream))
+      (error 'flac-bad-frame
+	     :format-control "Error reading frame"))
 
     (with-slots (blocking-strategy
                  block-size
                  sample-rate
                  channel-assignment
                  sample-size
-                 number) frame
-      
+                 number)
+        frame
       (setf blocking-strategy (get-blocking-strategy (read-bit stream))
             block-size (read-bits 4 stream)
             sample-rate (read-bits 4 stream)
             channel-assignment (get-channel-assignment (read-bits 4 stream))
             sample-size (get-sample-size (read-bits 3 stream) streaminfo))
       
-      (if (/= 0 (read-bit stream))
-          (error 'flac-bad-frame :format-control "Error reading frame"))
+      (unless (zerop (read-bit stream))
+        (error 'flac-bad-frame
+               :format-control "Error reading frame"))
 
-      (setf number
-            (if (eq blocking-strategy :fixed)
-                (read-utf8-u32 stream)
-                (error 'flac-bad-frame
-                       :format-control "Variable block size not implemented yet"))
-    
+      (unless (eq blocking-strategy :fixed)
+        (error 'flac-bad-frame
+               :format-control "Variable block size not implemented yet"))
+      (setf number (read-utf8-u32 stream)
             block-size (get-block-size block-size stream)
             sample-rate (get-sample-rate sample-rate stream streaminfo)
             (frame-crc-8 frame) (read-octet stream)))
@@ -309,14 +302,17 @@
                                (t sample-size)))))))
     
     ;; Check zero padding
-    (if (/= (read-to-byte-alignment stream) 0)
-        (error 'flac-bad-frame :format-control "Padding to byte-alignment is not zero"))
+    (unless (zerop (read-to-byte-alignment stream))
+      (error 'flac-bad-frame
+             :format-control "Padding to byte-alignment is not zero"))
+
     #+easy-audio-check-crc
     (let ((crc (get-crc stream)))
       (declare (type (ub 16) crc))
       (setf (frame-crc-16 frame) crc)
-      (if (/= crc (read-bits 16 stream))
-          (error 'flac-bad-frame :format-control "Frame CRC mismatch")))
+      (when (/= crc (read-bits 16 stream))
+        (error 'flac-bad-frame
+               :format-control "Frame CRC mismatch")))
     #-easy-audio-check-crc
     (setf (frame-crc-16 frame) (read-bits 16 stream))
   frame))
@@ -333,12 +329,12 @@
 	   (optimize (speed 0)))
 
   (with-accessors ((totalsamples streaminfo-totalsamples)) streaminfo
-    (if (and streaminfo
-             (> sample totalsamples)
-             (/= totalsamples 0))
-        (error 'flac-error
-               :format-control
-               "Seek error. Desired sample number is bigger than number of samples in stream")))
+    (when (and streaminfo
+               (> sample totalsamples)
+               (/= totalsamples 0))
+      (error 'flac-error
+             :format-control
+             "Seek error. Desired sample number is bigger than number of samples in stream")))
 
   ;; Reset the reader
   (reader-position bitreader 0)
@@ -367,11 +363,11 @@
                     end-pos (+ start-pos upperpoint))))))
 
     ;; Check implementation limitations
-    (if (and streaminfo
-             (/= (streaminfo-minblocksize streaminfo)
-                 (streaminfo-maxblocksize streaminfo)))
-	(error 'flac-bad-metadata
-	       :format-control "Cannot seek with variable blocksize"))
+    (when (and streaminfo
+               (/= (streaminfo-minblocksize streaminfo)
+                   (streaminfo-maxblocksize streaminfo)))
+      (error 'flac-bad-metadata
+	     :format-control "Cannot seek with variable blocksize"))
 
     (multiple-value-bind (needed-num remainder)
 	(floor sample (if streaminfo
@@ -391,8 +387,8 @@
 					(secondnum (progn (reader-position bitreader (1- second-half))
 							  (restore-sync bitreader streaminfo))))
 
-				   (if (< needed-num firstnum)
-                                       (error 'flac-error :format-control "Seek error"))
+				   (when (< needed-num firstnum)
+                                     (error 'flac-error :format-control "Seek error"))
 
 				   (cond 
 				    ((< secondnum needed-num)
