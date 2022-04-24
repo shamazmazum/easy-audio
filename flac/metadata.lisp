@@ -40,14 +40,13 @@
   "Read one metadata block from STREAM"
   (multiple-value-bind (start-position last-block-p type length)
       (read-metadata-header stream)
-    
+
     (let* ((mtype (get-metadata-type type))
            (data (make-instance mtype
                                 :last-block-p last-block-p
                                 :length length
                                 :start-position start-position)))
-      (read-metadata-body stream data)
-      data)))
+      (read-metadata-body stream data))))
 
 (defmethod read-metadata-body (stream (data padding))
   ;; Read zero padding bytes
@@ -55,10 +54,11 @@
 			   :element-type '(ub 8))))
     (read-octet-vector chunk stream)
     ;; Do sanity checks
-    (if (notevery #'zerop  chunk)
-        (error 'flac-bad-metadata
-               :format-control "Padding bytes is not zero"
-               :metadata data))))
+    (when (notevery #'zerop  chunk)
+      (error 'flac-bad-metadata
+             :format-control "Padding bytes is not zero"
+             :metadata data)))
+  data)
 
 (defmethod read-metadata-body (stream (data vorbis-comment))
   (flet ((read-comment-string (stream)
@@ -67,16 +67,13 @@
 	    (flexi-streams:octets-to-string
              (read-octet-vector buffer stream)
              :external-format :utf-8))))
-    
     (setf (vorbis-vendor-comment data)
 	  (read-comment-string stream))
-
     (let ((comments-num (read-bits 32 stream :endianness :little)))
-      
       (setf (vorbis-user-comments data)
 	    (loop for i below comments-num collect
-		  (read-comment-string stream))))))
-			    
+		  (read-comment-string stream)))))
+  data)
 
 (defmethod read-metadata-body (stream (data seektable))
   (flet ((read-seekpoint (stream)
@@ -89,12 +86,14 @@
 						 :samples-in-frame samples-in-frame))))))
     (multiple-value-bind (seekpoints-num remainder)
 	(floor (metadata-length data) 18)
-      (if (/= remainder 0) (error 'flac-bad-metadata
-				  :format-control "Bad seektable"
-				  :metadata data))
+      (unless (zerop remainder)
+        (error 'flac-bad-metadata
+	       :format-control "Bad seektable"
+	       :metadata data))
       (setf (seektable-seekpoints data)
 	    (loop for i below seekpoints-num collect
-		  (read-seekpoint stream))))))
+		  (read-seekpoint stream)))))
+  data)
 
 (declaim (inline read-streaminfo-body))
 (defreader (read-streaminfo-body) (t)
@@ -109,7 +108,8 @@
   (streaminfo-md5           (:octet-vector (make-array (list 16) :element-type '(ub 8)))))
 
 (defmethod read-metadata-body (stream (data streaminfo))
-  (read-streaminfo-body stream data))
+  (read-streaminfo-body stream data)
+  data)
 
 (defun read-cuesheet-string (stream length)
   (let ((buffer (make-array (list length) :element-type '(ub 8))))
@@ -121,31 +121,39 @@
 
 (defun read-cuesheet-index (stream)
   (let ((index (make-cuesheet-index)))
-    (setf (cuesheet-index-offset index) (read-bits 64 stream))
-    (setf (cuesheet-index-number index) (read-octet stream))
+    (setf (cuesheet-index-offset index)
+          (read-bits 64 stream)
+          (cuesheet-index-number index)
+          (read-octet stream))
 
     (let ((reserved (read-bits #.(* 3 8) stream)))
-      (if (/= 0 reserved) (error 'flac-bad-metadata
-				 :format-control "Bad cuesheet index"
-				 :metadata *data*)))
+      (unless (zerop reserved)
+        (error 'flac-bad-metadata
+	       :format-control "Bad cuesheet index"
+	       :metadata *data*)))
     index))
 
 (defun read-cuesheet-track (stream)
   (let ((track (make-cuesheet-track)))
-    (setf (cuesheet-track-offset track) (read-bits 64 stream))
-    (setf (cuesheet-track-number track) (read-octet stream))
-    (setf (cuesheet-track-isrc track) (read-cuesheet-string stream 12))
-    (setf (cuesheet-track-type track) (if (= 0 (read-bit stream))
-					  :audio
-					:non-audio))
-    (setf (cuesheet-track-pre-emphasis track)
-	  (if (= 0 (read-bit stream)) :no-pre-emphasis :pre-emphasis))
-    
+    (setf (cuesheet-track-offset track)
+          (read-bits 64 stream)
+          (cuesheet-track-number track)
+          (read-octet stream)
+          (cuesheet-track-isrc track)
+          (read-cuesheet-string stream 12)
+          (cuesheet-track-type track)
+          (if (zerop (read-bit stream))
+	      :audio :non-audio)
+          (cuesheet-track-pre-emphasis track)
+	  (if (zerop (read-bit stream))
+              :no-pre-emphasis :pre-emphasis))
+
     (let ((reserved (read-bits #.(+ 6 (* 8 13)) stream)))
-      (if (/= 0 reserved) (error 'flac-bad-metadata
-				 :format-control "Bad cuesheet track"
-				 :metadata *data*)))
-    
+      (unless (zerop reserved)
+        (error 'flac-bad-metadata
+	       :format-control "Bad cuesheet track"
+	       :metadata *data*)))
+
     (let ((number-of-indices (read-octet stream)))
       (setf (cuesheet-track-indices track)
 	    (loop for track below number-of-indices collect
@@ -155,40 +163,47 @@
 
 (defmethod read-metadata-body (stream (data cuesheet))
   (let ((*data* data))
-    (setf (cuesheet-catalog-id data) (read-cuesheet-string stream 128))
-    (setf (cuesheet-lead-in data) (read-bits 64 stream))
-    (setf (cuesheet-cdp data) (= 1 (read-bit stream)))
-    
+    (setf (cuesheet-catalog-id data)
+          (read-cuesheet-string stream 128)
+          (cuesheet-lead-in data)
+          (read-bits 64 stream)
+          (cuesheet-cdp data)
+          (not (zerop (read-bit stream))))
+
     (let ((reserved (read-bits #.(+ 7 (* 8 258)) stream)))
-      (if (/= 0 reserved) (error 'flac-bad-metadata
-				 :format-control "Bad cuesheet"
-				 :metadata data)))
-    
+      (unless (zerop reserved)
+        (error 'flac-bad-metadata
+	       :format-control "Bad cuesheet"
+	       :metadata data)))
+
     (let ((number-of-tracks (read-octet stream)))
       (setf (cuesheet-tracks data)
 	    (loop for track below number-of-tracks collect
-		  (read-cuesheet-track stream))))
-  data))
+		  (read-cuesheet-track stream)))))
+  data)
 
 (defmethod read-metadata-body (stream (data picture))
   (let ((picture-type (nth (read-bits 32 stream) +picture-types+)))
-    (if (not (typep picture-type 'picture-type-id))
-        (error 'flac-bad-metadata
-               :format-control "Bad picture type"
-               :metadata data))
+    (unless (typep picture-type 'picture-type-id)
+      (error 'flac-bad-metadata
+             :format-control "Bad picture type"
+             :metadata data))
     (setf (picture-type data) picture-type))
-  
+
   (let* ((mime-type-len (read-bits 32 stream))
          (mime-type-seq (make-array (list mime-type-len)
                                     :element-type '(unsigned-byte 8))))
     (read-octet-vector mime-type-seq stream)
-    (if (notevery #'(lambda (char) (and (>= char #x20)
-                                        (<= char #x7e)))
-                  mime-type-seq)
-        (error 'flac-bad-metadata
-               :format-control "MIME type must be an ASCII string"
-               :metadata data))
-    (setf (picture-mime-type data) (flexi-streams:octets-to-string mime-type-seq)))
+    (when (notevery
+           #'(lambda (char)
+               (and (>= char #x20)
+                    (<= char #x7e)))
+           mime-type-seq)
+      (error 'flac-bad-metadata
+             :format-control "MIME type must be an ASCII string"
+             :metadata data))
+    (setf (picture-mime-type data)
+          (flexi-streams:octets-to-string mime-type-seq)))
 
   (let* ((description-len (read-bits 32 stream))
          (description-seq (make-array (list description-len)
@@ -205,12 +220,13 @@
          (picture-seq (make-array (list picture-len)
                                   :element-type '(unsigned-byte 8))))
     ;; FIXME: artifical sanity check: Picture can be less than 10 MiB
-    (if (> picture-len #.(ash 10 20))
-        (error 'flac-bad-metadata
-               :format-control "It's strange, but picture size is too long (~D bytes)"
-               :format-arguments (list picture-len)
-               :metadata data))
-    (setf (picture-picture data) (read-octet-vector picture-seq stream))))
+    (when (> picture-len #.(ash 10 20))
+      (error 'flac-bad-metadata
+             :format-control "It's strange, but picture size is too long (~D bytes)"
+             :format-arguments (list picture-len)
+             :metadata data))
+    (setf (picture-picture data) (read-octet-vector picture-seq stream)))
+  data)
 
 (defmethod read-metadata-body (stream (data metadata-header))
   (error 'flac-bad-metadata

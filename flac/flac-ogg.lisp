@@ -44,18 +44,18 @@
         metadata)
     (let* ((packet (ogg:read-packet reader))
            (packet-reader (make-reader-from-buffer packet)))
-      (if (or (not (ogg:ogg-bos reader))
-              (/= #x7f (read-octet packet-reader))
-              (/= +flac-ogg-id+ (read-octets 4 packet-reader)))
-          (error 'flac-error :format-control "The first page of stream is invalid"))
+      (when (or (not (ogg:ogg-bos reader))
+                (/= #x7f (read-octet packet-reader))
+                (/= +flac-ogg-id+ (read-octets 4 packet-reader)))
+        (error 'flac-error :format-control "The first page of stream is invalid"))
       (read-octets 2 packet-reader) ; Major and minor versions of the mapping
       (setq non-audio-packets (read-octets 2 packet-reader))
-      (if (/= +flac-id+ (read-octets 4 packet-reader))
-          (error 'flac-error :format-control "The stream is not a flac stream"))
+      (when (/= +flac-id+ (read-octets 4 packet-reader))
+        (error 'flac-error :format-control "The stream is not a flac stream"))
       (setq metadata (read-metadata-block packet-reader)))
 
-    (if (not (ogg:fresh-page reader))
-        (error 'flac-error :format-control "There are other packets on the first page"))
+    (unless (ogg:fresh-page reader)
+      (error 'flac-error :format-control "There are other packets on the first page"))
 
     (setq metadata
           (cons metadata
@@ -64,8 +64,8 @@
                             (packet-reader (make-reader-from-buffer packet)))
                        (read-metadata-block packet-reader)))))
 
-    (if (not (ogg:fresh-page reader))
-        (error 'flac-error :format-control "Audio data must begin with a fresh page"))
+    (unless (ogg:fresh-page reader)
+      (error 'flac-error :format-control "Audio data must begin with a fresh page"))
 
     metadata))
 

@@ -178,6 +178,8 @@
   :name :easy-audio/tests
   :version "1.0"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
-  :components ((:file "tests/package")
-               (:file "tests/tests" :depends-on ("tests/package")))
+  :pathname "tests/"
+  :serial t
+  :components ((:file "package")
+               (:file "tests"))
   :depends-on (:easy-audio/examples :fiveam :md5))

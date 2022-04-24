@@ -72,7 +72,7 @@
 	    (incf (aref out-buf i)
 		  (- (ash (aref out-buf (1- i)) 1)
 		     (aref out-buf (- i 2))))))
-     
+
      ((= order 3)
       (loop for i from 3 below len do
 	    (incf (aref out-buf i)
@@ -83,7 +83,7 @@
 			     (aref out-buf (- i 2)))
 		     
 		     (aref out-buf (- i 3))))))
-			     
+
      ((= order 4)
       (loop for i from 4 below len do
 	    (incf (aref out-buf i)
@@ -140,7 +140,7 @@
                         (safety 0) (speed 3) (space 2))
                        (type (sa-sb 32) out-buf coeff)
                        (type (sb 32) shift))
-                
+
               (loop for i fixnum from ,n below (length out-buf)
                  for sum fixnum = 0 do
                    ,@(loop for j fixnum below n collect
@@ -150,7 +150,7 @@
                    (incf (aref out-buf i)
                          (the fixnum
                               (ash sum (- shift)))))
-              
+
               out-buf))
        #',func-name)))
 
@@ -168,7 +168,7 @@
   (declare (ignore frame))
   (let* ((order (subframe-order subframe))
          (predictor (gethash order *lpc-predictors*)))
-    
+
     (if (not predictor)
         ;; Funny stuff. If there is no desired predictor in hash table,
         ;; generate it on the fly.
@@ -189,9 +189,11 @@ Returns list of decoded audio buffers (one buffer for each channel)."
   	(assignment (frame-channel-assignment frame)))
     (declare (type non-negative-fixnum assignment))
 
-    (if (<= assignment +max-channels+) (return-from frame-decode decoded-subframes))
-    (if (/= 2 (length decoded-subframes))
-        (error 'flac-error :format-control "Bad channel assignment/number of subframes"))
+    (when (<= assignment +max-channels+)
+      (return-from frame-decode decoded-subframes))
+    (when (/= 2 (length decoded-subframes))
+      (error 'flac-error
+             :format-control "Bad channel assignment/number of subframes"))
 
     (destructuring-bind (left right) decoded-subframes
       (declare (type (sa-sb 32) left right))
@@ -204,7 +206,7 @@ Returns list of decoded audio buffers (one buffer for each channel)."
        ((= +right-side+ assignment)
 	(map-into left #'+
 		  left right))
-       
+
        ((= +mid-side+ assignment)
 	(let ((block-size (frame-block-size frame)))
 	  (declare (type fixnum block-size))
@@ -213,7 +215,7 @@ Returns list of decoded audio buffers (one buffer for each channel)."
 		   (mid (logior
 			 (ash (aref left i) 1)
 			 (logand side 1))))
-	      
+
 	      (setf (aref left i)
 		    (ash (+ mid side) -1)
 		    (aref right i)

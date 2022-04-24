@@ -108,7 +108,6 @@
 (defun read-residual-body (bit-reader subframe frame out &key param-len esc-code)
   (declare (type fixnum param-len esc-code)
 	   (type (sa-sb 32) out))
-
   (let* ((part-order (the (ub 4)
 		       (read-bits 4 bit-reader)))
 	 (sample-idx (subframe-order subframe))
@@ -118,7 +117,7 @@
     (declare (type fixnum sample-idx
 		   blocksize predictor-order
 		   partition-samples))
-    
+
     (loop for i below (ash 1 part-order) do
 	  (let ((samples-num
 		 (cond
@@ -127,7 +126,6 @@
 		  (t partition-samples)))
 		(rice-parameter (read-bits param-len bit-reader)))
 	    (declare (type non-negative-fixnum rice-parameter samples-num))
-	    
 	    (cond
 	     ((/= rice-parameter esc-code)
 	      (loop repeat samples-num do
@@ -153,10 +151,8 @@
 	 (out-buf (subframe-out-buf subframe))
 	 (coeff-buf (make-array (list warm-up-samples)
 				:element-type '(sb 32))))
-    
     (read-bits-array bit-reader
 		     out-buf bps :signed t :len warm-up-samples)
-    
     (let ((precision (1+ (read-bits 4 bit-reader))))
       (declare (type (integer 1 16) precision))
       (when (= #b10000 precision)
@@ -267,7 +263,7 @@
             sample-rate (read-bits 4 stream)
             channel-assignment (get-channel-assignment (read-bits 4 stream))
             sample-size (get-sample-size (read-bits 3 stream) streaminfo))
-      
+
       (unless (zerop (read-bit stream))
         (error 'flac-bad-frame
                :format-control "Error reading frame"))
@@ -300,7 +296,7 @@
                                       (= sf 1)))
                                 (1+ sample-size))
                                (t sample-size)))))))
-    
+
     ;; Check zero padding
     (unless (zerop (read-to-byte-alignment stream))
       (error 'flac-bad-frame
@@ -396,6 +392,6 @@
 				    ((> secondnum needed-num)
 				     (dichotomy-search start second-half))
 				    (t t)))))
-	
+
 	(dichotomy-search start-pos end-pos)
 	remainder))))
