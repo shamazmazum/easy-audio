@@ -88,18 +88,17 @@
       (call-next-method)))
 
 (defmethod chunk-sanity-checks ((chunk wave-chunk))
-  (if (/= (riff-subtype chunk) +wav-format+)
-      (error 'wav-error :format-control "Not a WAV stream"))
+  (when (/= (riff-subtype chunk) +wav-format+)
+    (error 'wav-error :format-control "Not a WAV stream"))
   chunk)
 
 (defmethod chunk-sanity-checks ((chunk list-chunk))
   (let ((subtype (riff-subtype chunk)))
-    (if (/= subtype +list-info+)
-        (warn 'wav-unknown-chunk
-              :format-control "LIST chunk of unusual subtype ~x (~s)"
-              :format-arguments (list subtype
-                                      (code=>string subtype))
-              :chunk chunk))))
+    (when (/= subtype +list-info+)
+      (warn 'wav-unknown-chunk
+            :format-control "LIST chunk of unusual subtype ~x (~s)"
+            :format-arguments (list subtype (code=>string subtype))
+            :chunk chunk))))
 
 (defmethod chunk-sanity-checks ((chunk data-chunk))
   chunk)
@@ -125,12 +124,12 @@
   (let ((string-buffer (read-octet-vector (make-array (riff-size chunk)
                                                       :element-type '(ub 8))
                                           reader)))
-    (if (or (every #'zerop string-buffer)
-            (not (zerop (aref string-buffer (1- (riff-size chunk))))))
-        (error 'wav-error-chunk
-               :format-control "Value in INFO subchunk is not a null-terminated string"
-               :rest-bytes 0
-               :chunk chunk))
+    (when (or (every #'zerop string-buffer)
+              (not (zerop (aref string-buffer (1- (riff-size chunk))))))
+      (error 'wav-error-chunk
+             :format-control "Value in INFO subchunk is not a null-terminated string"
+             :rest-bytes 0
+             :chunk chunk))
     (setf (info-value chunk)
           (flexi-streams:octets-to-string
            (subseq string-buffer 0 (1+ (position 0 string-buffer :from-end t :test #'/=))))))
@@ -154,11 +153,11 @@
   (if (= (format-audio-format format)
          +wave-format-extensible+)
       (let ((subformat (format-subformat format)))
-        (if (not (equalp (subseq subformat 2) +wave-format-extensible-magick+))
-            (error 'wav-error-chunk
-                   :format-control "Invalid extensible format magick"
-                   :rest-bytes 0
-                   :chunk format))
+        (when (not (equalp (subseq subformat 2) +wave-format-extensible-magick+))
+          (error 'wav-error-chunk
+                 :format-control "Invalid extensible format magick"
+                 :rest-bytes 0
+                 :chunk format))
         (setf (format-audio-format format)
               (logior (aref subformat 0)
                       (ash (aref subformat 1) 8)))))
@@ -170,14 +169,13 @@
     (if (= size 16) chunk
         (let ((extended-size (read-octets 2 reader :endianness :little)))
           ;; Sanity checks
-          (if (not (or
-                    (and (zerop extended-size) (= size 18))
-                    (and (= extended-size 22) (= size 40))))
-              (error 'wav-error-chunk
-                     :format-control "Malformed format subchunk"
-                     :rest-bytes (- size 18)
-                     :reader reader
-                     :chunk chunk))
+          (unless (or (and (zerop extended-size) (= size 18))
+                      (and (= extended-size 22) (= size 40)))
+            (error 'wav-error-chunk
+                   :format-control "Malformed format subchunk"
+                   :rest-bytes (- size 18)
+                   :reader reader
+                   :chunk chunk))
 
           (when (not (zerop extended-size))
             (read-extended-format reader chunk)
@@ -186,11 +184,11 @@
 
 (defmethod read-body (reader (chunk fact-subchunk))
   (setf (fact-samples-num chunk) (read-octets 4 reader :endianness :little))
-  (if (/= (riff-size chunk) 4)
-      (error 'wav-error-chunk
-             :format-control "Fact subchunk size is not 4. Do not know what to do"
-             :rest-bytes (- (riff-size chunk) 4)
-             :chunk chunk))
+  (when (/= (riff-size chunk) 4)
+    (error 'wav-error-chunk
+           :format-control "Fact subchunk size is not 4. Do not know what to do"
+           :rest-bytes (- (riff-size chunk) 4)
+           :chunk chunk))
   chunk)
 
 (defmethod read-body (reader (chunk riff-chunk))
@@ -211,9 +209,9 @@
                  (skip-subchunk (c)
                    :interactive (lambda () (list *current-condition*))
                    :report "Skip reading subchunk"
-                   (if (not (zerop (wav-error-rest-bytes c)))
-                       (read-octets (wav-error-rest-bytes c)
-                                    (wav-error-reader c)))
+                   (unless (zerop (wav-error-rest-bytes c))
+                     (read-octets (wav-error-rest-bytes c)
+                                  (wav-error-reader c)))
                    (incf data-read (+ 8 (riff-size (wav-error-chunk c))))))
              finally (return (reverse subchunks)))))
   chunk)
@@ -225,18 +223,18 @@
 (defun read-wav-header (reader)
   "Read RIFF chunks from an audio stream"
   (let ((riff-chunk (read-chunk-header reader nil)))
-    (if (not (typep riff-chunk 'wave-chunk))
-        (error 'wav-error :format-control "Not a WAV stream"))
+    (unless (typep riff-chunk 'wave-chunk)
+      (error 'wav-error :format-control "Not a WAV stream"))
     (read-body reader riff-chunk)
 
     ;; Sanity checks
     (let* ((subchunks (riff-subchunks riff-chunk))
            (format-subchunk (car subchunks)))
-      (if (not (typep format-subchunk 'format-subchunk))
-          (error 'wav-error :format-control "First subchunk is not a format subchunk"))
-      (if (not (or (= (format-audio-format format-subchunk) +wave-format-pcm+)
-                   (find-if #'(lambda (x) (typep x 'fact-subchunk)) subchunks)))
-          (error 'wav-error :format-control "No fact subchunk in compressed wav"))
+      (unless (typep format-subchunk 'format-subchunk)
+        (error 'wav-error :format-control "First subchunk is not a format subchunk"))
+      (unless (or (= (format-audio-format format-subchunk) +wave-format-pcm+)
+                  (find-if #'(lambda (x) (typep x 'fact-subchunk)) subchunks))
+        (error 'wav-error :format-control "No fact subchunk in compressed wav"))
       subchunks)))
 
 ;; Helper function(s)
@@ -269,16 +267,12 @@
 (defun decompose (buffer channel-buffers)
   (let ((nsamples (length (car channel-buffers)))
         (channels (length channel-buffers)))
-    (loop
-       for i below nsamples
-       for idx from 0 by channels
-       do
-         (loop
-            for channel in channel-buffers
-            for offset from 0 by 1
-            do
-              (setf (aref channel i)
-                    (aref buffer (+ idx offset))))))
+    (loop for i below nsamples
+          for idx from 0 by channels do
+          (loop for channel in channel-buffers
+                for offset from 0 by 1 do
+                (setf (aref channel i)
+                      (aref buffer (+ idx offset))))))
   channel-buffers)
 
 (declaim

@@ -38,7 +38,9 @@
     (write-sequence (integer-to-array size buf4) out-stream))
   t)
 
-(defmacro with-output-to-wav ((stream filename &key supersede samplerate channels bps totalsamples) &body body)
+(defmacro with-output-to-wav ((stream filename
+                                      &key supersede samplerate channels bps totalsamples)
+                              &body body)
   "Opens a STREAM and writes PCM-coded (uncompressed) WAV header to a file with filename FILENAME"
   `(progn
      (with-open-file (,stream ,filename
