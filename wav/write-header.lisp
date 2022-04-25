@@ -6,14 +6,14 @@
         (buf2 (make-array 2 :element-type '(unsigned-byte 8)))
         (buf4 (make-array 4 :element-type '(unsigned-byte 8))))
 
-    (write-sequence (integer-to-array-be wav:+wav-id+ buf4) out-stream)
+    (write-sequence (integer-to-array-be +wav-id+ buf4) out-stream)
     (write-sequence (integer-to-array (+ 36 size) buf4) out-stream)
-    (write-sequence (integer-to-array-be wav:+wav-format+ buf4) out-stream)
+    (write-sequence (integer-to-array-be +wav-format+ buf4) out-stream)
 
     ;; Subchunk 1
-    (write-sequence (integer-to-array-be wav:+format-subchunk+ buf4) out-stream)
+    (write-sequence (integer-to-array-be +format-subchunk+ buf4) out-stream)
     (write-sequence #(16 0 0 0) out-stream)
-    (write-sequence (integer-to-array wav:+wave-format-pcm+ buf2) out-stream)
+    (write-sequence (integer-to-array +wave-format-pcm+ buf2) out-stream)
     (write-sequence (integer-to-array channels buf2) out-stream)
     (write-sequence (integer-to-array samplerate buf4) out-stream)
 
@@ -34,7 +34,7 @@
                     out-stream)
 
     ;; Subchunk 2
-    (write-sequence (integer-to-array-be wav:+data-subchunk+ buf4) out-stream)
+    (write-sequence (integer-to-array-be +data-subchunk+ buf4) out-stream)
     (write-sequence (integer-to-array size buf4) out-stream))
   t)
 

@@ -25,7 +25,12 @@
 
 (defpackage easy-audio-tests
   (:use :cl :fiveam :flexi-streams)
-  ;; TODO: remove nicknames from other packages
-  (:local-nicknames (:core :easy-audio.core))
+  (:local-nicknames (:core      :easy-audio.core)
+                    (:bitreader :easy-audio.bitreader)
+                    (:flac      :easy-audio.flac)
+                    (:wv        :easy-audio.wv)
+                    (:ogg       :easy-audio.ogg)
+                    (:ape       :easy-audio.ape)
+                    (:general   :easy-audio.general))
   (:export #:run-tests))
 

@@ -24,9 +24,8 @@
 (defpackage easy-audio.ape
   (:use #:cl
         #:alexandria
-        #:bitreader
+        #:easy-audio.bitreader
         #:easy-audio.core)
-  (:nicknames #:ape)
   (:export
    ;; Conditions
    #:ape-error

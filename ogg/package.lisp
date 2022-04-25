@@ -22,10 +22,9 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-audio.ogg
-  (:nicknames :ogg)
   (:use #:cl
         #:easy-audio.core
-        #:bitreader
+        #:easy-audio.bitreader
         #:alexandria)
   (:export #:read-packet
            #:fresh-page

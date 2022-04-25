@@ -24,9 +24,8 @@
 (defpackage easy-audio.wv
   (:use #:cl
         #:alexandria
-        #:bitreader
+        #:easy-audio.bitreader
         #:easy-audio.core)
-  (:nicknames #:wv)
   (:local-nicknames (:sera :serapeum))
   (:export #:wavpack-error ; Conditions
            #:wavpack-warning

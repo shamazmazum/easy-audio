@@ -23,7 +23,6 @@
 
 (defpackage easy-audio.bitreader
   (:use #:cl #:easy-audio.core #:alexandria)
-  (:nicknames #:bitreader)
   (:export
    ;; Conditions
    #:bitreader-eof

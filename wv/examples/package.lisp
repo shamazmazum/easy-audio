@@ -26,6 +26,6 @@
         #:easy-audio.wv
         #:easy-audio.wav
         #:easy-audio.core
-        #:bitreader)
+        #:easy-audio.bitreader)
   (:nicknames #:wv-examples)
   (:export #:wv2wav))

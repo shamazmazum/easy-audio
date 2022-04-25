@@ -23,11 +23,11 @@
 
 (defpackage easy-audio.flac
   (:use #:cl
-        #:bitreader
+        #:easy-audio.bitreader
         #:easy-audio.core
         #:alexandria)
-  (:nicknames #:flac)
-  (:local-nicknames (:sera :serapeum))
+  (:local-nicknames (:sera :serapeum)
+                    (:ogg  :easy-audio.ogg))
   (:export #:streaminfo ; Metadata
 	   #:streaminfo-minblocksize
 	   #:streaminfo-maxblocksize

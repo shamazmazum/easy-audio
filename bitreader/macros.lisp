@@ -71,10 +71,10 @@
                   slot-spec
                 (let* ((function-name
                         (ecase read-how
-                          (:octets       'bitreader:read-octets)
-                          (:bits         'bitreader:read-bits)
-                          (:bit          'bitreader:read-bit)
-                          (:octet-vector 'bitreader:read-octet-vector)))
+                          (:octets       'read-octets)
+                          (:bits         'read-bits)
+                          (:bit          'read-bit)
+                          (:octet-vector 'read-octet-vector)))
                        (endianness (getf options :endianness))
                        (aux-function (getf options :function))
                        (conditional-form (getf options :cond))

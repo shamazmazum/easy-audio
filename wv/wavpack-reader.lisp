@@ -58,13 +58,14 @@
 (defun residual-read-bit (reader)
   (declare (optimize #+easy-audio-unsafe-code
                      (safety 0) (speed 3)))
-  (with-accessors ((ibyte bitreader::reader-ibyte)
-                   (ibit  bitreader::reader-ibit)
-                   (end   bitreader::reader-end)) reader
+  (with-accessors ((ibyte easy-audio.bitreader::reader-ibyte)
+                   (ibit  easy-audio.bitreader::reader-ibit)
+                   (end   easy-audio.bitreader::reader-end))
+      reader
   (if (< ibyte end)
       (prog1
           (ldb (byte 1 ibit)
-               (aref (bitreader::reader-buffer reader) ibyte))
+               (aref (easy-audio.bitreader::reader-buffer reader) ibyte))
         (if (= ibit 7)
             (setf ibit 0
                   ibyte (1+ ibyte))
@@ -82,19 +83,21 @@
         (already-read 0))
     (declare (type non-negative-fixnum result already-read))
 
-    (with-accessors ((ibit  bitreader::reader-ibit)
-                     (ibyte bitreader::reader-ibyte)
-                     (end   bitreader::reader-end))
+    (with-accessors ((ibit  easy-audio.bitreader::reader-ibit)
+                     (ibyte easy-audio.bitreader::reader-ibyte)
+                     (end   easy-audio.bitreader::reader-end))
         reader
       (dotimes (i (ceiling (+ bits ibit) 8))
         (if (= ibyte end) (error 'bitreader-eof :bitreader reader))
         (let ((bits-to-add (min bits (- 8 ibit))))
           (declare (type bit-counter bits-to-add))
-          (setq result (logior result (the non-negative-fixnum
-                                           (ash (ldb
-                                                 (byte bits-to-add ibit)
-                                                 (aref (bitreader::reader-buffer reader) ibyte))
-                                                already-read)))
+          (setq result
+                (logior result
+                        (the non-negative-fixnum
+                             (ash (ldb
+                                   (byte bits-to-add ibit)
+                                   (aref (easy-audio.bitreader::reader-buffer reader) ibyte))
+                                  already-read)))
                 bits (- bits bits-to-add)
                 already-read (+ already-read bits-to-add))
 

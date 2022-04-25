@@ -211,17 +211,17 @@
 (in-suite decoders)
 (test g.711-ulaw
   "Test g.711 uLaw decoder"
-  (is (= (general-decoders:g.711-ulaw-decode #xff) 0))
-  (is (= (general-decoders:g.711-ulaw-decode #xea) #xd4))
-  (is (= (general-decoders:g.711-ulaw-decode #xda) #x022c))
-  (is (= (general-decoders:g.711-ulaw-decode #xca) #x04dc))) ; And so on...
+  (is (= (general:g.711-ulaw-decode #xff) 0))
+  (is (= (general:g.711-ulaw-decode #xea) #xd4))
+  (is (= (general:g.711-ulaw-decode #xda) #x022c))
+  (is (= (general:g.711-ulaw-decode #xca) #x04dc))) ; And so on...
 
 (test g.711-alaw
   "Test g.711 A-Law decoder"
-  (is (= (general-decoders:g.711-alaw-decode #x55) -8))
-  (is (= (general-decoders:g.711-alaw-decode #x54) -24))
-  (is (= (general-decoders:g.711-alaw-decode #x40) #x-158))
-  (is (= (general-decoders:g.711-alaw-decode #x70) #x-2b0)))
+  (is (= (general:g.711-alaw-decode #x55) -8))
+  (is (= (general:g.711-alaw-decode #x54) -24))
+  (is (= (general:g.711-alaw-decode #x40) #x-158))
+  (is (= (general:g.711-alaw-decode #x70) #x-2b0)))
 
 (in-suite wavpack)
 (test wv-decode-mono
