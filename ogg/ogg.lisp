@@ -89,7 +89,7 @@
     (setf (ogg-is-continued reader) is-continued
           (ogg-bos reader) bos
           (ogg-eos reader) eos
-          
+
           (ogg-granule-position reader)
           (logior (ash (read-octets 2 reader :endianness :little) 0)
                   (ash (read-octets 2 reader :endianness :little) 16)

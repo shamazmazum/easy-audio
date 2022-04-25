@@ -202,7 +202,7 @@ Returns list of decoded audio buffers (one buffer for each channel)."
 	;; Maybe just a loop?
 	(map-into right #'-
 		  left right))
-       
+
        ((= +right-side+ assignment)
 	(map-into left #'+
 		  left right))

@@ -66,7 +66,7 @@
    Maximum value of ibit is 7. Does not check if ibit becomes
    out of range."
   (declare (type non-negative-fixnum bits))
-  
+
   (with-accessors
    ((ibit reader-ibit)
     (ibyte reader-ibyte)) reader
@@ -119,7 +119,7 @@
                  (reader-crc reader)
                  :start (reader-crc-start reader)
                  :end (reader-end reader))
-        
+
         (reader-crc-start reader) 0)
 
   (setf (reader-ibit reader) 0
@@ -150,7 +150,7 @@
   "Reads current octet from reader
    Ignores ibit"
   (ensure-data-available reader)
-  
+
   (prog1
       (aref (reader-buffer reader) (reader-ibyte reader))
     (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))

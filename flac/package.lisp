@@ -78,7 +78,7 @@
            #:picture-depth
            #:picture-color-num
            #:picture-picture
-           
+
 	   ;; And so on with metadata classes
 	   ;; Frame and its slots
 	   

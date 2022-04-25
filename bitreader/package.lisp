@@ -51,7 +51,7 @@
    #:with-skipping-crc
 
    #:defreader
-   
+
    #+easy-audio-check-crc
    #:init-crc
    #+easy-audio-check-crc

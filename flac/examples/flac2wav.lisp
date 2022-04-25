@@ -37,16 +37,16 @@
            (bps (streaminfo-bitspersample streaminfo))
            (channels (streaminfo-channels streaminfo))
            (samplerate (streaminfo-samplerate streaminfo)))
-      
+
       (if (zerop totalsamples)
           (error "Number of total samples is unknown"))
       (if (/= minblocksize maxblocksize)
           (error "Block size must be fixed"))
-      
+
       (if (not (or (= 8 bps)
                    (= 16 bps)))
           (error "Bps must be 16 or 8"))
-      
+
       (with-output-to-wav (out-stream wav-name
                            :supersede t
                            :samplerate samplerate

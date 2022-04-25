@@ -180,7 +180,7 @@ metadata type"))
                    :accessor picture-picture
                    :documentation "The picture itself as array of octets"))
   (:documentation "PICTURE metadata block"))
-                   
+
 
 (defgeneric read-metadata-body (stream data)
   (:documentation "Reads a body of the metadata block DATA from STREAM. Can depend on slots

@@ -62,7 +62,7 @@
     (cond
      (( = 0 (logand x #x80))
       (setq v x i 0))
-     
+
      ((and
        (= 0 (logand x #x20))
        (/= 0 (logand x #xC0)))
@@ -87,7 +87,7 @@
        (= 0 (logand x #x02))
        (/= 0 (logand x #xFC)))
       (setq v (logand x #x01) i 5))
-     
+
      (t (error 'flac-bad-frame
 	       :format-control "Error reading utf-8 coded value")))
 

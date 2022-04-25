@@ -41,7 +41,7 @@
 
            #:metadata-riff-header ; Metadata types
            #:metadata-riff-trailer
-           
+
            #:block-samplerate ; Block parameters
            #:block-bps
            #:block-channels

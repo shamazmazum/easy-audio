@@ -84,7 +84,8 @@
 
     (with-accessors ((ibit  bitreader::reader-ibit)
                      (ibyte bitreader::reader-ibyte)
-                     (end   bitreader::reader-end)) reader
+                     (end   bitreader::reader-end))
+        reader
       (dotimes (i (ceiling (+ bits ibit) 8))
         (if (= ibyte end) (error 'bitreader-eof :bitreader reader))
         (let ((bits-to-add (min bits (- 8 ibit))))
