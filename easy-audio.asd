@@ -38,7 +38,8 @@
                #+easy-audio-check-crc
                (:file "crc")
                (:file "macros"))
-  :depends-on (:easy-audio/core :alexandria))
+  :depends-on (:easy-audio/core
+               :alexandria))
 
 (defsystem :easy-audio/ogg
   :name :easy-audio/ogg
@@ -170,4 +171,6 @@
   :serial t
   :components ((:file "package")
                (:file "tests"))
-  :depends-on (:easy-audio/examples :fiveam :md5))
+  :depends-on (:easy-audio/examples
+               :fiveam
+               :md5))
