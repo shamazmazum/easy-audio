@@ -42,20 +42,19 @@
         (error "Number of total samples is unknown"))
       (when (/= minblocksize maxblocksize)
         (error "Block size must be fixed"))
-
       (unless (or (= 8 bps)
-                  (= 16 bps)))
+                  (= 16 bps))
         (error "Bps must be 16 or 8"))
 
-      (with-output-to-wav (out-stream wav-name
-                           :supersede t
-                           :samplerate samplerate
-                           :channels channels
-                           :bps bps
+      (with-output-to-wav (out-stream    wav-name
+                           :supersede    t
+                           :samplerate   samplerate
+                           :channels     channels
+                           :bps          bps
                            :totalsamples totalsamples)
         (with-output-buffers (streaminfo)
           (loop for i below totalsamples by blocksize
                 for bufsize = (min (- totalsamples i) blocksize)
                 for buf = (make-array (* bufsize channels) :element-type '(signed-byte 32)) do
-                  (write-sequence (mixchannels buf (frame-decode (read-frame in-reader streaminfo)))
-                                  out-stream)))))))
+                (write-sequence (mixchannels buf (frame-decode (read-frame in-reader streaminfo)))
+                                out-stream)))))))
