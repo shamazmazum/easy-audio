@@ -31,33 +31,19 @@
            (format (car subchunks))
            (audio-format (format-audio-format format)))
 
-      (if (= audio-format +wave-format-pcm+)
-          (error "Already contains decoded pcm data"))
-      (if (and (/= audio-format +wave-format-alaw+)
-               (/= audio-format +wave-format-mulaw+))
-          (error "Wav is not coded with g.711"))
+      (when (= audio-format +wave-format-pcm+)
+        (error "Already contains decoded pcm data"))
+      (when (and (/= audio-format +wave-format-alaw+)
+                 (/= audio-format +wave-format-mulaw+))
+        (error "Wav is not coded with g.711"))
       (reader-position-to-audio-data reader subchunks)
 
-      ;; Write pcm wav header
-      (with-open-file
-          (out name-out
-               :direction :output
-               :if-exists :supersede
-               :if-does-not-exist :create
-               :element-type '(unsigned-byte 8))
-        (write-pcm-wav-header out
-                              :samplerate (format-samplerate format)
-                              :channels (format-channels-num format)
-                              :bps 16
-                              :totalsamples (samples-num subchunks)))
-
-      ;; Write decoded data
-      (with-open-file
-          (out name-out
-               :direction :output
-               :if-exists :append
-               :element-type '(signed-byte 16))
-        (file-position out (file-length out))
+      (with-output-to-wav (out name-out
+                               :supersede    t
+                               :samplerate   (format-samplerate format)
+                               :channels     (format-channels-num format)
+                               :bps          16
+                               :totalsamples (samples-num subchunks))
         (write-sequence
          (decode-wav-data
           format
