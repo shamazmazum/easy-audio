@@ -23,9 +23,7 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize
-          #+easy-audio-unsafe-code
-          (safety 0) (speed 3)))
+(declaim (optimize (speed 3)))
 
 (defmethod subframe-decode :after ((subframe subframe) frame)
   (declare (ignore frame))
@@ -33,10 +31,9 @@
 	(out-buf (subframe-out-buf subframe)))
     (declare (type non-negative-fixnum wasted-bits)
 	     (type (sa-sb 32) out-buf))
-    (if (/= wasted-bits 0)
+    (if (not (zerop wasted-bits))
 	(map-into out-buf (lambda (sample)
-                            (declare (type (sb 32) sample))
-                            (the fixnum (ash sample wasted-bits)))
+                            (ash sample wasted-bits))
 		  out-buf))))
 
 (defmethod subframe-decode ((subframe subframe-constant) frame)
@@ -142,14 +139,14 @@
                        (type (sb 32) shift))
 
               (loop for i fixnum from ,n below (length out-buf)
-                 for sum fixnum = 0 do
-                   ,@(loop for j fixnum below n collect
-                          `(incf sum
-                                 (* (aref coeff ,j)
-                                    (aref out-buf (- i ,(1+ j))))))
-                   (incf (aref out-buf i)
-                         (the fixnum
-                              (ash sum (- shift)))))
+                    for sum fixnum = 0 do
+                    ,@(loop for j fixnum below n collect
+                            `(incf sum
+                                   (* (aref coeff ,j)
+                                      (aref out-buf (- i ,(1+ j))))))
+                    (incf (aref out-buf i)
+                          (the fixnum
+                               (ash sum (- shift)))))
 
               out-buf))
        #',func-name)))
