@@ -251,8 +251,8 @@
 
 @begin(section)
    @title(Utility functions)
-   Package @c(easy-audio.utils) contains some useful functions. Here they are.
-   @cl:with-package[name="easy-audio.utils"](
+   Package @c(easy-audio.core) contains some useful functions. Here they are.
+   @cl:with-package[name="easy-audio.core"](
       @cl:doc(function mixchannels)
    )
 @end(section)

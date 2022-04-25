@@ -2,6 +2,6 @@
   (:use #:cl
         #:easy-audio.wav
         #:easy-audio.ape
-        #:easy-audio.utils)
+        #:easy-audio.core)
   (:nicknames #:ape-examples)
   (:export #:ape2wav))

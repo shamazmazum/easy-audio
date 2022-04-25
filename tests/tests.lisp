@@ -29,13 +29,14 @@
 (def-suite decoders  :description "General decoders tests")
 (def-suite wavpack   :description "Wavpack tests")
 (def-suite ape       :description "Ape tests")
-(def-suite utils     :description "Utilities tests")
+(def-suite core      :description "Core tests")
 
 (defun prepare-input (&rest args)
   (apply #'concatenate
          'vector
          (mapcar (lambda (elem)
-                   (if (atom elem) (list elem) elem)) args)))
+                   (if (atom elem) (list elem) elem))
+                 args)))
 
 ;; Can it be done with FiveAM itself?
 ;; Maybe it's good idea to create suite registry here?
@@ -46,7 +47,7 @@
                    (let ((status (run suite)))
                      (explain! status)
                      (results-status status)))
-                 '(bitreader flac ogg decoders wavpack ape utils))))
+                 '(bitreader flac ogg decoders wavpack ape core))))
 
 (in-suite bitreader)
 (test bitreader-tests
@@ -270,7 +271,7 @@
     (is (equalp (md5:md5sum-file wav-name)
                 (md5:md5sum-file tmp-name)))))
 
-(in-suite utils)
+(in-suite core)
 (defun mixed-correctly-p (output a1 a2)
   (every #'identity
          (loop for i below (length a1)
@@ -292,7 +293,7 @@
                                   :element-type '(signed-byte 32)
                                   :initial-contents (subseq data2 0 512)))
               (out (make-array 1024 :element-type '(signed-byte 32))))
-        (is (mixed-correctly-p (utils:mixchannels out (list array1 array2)) array1 array2)))
+        (is (mixed-correctly-p (core:mixchannels out (list array1 array2)) array1 array2)))
 
         (let ((array1 (make-array 522
                                   :element-type '(signed-byte 32)
@@ -301,7 +302,7 @@
                                   :element-type '(signed-byte 32)
                                   :initial-contents data2))
               (out (make-array #.(expt 522 2) :element-type '(signed-byte 32))))
-        (is (mixed-correctly-p (utils:mixchannels out (list array1 array2)) array1 array2)))
+        (is (mixed-correctly-p (core:mixchannels out (list array1 array2)) array1 array2)))
 
         (let ((array1 (make-array 522
                                   :element-type '(signed-byte 32)
@@ -310,4 +311,4 @@
                                   :element-type '(signed-byte 32)
                                   :initial-contents data2))
               (out (make-array #.(1+ (expt 522 2)) :element-type '(signed-byte 32))))
-          (is (mixed-correctly-p (utils:mixchannels out (list array1 array2)) array1 array2)))))
+          (is (mixed-correctly-p (core:mixchannels out (list array1 array2)) array1 array2)))))

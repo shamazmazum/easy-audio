@@ -22,7 +22,7 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-audio.bitreader
-  (:use #:cl #:easy-audio-core #:alexandria)
+  (:use #:cl #:easy-audio.core #:alexandria)
   (:nicknames #:bitreader)
   (:export
    ;; Conditions

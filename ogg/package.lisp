@@ -24,7 +24,7 @@
 (defpackage easy-audio.ogg
   (:nicknames :ogg)
   (:use #:cl
-        #:easy-audio-core
+        #:easy-audio.core
         #:bitreader
         #:alexandria)
   (:export #:read-packet

@@ -10,8 +10,10 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
+  :pathname "core/"
   :depends-on (:serapeum)
-  :components ((:file "easy-audio-core")))
+  :components ((:file "package")
+               (:file "core")))
 
 (defsystem :easy-audio/general-decoders
   :name :easy-audio/general-decoders
@@ -51,17 +53,6 @@
                :easy-audio/bitreader
                :alexandria))
 
-(defsystem :easy-audio/utils
-  :name :easy-audio/utils
-  :version "1.0"
-  :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
-  :licence "2-clause BSD"
-  :serial t
-  :pathname "utils/"
-  :components ((:file "package")
-               (:file "utils"))
-  :depends-on (:easy-audio/core))
-
 (defsystem :easy-audio/flac
   :name :easy-audio/flac
   :version "1.0"
@@ -79,7 +70,6 @@
                (:file "flac-ogg"))
   :depends-on (:easy-audio/core
                :easy-audio/bitreader
-               :easy-audio/utils
                :alexandria
                :serapeum
                :flexi-streams))
@@ -115,7 +105,6 @@
                (:file "ape-tags-v2"))
   :depends-on (:easy-audio/core
                :easy-audio/bitreader
-               :easy-audio/utils
                :alexandria
                :flexi-streams))
 
@@ -135,7 +124,6 @@
                (:file "decode"))
   :depends-on (:easy-audio/core
                :easy-audio/bitreader
-               :easy-audio/utils
                :alexandria
                :serapeum))
 
@@ -149,12 +137,12 @@
   :perform (test-op (op system)
                     (declare (ignore op system))
                     (uiop:symbol-call :easy-audio-tests '#:run-tests))
-  :depends-on (:easy-audio/ogg
+  :depends-on (:easy-audio/core
+               :easy-audio/ogg
                :easy-audio/flac
                :easy-audio/wav
                :easy-audio/ape
-               :easy-audio/wv
-               :easy-audio/utils))
+               :easy-audio/wv))
 
 (defsystem :easy-audio/examples
   :name :easy-audio/examples

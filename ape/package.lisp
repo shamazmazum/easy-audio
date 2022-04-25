@@ -25,8 +25,7 @@
   (:use #:cl
         #:alexandria
         #:bitreader
-        #:easy-audio-core
-        #:utils)
+        #:easy-audio.core)
   (:nicknames #:ape)
   (:export
    ;; Conditions

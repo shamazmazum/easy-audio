@@ -1,5 +1,33 @@
-(in-package :easy-audio.utils)
+(in-package :easy-audio.core)
 
+;; Types
+(deftype bit-counter () '(integer 0 8))
+(deftype ub (n) `(unsigned-byte ,n))
+(deftype sb (n) `(signed-byte ,n))
+(deftype sa-ub (n) `(simple-array (ub ,n) (*)))
+(deftype sa-sb (n) `(simple-array (sb ,n) (*)))
+
+;; For interactive restarts
+(sera:defvar-unbound *current-condition*
+  "*CURRENT-CONDITION* is bound to signaled contition
+   when debugger is invoked while within WITH-INTERACTIVE-DEBUG")
+
+(defmacro with-interactive-debug (&body body)
+  "If any condition is signaled and the debugger is invoked while
+   within this macro, *CURRENT-CONDITION* will be bound to the
+   condition signaled"
+  (let ((debugger-hook (gensym)))
+    `(let ((,debugger-hook *debugger-hook*))
+       (flet ((,debugger-hook (condition me)
+                (declare (ignore me))
+                (let ((*debugger-hook* ,debugger-hook)
+                      (*current-condition* condition))
+                  (invoke-debugger condition))))
+
+         (let ((*debugger-hook* #',debugger-hook))
+           ,@body)))))
+
+;; Utility functions
 (defun integer-to-array (val array)
   (loop for i below (length array)
 	for pos from 0 by 8 do

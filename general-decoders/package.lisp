@@ -22,7 +22,7 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage :easy-audio.general
-  (:use #:cl #:easy-audio-core)
+  (:use #:cl #:easy-audio.core)
   (:nicknames #:general-decoders)
   (:export #:g.711-alaw-decode
            #:g.711-ulaw-decode))

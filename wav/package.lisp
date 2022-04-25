@@ -22,7 +22,9 @@
 ;; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (defpackage easy-audio.wav
-  (:use #:cl #:bitreader #:utils #:easy-audio-core)
+  (:use #:cl
+        #:bitreader
+        #:easy-audio.core)
   (:nicknames #:wav)
   (:export #:+wav-id+   ; Useful constants which can be used in examples
            #:+wav-format+

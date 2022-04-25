@@ -25,8 +25,7 @@
   (:use #:cl
         #:alexandria
         #:bitreader
-        #:easy-audio-core
-        #:utils)
+        #:easy-audio.core)
   (:nicknames #:wv)
   (:local-nicknames (:sera :serapeum))
   (:export #:wavpack-error ; Conditions

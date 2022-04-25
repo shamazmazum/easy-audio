@@ -24,8 +24,7 @@
 (defpackage easy-audio.flac
   (:use #:cl
         #:bitreader
-        #:easy-audio.utils
-        #:easy-audio-core
+        #:easy-audio.core
         #:alexandria)
   (:nicknames #:flac)
   (:local-nicknames (:sera :serapeum))
