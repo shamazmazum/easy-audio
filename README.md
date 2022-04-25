@@ -5,6 +5,11 @@ Easy audio
 
 Overview
 -------
+**NB**: 25.04.2022: `easy-audio/utils` system was merged to
+`easy-audio/core`. Global nicknames were removed from all packages loaded with
+`(asdf:load-system :easy-audio)`. Use full names (like `easy-audio.flac` instead
+of `flac`) or local nicknames. The version was bumped to `1.1`.
+
 Easy audio is my small but slowly growing pack of audio decoders. It can
 help you decode audio files and also provides easy access to metadata.
 
