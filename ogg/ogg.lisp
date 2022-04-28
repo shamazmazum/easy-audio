@@ -64,27 +64,29 @@
   (loop for segment below segments
         for lacing-val = (read-octet reader)
         sum lacing-val into segment-len
-        when (< lacing-val 255) collect (prog1
-                                            segment-len
-                                          (setq segment-len 0)) into packet-sizes
-        finally (return
-                  (if (= lacing-val 255)
-                      (values (append packet-sizes (list segment-len)) t)
-                      (values packet-sizes nil)))))
+        when (< lacing-val 255) collect
+        (prog1
+            segment-len
+          (setq segment-len 0))
+        into packet-sizes
+        finally
+        (return
+          (if (= lacing-val 255)
+              (values (append packet-sizes (list segment-len)) t)
+              (values packet-sizes nil)))))
 
 (defun read-page-header (reader)
   "Read OGG page header"
   #+easy-audio-check-crc
   (init-crc reader)
-  (if (/= (read-octets 4 reader)
-          +ogg-page-id+)
-      (error 'ogg-error :format-control "Wrong page ID"))
-  (if (/= (read-octet reader) 0)
-      (error 'ogg-error :format-control "Wrong stream structure version"))
+  (unless (= (read-octets 4 reader) +ogg-page-id+)
+    (error 'ogg-error :format-control "Wrong page ID"))
+  (unless (zerop (read-octet reader))
+    (error 'ogg-error :format-control "Wrong stream structure version"))
   (let* ((flags (read-octet reader))
          (is-continued (/= 0 (logand flags +continued-packet+)))
-         (bos (/= 0 (logand flags +begining-of-stream+)))
-         (eos (/= 0 (logand flags +end-of-stream+))))
+         (bos (not (zerop (logand flags +begining-of-stream+))))
+         (eos (not (zerop (logand flags +end-of-stream+)))))
 
     (setf (ogg-is-continued reader) is-continued
           (ogg-bos reader) bos
@@ -101,8 +103,9 @@
           (ogg-reader-position reader) 0))
 
   #+easy-audio-check-crc
-  (setf (ogg-page-crc reader) (let ((*read-with-zeroing* t))
-                                (read-octets 4 reader :endianness :little)))
+  (setf (ogg-page-crc reader)
+        (let ((*read-with-zeroing* t))
+          (read-octets 4 reader :endianness :little)))
   #-easy-audio-check-crc
   (read-octets 4 reader)
 
@@ -120,20 +123,20 @@
     (when (= position (length segment-table))
       (read-page-header reader))
 
-    (if (and previous-page-num
-             (or
-              (/= (- (ogg-page-number reader)
-                     previous-page-num) 1)
-              (not (ogg-is-continued reader))))
-        (error 'ogg-error :format-control "Lost sync"))
+    (unless (or (not previous-page-num)
+                (and (= (- (ogg-page-number reader)
+                           previous-page-num)
+                        1)
+                     (ogg-is-continued reader)))
+      (error 'ogg-error :format-control "Lost sync"))
 
     (let ((packet (make-array (nth position segment-table) :element-type '(ub 8))))
       (read-octet-vector packet reader)
       (incf position)
       #+easy-audio-check-crc
-      (if (and (= position (length segment-table))
-               (/= (ogg-page-crc reader) (get-crc reader)))
-          (error 'ogg-error :format-control "CRC mismatch"))
+      (when (and (= position (length segment-table))
+                 (/= (ogg-page-crc reader) (get-crc reader)))
+        (error 'ogg-error :format-control "CRC mismatch"))
       (if (and (ogg-will-be-continued reader)
                (= position (length segment-table)))
           (read-packet-pages reader

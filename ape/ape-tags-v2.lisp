@@ -41,8 +41,9 @@
       :footer :header))
 
 (defun check-bits-3...28 (flags)
-  (if (zerop (logand #x1ffffff8 flags)) flags
-      (error 'apev2-tag-error :format-control "Invalid tag/item flags")))
+  (unless (zerop (logand #x1ffffff8 flags))
+    (error 'apev2-tag-error :format-control "Invalid tag/item flags"))
+  flags)
 
 (defun content-type (flags)
   (case (ldb (byte 2 1) flags)
@@ -55,12 +56,14 @@
   (zerop (logand 1 flags)))
 
 (defun check-preamble (preamble)
-  (if (equalp preamble *apev2-preamble*) preamble
-      (error 'apev2-tag-error :format-control "Not an APEv2 tag")))
+  (unless (equalp preamble *apev2-preamble*)
+    (error 'apev2-tag-error :format-control "Not an APEv2 tag"))
+  preamble)
 
 (defun check-h/f-reserved (reserved)
-  (if (zerop reserved) reserved
-      (error 'apev2-tag-error :format-control "Header/footer reserved slot is not zero")))
+  (unless (zerop reserved)
+    (error 'apev2-tag-error :format-control "Header/footer reserved slot is not zero"))
+  reserved)
 
 (defstruct (header/footer
              (:conc-name :h/f-))
@@ -154,17 +157,17 @@
   "Helper function to read APEv2 tag from end of reader's stream.
 Changes reader's position. Needs APEv2 tag to contain a footer."
   (let ((length (reader-length reader)))
-    (if (< length 32)
-        (error 'apev2-tag-error :format-control "Stream is too short to be an APEv2 tag"))
+    (when (< length 32)
+      (error 'apev2-tag-error :format-control "Stream is too short to be an APEv2 tag"))
     (reader-position reader (- length 32))
     (let* ((footer (read-header/footer reader))
            (flags (h/f-flags footer)))
-      (if (not (and (has-header flags)
-                    (has-footer flags) ; Sanity check
-                    (eq (h/f-type flags) :footer)))
-          (error 'apev2-tag-error :format-control "Cannot read APEv2 tag from the end of stream"))
-      (if (< length (+ 32 (h/f-size footer)))
-          (error 'apev2-tag-error :format-control "Stream is too short to be an APEv2 tag"))
+      (unless (and (has-header flags)
+                   (has-footer flags) ; Sanity check
+                   (eq (h/f-type flags) :footer))
+        (error 'apev2-tag-error :format-control "Cannot read APEv2 tag from the end of stream"))
+      (when (< length (+ 32 (h/f-size footer)))
+        (error 'apev2-tag-error :format-control "Stream is too short to be an APEv2 tag"))
       (reader-position reader
                        (- length 32 (h/f-size footer)))
       (read-tag reader))))

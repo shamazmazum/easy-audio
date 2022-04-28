@@ -12,8 +12,8 @@
 (defun open-ape (stream)
   "Open ape audio file and return bitreader for further operations"
   (let ((reader (make-reader :stream stream)))
-    (if (/= (read-octets 4 reader) +ape-id+)
-        (error 'ape-error :format-control "Not an APE stream"))
+    (when (/= (read-octets 4 reader) +ape-id+)
+      (error 'ape-error :format-control "Not an APE stream"))
     reader))
 
 (defun metadata-promote-version (version)
@@ -80,11 +80,11 @@
 (defun read-metadata (reader)
   "Read ape metadata using @c(reader) returned by @c(open-ape)"
   (let ((version (read-octets 2 reader :endianness :little)))
-    (if (or (< version +ape-min-version+)
-            (> version +ape-max-version+))
-        (error 'ape-error
-               :format-control "Unsupported APE version ~d"
-               :format-arguments (list version)))
+    (when (or (< version +ape-min-version+)
+              (> version +ape-max-version+))
+      (error 'ape-error
+             :format-control "Unsupported APE version ~d"
+             :format-arguments (list version)))
     (let* ((metadata (read-metadata-header
                       reader (metadata-promote-version version)))
            (seektable (make-array (metadata-total-frames metadata)
@@ -98,15 +98,15 @@
             (metadata-seektable metadata) seektable)
       ;; A bit of sanity checks
       (let ((expected-len (ash (metadata-total-frames metadata) 2)))
-        (if (/= (metadata-seektable-len metadata) expected-len)
-            (error 'ape-error
-                   :format-control "Unexpected seektable length (expected ~d, got ~d)"
-                   :format-arguments (list expected-len (metadata-seektable-len metadata)))))
-      ;; COMPRESSION-TYPE must be multiple of 1000
-      (if (not (zerop (rem (metadata-compression-type metadata) 1000)))
+        (when (/= (metadata-seektable-len metadata) expected-len)
           (error 'ape-error
-                 :format-control "Compression type is not multiple of 1000: ~d"
-                 :format-arguments (list (metadata-compression-type metadata))))
+                 :format-control "Unexpected seektable length (expected ~d, got ~d)"
+                 :format-arguments (list expected-len (metadata-seektable-len metadata)))))
+      ;; COMPRESSION-TYPE must be multiple of 1000
+      (when (not (zerop (rem (metadata-compression-type metadata) 1000)))
+        (error 'ape-error
+               :format-control "Compression type is not multiple of 1000: ~d"
+               :format-arguments (list (metadata-compression-type metadata))))
       ;; Read seektable
       (dotimes (i (length seektable))
         (setf (aref seektable i)
@@ -139,8 +139,8 @@ the beginning of file."
         (total-samples (metadata-total-samples metadata))
         (frame-size (metadata-blocks-per-frame metadata)))
     (let ((sample-number (* seconds samplerate)))
-      (if (>= sample-number total-samples)
-          (error 'ape-error
-                 :format-control "Sample ~d is requested, but maximal value is ~d"
-                 :format-arguments (list sample-number total-samples)))
+      (when (>= sample-number total-samples)
+        (error 'ape-error
+               :format-control "Sample ~d is requested, but maximal value is ~d"
+               :format-arguments (list sample-number total-samples)))
       (floor sample-number frame-size))))
