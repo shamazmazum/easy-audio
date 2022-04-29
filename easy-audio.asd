@@ -89,6 +89,7 @@
   :depends-on (:easy-audio/core
                :easy-audio/bitreader
                :easy-audio/general-decoders
+               :nibbles-streams
                :flexi-streams))
 
 (defsystem :easy-audio/ape

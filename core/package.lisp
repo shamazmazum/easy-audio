@@ -14,6 +14,4 @@
    #:sa-sb
 
    ;; Utility functions
-   #:mixchannels
-   #:integer-to-array
-   #:integer-to-array-be))
+   #:mixchannels))

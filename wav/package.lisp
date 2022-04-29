@@ -25,6 +25,7 @@
   (:use #:cl
         #:easy-audio.bitreader
         #:easy-audio.core)
+  (:local-nicknames (:ns :nibbles-streams))
   (:export #:+wav-id+   ; Useful constants which can be used in examples
            #:+wav-format+
            #:+format-subchunk+

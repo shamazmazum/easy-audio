@@ -28,22 +28,6 @@
            ,@body)))))
 
 ;; Utility functions
-(defun integer-to-array (val array)
-  (loop for i below (length array)
-	for pos from 0 by 8 do
-	(setf (aref array i)
-	      (ldb (byte 8 pos) val)))
-  array)
-
-(defun integer-to-array-be (val array)
-  (let* ((len (length array))
-         (len-bits (ash len 3)))
-    (loop for i below len
-          for pos from 0 by 8 do
-          (setf (aref array i)
-                (ldb (byte 8 (- len-bits pos 8)) val))))
-  array)
-
 (defun mixchannels-n (out buffers)
   (declare (type list buffers)
 	   (type (simple-array (signed-byte 32)) out)
@@ -51,7 +35,7 @@
                      (safety 0) (speed 3)))
   (let ((offset (length buffers))
 	(size (length (the (simple-array (signed-byte 32))
-			(nth 0 buffers))))
+			   (nth 0 buffers))))
 	(idx 0))
     (declare (type fixnum offset size idx))
     (dotimes (i size)
@@ -59,7 +43,8 @@
 	(declare (type fixnum i j))
 	(setf (aref out (+ idx j))
 	      (aref (the (simple-array (signed-byte 32))
-		      (nth j buffers)) i)))
+		         (nth j buffers))
+                    i)))
       (incf idx offset))
     out))
 
