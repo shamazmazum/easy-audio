@@ -11,6 +11,7 @@
     
   <link rel="stylesheet" href="static/highlight.css"/>
   <script src="static/highlight.js"></script>
+  <script src="static/load-mathjax.js" async></script>
   <style>
    /* Highlight the current top-level TOC item, and hide the TOC of all other items */
 
@@ -59,11 +60,12 @@
    when readonly flag is not set on that item.
 <h1 id="4-api">API</h1>
    
-      <div class="codex-error codex-no-node">No node with name <code>read-tag</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>read-tag-from-end</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>ape-error</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>apev2-tag-error</code>.</div>
-      <div class="codex-error codex-no-node">No node with name <code>*apev2-external-format*</code>.</div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">read-tag</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Read APEv2 tag from reader</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">read-tag-from-end</code><code class="codex-lambda-list">(reader)</code><div class="codex-docstring">Helper function to read APEv2 tag from end of reader's stream.
+Changes reader's position. Needs APEv2 tag to contain a footer.</div></div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">ape-error</code><div class="codex-docstring">General APE error</div><ul class="codex-slot-list"></ul></div>
+      <div class="codex-doc-node codex-record codex-condition"><code class="codex-name">apev2-tag-error</code><div class="codex-docstring">APEv2 tag error</div><ul class="codex-slot-list"></ul></div>
+      <div class="codex-doc-node codex-variable"><code class="codex-name">*apev2-external-format*</code><div class="codex-docstring">External format used in human-readable APEv2 items</div></div>
    
 
 

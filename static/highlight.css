@@ -24,5 +24,5 @@ code.hl-highlighted .string, code.hl-highlighted .string * {color: #d14 !importa
 code.hl-highlighted .comment,
 code.hl-highlighted .comment *,
 code.hl-highlighted .comment .string
-code.hl-highlighted .comment .string * {color: #aaa !important;}
+code.hl-highlighted .comment .string * {color: #c00000 !important;}
 code.hl-highlighted .string .comment {color: #d14 !important;}

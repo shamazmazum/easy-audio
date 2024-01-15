@@ -11,6 +11,7 @@
     
   <link rel="stylesheet" href="static/highlight.css"/>
   <script src="static/highlight.js"></script>
+  <script src="static/load-mathjax.js" async></script>
   <style>
    /* Highlight the current top-level TOC item, and hide the TOC of all other items */
 
@@ -52,7 +53,10 @@
       
    Package <code>easy-audio.core</code> contains some useful functions. Here they are.
    
-      <div class="codex-error codex-no-node">No node with name <code>mixchannels</code>.</div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">mixchannels</code><code class="codex-lambda-list">(out buffers)</code><div class="codex-docstring">Maps a list of <code>buffers</code>(each one for each channel) into one buffer <code>out</code>
+writing sequentially the first sample of the first channel then the first sample of
+second channel and so on until final channel is reached. When process repeats for
+second sample of each channel until all data is written</div></div>
    
 
     </main>
