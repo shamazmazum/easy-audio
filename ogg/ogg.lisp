@@ -148,7 +148,7 @@
   "Reads a packet from OGG stream"
   (let ((segments (read-packet-pages reader)))
     (if (= (length segments) 1) (car segments)
-        (let ((packet (make-array (reduce #'+ (mapcar #'length segments))
+        (let ((packet (make-array (reduce #'+ segments :key #'length)
                                   :element-type '(ub 8))))
           (loop with start = 0
                 for segment in (nreverse segments) do
