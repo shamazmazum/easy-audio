@@ -10,7 +10,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
-  :pathname "core/"
+  :pathname "core"
   :depends-on (:serapeum)
   :components ((:file "package")
                (:file "core")))
@@ -21,7 +21,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
-  :pathname "general-decoders/"
+  :pathname "general-decoders"
   :components ((:file "package")
                (:file "g.711"))
   :depends-on (:easy-audio/core))
@@ -32,7 +32,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
-  :pathname "bitreader/"
+  :pathname "bitreader"
   :components ((:file "package")
                (:file "bitreader")
                #+easy-audio-check-crc
@@ -47,7 +47,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
-  :pathname "ogg/"
+  :pathname "ogg"
   :components ((:file "package")
                (:file "ogg"))
   :depends-on (:easy-audio/core
@@ -60,7 +60,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
-  :pathname "flac/"
+  :pathname "flac"
   :components ((:file "package")
                (:file "definitions")
                (:file "flac-reader")
@@ -81,7 +81,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
-  :pathname "wav/"
+  :pathname "wav"
   :components ((:file "package")
                (:file "definitions")
                (:file "wav")
@@ -98,7 +98,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
-  :pathname "ape/"
+  :pathname "ape"
   :components ((:file "package")
                (:file "definitions")
                (:file "ape")
@@ -116,7 +116,7 @@
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
-  :pathname "wv/"
+  :pathname "wv"
   :components ((:file "package")
                (:file "definitions")
                (:file "wavpack-reader")
@@ -168,7 +168,7 @@
   :name :easy-audio/tests
   :version "1.1"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
-  :pathname "tests/"
+  :pathname "tests"
   :serial t
   :components ((:file "package")
                (:file "tests"))
