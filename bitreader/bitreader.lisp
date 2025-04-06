@@ -26,15 +26,14 @@
 
 (in-package :easy-audio.bitreader)
 
-(declaim (optimize #+easy-audio-unsafe-code
-                   (safety 0) (speed 3)))
-
+(declaim (type positive-fixnum *buffer-size*))
 (defparameter *buffer-size* 4096)
+
 (defparameter *read-with-zeroing* nil
-  "Affects some functions (currently only READ-OCTETS, READ-OCTET
-   and READ-OCTET-VECTORS) making them not only read stuff from
-   input buffer, but also zero read parts in the buffer. Useful
-   for CRC calculation in some containers")
+  "Affects some functions (currently only READ-OCTETS, READ-OCTET and
+READ-OCTET-VECTORS) making them not only read stuff from input buffer,
+but also zero read parts in the buffer. Useful for CRC calculation in
+some containers")
 
 (define-condition bitreader-eof (error)
   ((bitreader :initarg :bitreader
@@ -44,11 +43,11 @@
   (ibit      0 :type bit-counter)
   (ibyte     0 :type non-negative-fixnum)
   (end       0 :type non-negative-fixnum)
-  (buffer    (make-array (list *buffer-size*)
-		      :element-type '(ub 8))
+  (buffer    (make-array *buffer-size*
+		         :element-type '(ub 8))
 	       :type (sa-ub 8))
   (fill-buffer-fun
-             #'read-buffer-from-stream
+   #'read-buffer-from-stream
                :type function)
   #+easy-audio-check-crc
   (crc       0 :type unsigned-byte)
@@ -57,28 +56,32 @@
   #+easy-audio-check-crc
   (crc-fun #'(lambda (array accum &key start end)
                (declare (ignore array accum start end))
-               0) :type function)
+               0)
+               :type function)
   stream)
 
+(serapeum:-> move-forward (reader &optional bit-counter)
+             (values reader &optional))
 (declaim (inline move-forward))
 (defun move-forward (reader &optional (bits 1))
   "Moves position in READER bit reader in range [0; 8-ibit] BITS.
-   Maximum value of ibit is 7. Does not check if ibit becomes
-   out of range."
-  (declare (type non-negative-fixnum bits))
-
+Maximum value of ibit is 7. Does not check if ibit becomes out of
+range."
   (with-accessors
    ((ibit reader-ibit)
-    (ibyte reader-ibyte)) reader
-
+    (ibyte reader-ibyte))
+      reader
     (let ((new-ibit (+ ibit bits)))
     (cond
       ((< new-ibit 8)
        (setf ibit new-ibit))
       (t
        (setf ibit 0)
-       (incf ibyte))))))
+       (incf ibyte)))))
+  reader)
 
+(serapeum:-> read-buffer-from-stream (reader)
+             (values boolean &optional))
 (defun read-buffer-from-stream (reader)
   "Read internal buffer from stream"
   (setf (reader-end reader)
@@ -86,11 +89,15 @@
                        (reader-stream reader)))
   (not (zerop (reader-end reader))))
 
+(serapeum:-> read-buffer-dummy (reader)
+             (values boolean &optional))
 (defun read-buffer-dummy (reader)
   "Read internal buffer from stream"
   (declare (ignore reader))
   nil)
 
+(serapeum:-> make-reader-from-stream (stream &rest t)
+             (values reader &optional))
 (defun make-reader-from-stream (stream &rest args)
   "Make bitreader from stream"
   (apply #'make-reader
@@ -98,9 +105,10 @@
          :fill-buffer-fun #'read-buffer-from-stream
          args))
 
+(serapeum:-> make-reader-from-buffer ((sa-ub 8) &rest t)
+             (values reader &optional))
 (defun make-reader-from-buffer (buffer &rest args)
   "Make bitreader from buffer"
-  (declare (type (sa-ub 8) buffer))
   (apply #'make-reader
          :buffer buffer
          :end (length buffer)
@@ -109,6 +117,8 @@
 
 ;; If stream is 300 Mb, there are (ceiling (* 300 10^6) 4096) =
 ;; 73243 calls to fill-buffer. Not many, but inline it anyway
+(serapeum:-> fill-buffer (reader)
+             (values boolean &optional))
 (declaim (inline fill-buffer))
 (defun fill-buffer (reader)
   "Fills internal buffer of READER"
@@ -119,97 +129,110 @@
                  (reader-crc reader)
                  :start (reader-crc-start reader)
                  :end (reader-end reader))
-
         (reader-crc-start reader) 0)
 
   (setf (reader-ibit reader) 0
         (reader-ibyte reader) 0)
   (funcall (reader-fill-buffer-fun reader) reader))
 
+(serapeum:-> ensure-data-available (reader)
+             (values &optional))
 (declaim (inline ensure-data-available))
 (defun ensure-data-available (reader)
   "Checks if READER can be read without calling fill-buffer"
   (if (= (reader-ibyte reader)
          (reader-end reader))
-      (if (not (fill-buffer reader))
-          (error 'bitreader-eof :reader reader))))
+      (unless (fill-buffer reader)
+        (error 'bitreader-eof :reader reader)))
+  (values))
 
-(declaim (ftype (function (reader) bit) read-bit))
+(serapeum:-> read-bit (reader)
+             (values bit &optional))
 (defun read-bit (reader)
   "Read a single bit from READER"
+  (declare (optimize (speed 3)))
   (ensure-data-available reader)
-
   (prog1
       (ldb (byte 1 (- 7 (reader-ibit reader)))
 	   (aref (reader-buffer reader)
 		 (reader-ibyte reader)))
     (move-forward reader)))
 
-(declaim (ftype (function (reader) (ub 8)) read-octet))
+(serapeum:-> read-octet (reader)
+             (values (ub 8) &optional))
 (defun read-octet (reader)
-  "Reads current octet from reader
-   Ignores ibit"
+  "Reads current octet from reader Ignores ibit"
+  (declare (optimize (speed 3)))
   (ensure-data-available reader)
-
   (prog1
-      (aref (reader-buffer reader) (reader-ibyte reader))
-    (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
+      (aref (reader-buffer reader)
+            (reader-ibyte reader))
+    (when *read-with-zeroing*
+      (setf (aref (reader-buffer reader)
+                  (reader-ibyte reader))
+            0))
     (incf (reader-ibyte reader))))
 
-(declaim (ftype (function (non-negative-fixnum reader &key (:endianness symbol))
-                          non-negative-fixnum)
-                read-octets))
+;; TODO: Split in two
+(serapeum:-> read-octets (non-negative-fixnum reader &key (:endianness symbol))
+             (values non-negative-fixnum &optional))
 (defun read-octets (n reader &key (endianness :big))
   "Reads n octets in integer value"
+  (declare (optimize (speed 3)))
   (let ((res 0))
-    (declare (type non-negative-fixnum res)
-             (type fixnum n)
-             (type (member :big :little) endianness))
+    (declare (type non-negative-fixnum res))
     (dotimes (i n)
       (declare (type fixnum i))
       (ensure-data-available reader)
       (let ((octet (aref (reader-buffer reader) (reader-ibyte reader))))
-        (declare (type (ub 8) octet))
         (setq res
               (if (eq endianness :big)
                   (logior (the non-negative-fixnum (ash res 8)) octet)
                   (logior (the non-negative-fixnum
                                (ash octet (the non-negative-fixnum (ash i 3))))
                           res))))
-      (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
+      (when *read-with-zeroing*
+        (setf (aref (reader-buffer reader)
+                    (reader-ibyte reader))
+              0))
       (incf (reader-ibyte reader)))
     res))
 
-(declaim (ftype (function ((sa-ub 8) reader) (sa-ub 8)) read-octet-vector))
+(serapeum:-> read-octet-vector ((sa-ub 8) reader)
+             (values (sa-ub 8) &optional))
 (defun read-octet-vector (array reader)
   ;; Stupid and maybe slow version.
   ;; Why not? I do not use this function often
+  (declare (optimize (speed 3)))
   (dotimes (i (length array))
     (ensure-data-available reader)
     (setf (aref array i)
           (aref (reader-buffer reader) (reader-ibyte reader)))
-    (if *read-with-zeroing* (setf (aref (reader-buffer reader) (reader-ibyte reader)) 0))
+    (when *read-with-zeroing*
+      (setf (aref (reader-buffer reader)
+                  (reader-ibyte reader))
+            0))
     (incf (reader-ibyte reader)))
   array)
 
-(declaim (ftype (function (reader) non-negative-fixnum) read-to-byte-alignment))
+(serapeum:-> read-to-byte-alignment (reader)
+             (values non-negative-fixnum &optional))
 (defun read-to-byte-alignment (reader)
-  "Reads from READER to byte alignment.
-   If already READER is already byte-aligned,
-   returns 0."
-  (with-accessors
-   ((ibyte reader-ibyte)
-    (ibit reader-ibit)) reader
-
-    (if (= ibit 0) 0
+  "Reads from READER to byte alignment. If already READER is already
+byte-aligned, returns 0."
+  (declare (optimize (speed 3)))
+  (let ((ibit  (reader-ibit  reader))
+        (ibyte (reader-ibyte reader)))
+    (if (zerop ibit) 0
         (prog1
             (logand (1- (ash 1 (- 8 ibit)))
                     (aref (reader-buffer reader) ibyte))
-          (setf ibit 0)
-          (incf ibyte)))))
+          (setf (reader-ibit  reader) 0)
+          (incf (reader-ibyte reader))))))
 
-(declaim (ftype (function (reader &optional) non-negative-fixnum) get-reader-position)
-         (inline get-reader-position))
+(serapeum:-> get-reader-position (reader)
+             (values non-negative-fixnum &optional))
+(declaim (inline get-reader-position))
 (defun get-reader-position (reader)
   (let ((stream (reader-stream reader)))
     (if stream
@@ -219,8 +242,9 @@
            (reader-ibyte reader))
         (reader-ibyte reader))))
 
-(declaim (ftype (function (reader t &optional) non-negative-fixnum) set-reader-position)
-         (inline set-reader-position))
+(serapeum:-> set-reader-position (reader non-negative-fixnum)
+             (values non-negative-fixnum &optional))
+(declaim (inline set-reader-position))
 (defun set-reader-position (reader pos)
   (let ((stream (reader-stream reader)))
     (cond
@@ -231,53 +255,52 @@
   (setf (reader-ibit reader) 0)
   pos)
 
-(declaim (ftype (function (reader &optional t) non-negative-fixnum) reader-position))
+(serapeum:-> reader-position (reader &optional non-negative-fixnum)
+             (values non-negative-fixnum &optional))
 (defun reader-position (reader &optional pos)
-  "Returns or sets number of readed octets.
-   Similar to file-position
-   Sets ibit to zero if val is specified"
+  "Returns or sets number of readed octets.  Similar to file-position
+Sets ibit to zero if val is specified"
+  (declare (optimize (speed 3)))
   (if pos
       (set-reader-position reader pos)
       (get-reader-position reader)))
 
-(declaim (ftype (function (reader (ub 8)) (ub 8)) peek-octet))
+(serapeum:-> peek-octet (reader (ub 8))
+             (values (ub 8) &optional))
 (defun peek-octet (reader octet)
   "Sets input to the first octet found in stream"
-  (declare (type (ub 8) octet))
+  (declare (optimize (speed 3)))
   (setf (reader-ibyte reader)
-	(loop
-           for pos = (position octet (reader-buffer reader)
-                               :start (reader-ibyte reader))
-           until pos
-           do
-             (if (not (fill-buffer reader))
-                 (error 'bitreader-eof :reader reader))
-             (setf (reader-ibyte reader) 0)
-           finally (return pos)))
+	(loop for pos = (position octet (reader-buffer reader)
+                                  :start (reader-ibyte reader))
+              until pos do
+              (unless (fill-buffer reader)
+                (error 'bitreader-eof :reader reader))
+              (setf (reader-ibyte reader) 0)
+              finally (return pos)))
   octet)
 
-(declaim (ftype (function (reader) non-negative-integer) reader-length))
+(serapeum:-> reader-length (reader)
+             (values non-negative-integer &optional))
 (defun reader-length (reader)
   "Returns length of a stream in octets.
 
-   Calls #'length on a buffer reader or #'file-length on
-   a stream reader"
+Calls #'length on a buffer reader or #'file-length on a stream reader"
+  (declare (optimize (speed 3)))
   (let ((stream (reader-stream reader)))
-    (if stream (file-length stream) (length (reader-buffer reader)))))
+    (if stream
+        (file-length stream)
+        (length (reader-buffer reader)))))
 
-(declaim (ftype (function (non-negative-integer reader &key (:endianness symbol))
-                          non-negative-fixnum)
-                read-bits))
+;; TODO: Split
+(serapeum:-> read-bits (non-negative-fixnum reader &key (:endianness symbol))
+             (values non-negative-fixnum &optional))
 (defun read-bits (bits reader &key (endianness :big))
   "Read any number of bits from reader"
-  (declare
-   (type non-negative-fixnum bits)
-   (type (member :big :little) endianness))
-
+  (declare (optimize (speed 3)))
   (let ((result 0)
         (already-read 0))
     (declare (type non-negative-fixnum result already-read))
-
     (with-accessors ((ibit reader-ibit)) reader
       (dotimes (i (ceiling (+ bits ibit) 8))
         (ensure-data-available reader)
@@ -299,11 +322,12 @@
           (move-forward reader bits-to-add))))
     result))
 
-(declaim (ftype (function (t) non-negative-fixnum) count-zeros))
+(serapeum:-> count-zeros (reader)
+             (values non-negative-fixnum &optional))
 (defun count-zeros (reader)
-  "Count number of zeros in the input. It reads the first
-   occcured one too to copy behaviour of removed
-   FLAC::READ-UNARY-CODED-integer"
+  "Count number of zeros in the input. It reads the first occcured one
+too to copy behaviour of removed FLAC::READ-UNARY-CODED-integer"
+  (declare (optimize (speed 3)))
   (let ((res 0))
     (declare (type non-negative-fixnum res))
     (tagbody :count-cycle

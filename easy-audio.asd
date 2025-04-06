@@ -1,7 +1,6 @@
 ;; Comment it out if you do not want restrictions
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (pushnew :easy-audio-unsafe-code *features*)
-  #+nil
+  ;;(pushnew :easy-audio-unsafe-code *features*)
   (pushnew :easy-audio-check-crc   *features*))
 
 (defsystem :easy-audio/core
