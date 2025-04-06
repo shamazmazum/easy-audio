@@ -25,11 +25,6 @@
 
 (declaim (optimize (speed 3)))
 
-(sera:defvar-unbound *out-buffer*
-    "Output buffer for exactly one subframe")
-(defvar *out-buffers* nil
-  "Output buffers for stream with a fixed block size")
-
 (defun get-blocking-strategy (val)
   (declare (type non-negative-fixnum val))
   (cond
@@ -219,12 +214,9 @@
           (subframe-actual-bps subframe)
           (- actual-bps wasted-bits)
           (subframe-out-buf subframe)
-          (if (and *out-buffer*
-                   (= (length (the (sa-sb 32) *out-buffer*)) blocksize))
-              *out-buffer*
-              (make-array
-               (list blocksize)
-               :element-type '(sb 32))))
+          (make-array
+           (list blocksize)
+           :element-type '(sb 32)))
 
     (read-subframe-body stream subframe frame)
     subframe))
@@ -282,20 +274,19 @@
                (type (integer 4 32) sample-size))
       (setf (frame-subframes frame)
             (loop for sf fixnum below (if (<= assignment +max-channels+) assignment 2)
-                  collect (let ((*out-buffer* (nth sf *out-buffers*)))
-                            (read-subframe
-                             stream frame
-                             ;; Do bps correction
-                             (cond
-                               ((or
-                                 (and (= assignment +left-side+)
-                                      (= sf 1))
-                                 (and (= assignment +right-side+)
-                                      (= sf 0))
-                                 (and (= assignment +mid-side+)
-                                      (= sf 1)))
-                                (1+ sample-size))
-                               (t sample-size)))))))
+                  collect (read-subframe
+                           stream frame
+                           ;; Do bps correction
+                           (cond
+                             ((or
+                               (and (= assignment +left-side+)
+                                    (= sf 1))
+                               (and (= assignment +right-side+)
+                                    (= sf 0))
+                               (and (= assignment +mid-side+)
+                                    (= sf 1)))
+                              (1+ sample-size))
+                             (t sample-size))))))
 
     ;; Check zero padding
     (unless (zerop (read-to-byte-alignment stream))

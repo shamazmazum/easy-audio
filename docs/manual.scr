@@ -24,9 +24,6 @@
       @item(Decode the frame with @c(flac:frame-decode) and repeat previous step
             until all data is read and decoded.)
    @end(enum)
-   @b(NB): You can reduce consing when reading frames by binding
-   @c(flac:*out-buffers*) variable with buffers returned by
-   @c(flac:make-output-buffers).
 
 @begin(section)
    @title(API)
@@ -59,8 +56,6 @@
       @cl:doc(function read-metadata)
       @cl:doc(function seek-sample)
       @cl:doc(function metadata-find-seektable)
-      @cl:doc(function make-output-buffers)
-      @cl:doc(macro with-output-buffers)
    )
    It also can decode FLAC data from OGG container. There are
    @c(flac:open-ogg-flac), @c(flac:read-ogg-metadata) and @c(flac:read-ogg-frame)
@@ -117,9 +112,6 @@
       @cl:doc(function restore-sync-multichannel)
       @cl:doc(function seek-sample)
       @cl:doc(function open-wv)
-      @cl:doc(function make-output-buffers)
-      @cl:doc(variable *residual-buffers*)
-      @cl:doc(macro with-output-buffers)
       @cl:doc(function read-new-block)
    )
 @end(section)

@@ -87,19 +87,3 @@
                   (read-block-and-fix bitreader metadata)
                   (push metadata metadata-list)
                   (metadata-last-block-p metadata))))))))
-
-(defun make-output-buffers (streaminfo)
-  "Make output buffers for binding with @c(*output-buffers*) to reduce consing"
-  (let ((blocksize (streaminfo-minblocksize streaminfo)))
-    (if (= blocksize (streaminfo-maxblocksize streaminfo))
-        (loop repeat (streaminfo-channels streaminfo)
-           collect (make-array (list blocksize)
-                               :element-type '(sb 32)))
-        (error 'flac-error
-               :format-control "Cannot make output buffers: variable block size in stream"))))
-
-(defmacro with-output-buffers ((streaminfo) &body body)
-  "Calls to READ-FRAME can be made inside this macro to avoid unnecessary consing
-   if flac stream is of fixed block size"
-  `(let ((*out-buffers* (make-output-buffers ,streaminfo)))
-     ,@body))

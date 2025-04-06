@@ -103,10 +103,8 @@
 	   #:frame-decode
 	   #:seek-sample
 	   #:metadata-find-seektable
-           #:make-output-buffers
 
            ;; Macros
-           #:with-output-buffers
            #:with-open-flac
            #:with-open-ogg-flac
 
@@ -119,7 +117,4 @@
 	   #:skip-malformed-metadata
            #:skip-malformed-frame
            #:stop-reading-frame
-           #:read-raw-block
-
-           ;;Variables
-           #:*out-buffers*))
+           #:read-raw-block))

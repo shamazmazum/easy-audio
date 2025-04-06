@@ -23,11 +23,6 @@
 
 (in-package :easy-audio.wv)
 
-(defvar *residual-buffers* nil
-  "Works with @c(make-output-buffers) to reduce consing.
-Bind this variable to output buffers when you read multiple
-block in a loop to reduce consing.")
-
 (defun get-med (median)
   (declare (optimize (speed 3))
            (type (ub 32) median))
@@ -61,14 +56,9 @@ block in a loop to reduce consing.")
                                    (make-array samples
                                                :element-type '(sb 32)
                                                :initial-element 0)))))|#
-              (residual (if *residual-buffers*
-                            (mapc (lambda (buffer)
-                                    (declare (type (sa-sb 32) buffer))
-                                    (fill buffer 0))
-                                  *residual-buffers*)
-                            (loop repeat channels collect (make-array samples
-                                                                      :element-type '(sb 32)
-                                                                      :initial-element 0))))
+              (residual (loop repeat channels collect (make-array samples
+                                                                  :element-type '(sb 32)
+                                                                  :initial-element 0)))
               (coded-residual-reader (metadata-residual-reader metadata-residual))
               (medians (block-entropy-median wv-block))
               holding-one holding-zero zero-run-met)
@@ -229,27 +219,6 @@ beginning of this block explicitly (e.g. by calling @c(restore-sync))"
       (lost-sync ()
         (reader-position reader (1+ position))
         (restore-sync reader)))))
-
-(defun make-output-buffers (reader)
-  "Make output buffers to bind them to @c(*residual-buffers*) to reduce consing."
-  (let ((position (reader-position reader))
-        (first-block (read-wv-block reader)))
-    (multiple-value-prog1
-        (values
-         (loop repeat (block-channels first-block) collect
-              (make-array (block-block-samples first-block) :element-type '(sb 32)))
-         (if (flag-set-p first-block +flags-shifted-int+)
-             (loop repeat (block-channels first-block) collect
-                  (make-array (block-block-samples first-block) :element-type '(sb 32)))))
-      (reader-position reader position))))
-
-(defmacro with-output-buffers ((reader) &body body)
-  "Calls to @c(read-wv-block), @c(restore-sync) etc. can be done inside this macro to
-avoid unnecessary consing if all WavPack blocks in the stream contain the same number
-of samples and have the same number of channels."
-  `(multiple-value-bind (*residual-buffers* *wvx-buffers*)
-       (make-output-buffers ,reader)
-     ,@body))
 
 (defun seek-sample (reader number)
   (declare (type (integer 0) number))
