@@ -71,8 +71,7 @@
   (version     0 :type (ub 32))
   (size        0 :type (ub 32))
   (items-count 0 :type (ub 32))
-  (flags       0 :type (ub 32))
-  reserved)
+  (flags       0 :type (ub 32)))
 
 (defreader (read-header/footer) ((make-header/footer))
   (h/f-preamble (:octet-vector (make-array (length *apev2-preamble*)
@@ -88,7 +87,9 @@
   (h/f-flags    (:octets 4)
                 :endianness :little
                 :function check-bits-3...28)
-  (h/f-reserved (:octets 8)
+  (()           (:octets 4)
+                :function check-h/f-reserved)
+  (()           (:octets 4)
                 :function check-h/f-reserved))
 
 (defstruct item

@@ -174,23 +174,21 @@ range."
     (incf (reader-ibyte reader))))
 
 ;; TODO: Split in two
-(serapeum:-> read-octets (non-negative-fixnum reader &key (:endianness symbol))
-             (values non-negative-fixnum &optional))
+(serapeum:-> read-octets ((integer 0 7) reader &key (:endianness symbol))
+             (values (unsigned-byte 56) &optional))
 (defun read-octets (n reader &key (endianness :big))
   "Reads n octets in integer value"
   (declare (optimize (speed 3)))
   (let ((res 0))
-    (declare (type non-negative-fixnum res))
+    (declare (type (unsigned-byte 56) res))
     (dotimes (i n)
       (declare (type fixnum i))
       (ensure-data-available reader)
       (let ((octet (aref (reader-buffer reader) (reader-ibyte reader))))
         (setq res
               (if (eq endianness :big)
-                  (logior (the non-negative-fixnum (ash res 8)) octet)
-                  (logior (the non-negative-fixnum
-                               (ash octet (the non-negative-fixnum (ash i 3))))
-                          res))))
+                  (logior (ash res 8) octet)
+                  (logior (ash octet (ash i 3)) res))))
       (when *read-with-zeroing*
         (setf (aref (reader-buffer reader)
                     (reader-ibyte reader))
