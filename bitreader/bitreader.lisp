@@ -291,29 +291,29 @@ Calls #'length on a buffer reader or #'file-length on a stream reader"
         (length (reader-buffer reader)))))
 
 ;; TODO: Split
-(serapeum:-> read-bits (non-negative-fixnum reader &key (:endianness symbol))
-             (values non-negative-fixnum &optional))
+(serapeum:-> read-bits ((integer 0 56) reader &key (:endianness symbol))
+             (values (unsigned-byte 56) &optional))
 (defun read-bits (bits reader &key (endianness :big))
   "Read any number of bits from reader"
   (declare (optimize (speed 3)))
   (let ((result 0)
         (already-read 0))
-    (declare (type non-negative-fixnum result already-read))
+    (declare (type (integer 0 56) already-read)
+             (type (unsigned-byte 56) result))
     (with-accessors ((ibit reader-ibit)) reader
       (dotimes (i (ceiling (+ bits ibit) 8))
         (ensure-data-available reader)
         (let ((bits-to-add (min bits (- 8 ibit))))
           (declare (type bit-counter bits-to-add))
-          (setq result (logior result
-                               (the non-negative-fixnum
-                                    (ash
-                                     (ldb (byte bits-to-add (- 8 ibit bits-to-add))
-                                          (aref (reader-buffer reader)
-                                                (reader-ibyte reader)))
-                                     (if (eq endianness :big)
-                                         (the non-negative-fixnum
-                                              (- bits bits-to-add))
-                                         already-read))))
+          (setq result
+                (logior result
+                        (ash
+                         (ldb (byte bits-to-add (- 8 ibit bits-to-add))
+                              (aref (reader-buffer reader)
+                                    (reader-ibyte reader)))
+                         (if (eq endianness :big)
+                             (- bits bits-to-add)
+                             already-read)))
                 bits (- bits bits-to-add)
                 already-read (+ already-read bits-to-add))
 

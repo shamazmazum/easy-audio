@@ -29,6 +29,14 @@
     "READ-METADATA-BODY bounds this var to metadata block
      it is reading at the moment")
 
+;; READ-OCTETS can read mostly 4 octets at once
+(sera:-> read-eight-octets (reader)
+         (values (unsigned-byte 64) &optional))
+(declaim (inline read-eight-octets))
+(defun read-eight-octets (stream)
+  (logior (ash (read-octets 4 stream) 32)
+          (ash (read-octets 4 stream) 0)))
+
 (defun read-metadata-header (stream)
   "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
   (values (reader-position stream)
@@ -77,9 +85,9 @@
 
 (defmethod read-metadata-body (stream (data seektable))
   (flet ((read-seekpoint (stream)
-			 (let ((samplenum (read-bits 64 stream)))
+			 (let ((samplenum (read-eight-octets stream)))
 			   (if (/= samplenum +seekpoint-placeholder+)
-			       (let ((offset (read-bits 64 stream))
+			       (let ((offset (read-eight-octets stream))
 				     (samples-in-frame (read-bits 16 stream)))
 				 (make-seekpoint :samplenum samplenum
 						 :offset offset
@@ -122,7 +130,7 @@
 (defun read-cuesheet-index (stream)
   (let ((index (make-cuesheet-index)))
     (setf (cuesheet-index-offset index)
-          (read-bits 64 stream)
+          (read-eight-octets stream)
           (cuesheet-index-number index)
           (read-octet stream))
 
@@ -136,7 +144,7 @@
 (defun read-cuesheet-track (stream)
   (let ((track (make-cuesheet-track)))
     (setf (cuesheet-track-offset track)
-          (read-bits 64 stream)
+          (read-eight-octets stream)
           (cuesheet-track-number track)
           (read-octet stream)
           (cuesheet-track-isrc track)
@@ -148,8 +156,11 @@
 	  (if (zerop (read-bit stream))
               :no-pre-emphasis :pre-emphasis))
 
-    (let ((reserved (read-bits #.(+ 6 (* 8 13)) stream)))
-      (unless (zerop reserved)
+    (let ((reserved1 (read-bits 6 stream))
+          (reserved2 (read-octet-vector
+                      (make-array 13 :element-type '(ub 8))
+                      stream)))
+      (unless (and (zerop reserved1) (every #'zerop reserved2))
         (error 'flac-bad-metadata
 	       :format-control "Bad cuesheet track"
 	       :metadata *data*)))
@@ -166,12 +177,15 @@
     (setf (cuesheet-catalog-id data)
           (read-cuesheet-string stream 128)
           (cuesheet-lead-in data)
-          (read-bits 64 stream)
+          (read-eight-octets stream)
           (cuesheet-cdp data)
           (not (zerop (read-bit stream))))
 
-    (let ((reserved (read-bits #.(+ 7 (* 8 258)) stream)))
-      (unless (zerop reserved)
+    (let ((reserved1 (read-bits 7 stream))
+          (reserved2 (read-octet-vector
+                      (make-array 258 :element-type '(ub 8))
+                      stream)))
+      (unless (and (zerop reserved1) (every #'zerop reserved2))
         (error 'flac-bad-metadata
 	       :format-control "Bad cuesheet"
 	       :metadata data)))
