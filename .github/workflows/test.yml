@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  test_and_docs:
+  test:
     runs-on: ubuntu-latest
     env:
       LISP: sbcl-bin
@@ -13,24 +13,6 @@ jobs:
       - name: Install roswell
         run: |
           curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh
-      - name: Checkout Codex
-        uses: actions/checkout@v2
-        with:
-          repository: shamazmazum/codex
-          path: ~/.roswell/local-projects/codex
-      - name: Checkout docparser
-        uses: actions/checkout@v2
-        with:
-          repository: shamazmazum/docparser
-          path: ~/.roswell/local-projects/docparser
       - name: Run tests
         run: |
           ros -l $GITHUB_WORKSPACE/tests/travis.lisp
-      - name: Build documentation
-        run: |
-          ros -s codex -e '(codex:document :easy-audio :skip-undocumented t)'
-      - name: Deploy to GH pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/build/easy-audio/html
