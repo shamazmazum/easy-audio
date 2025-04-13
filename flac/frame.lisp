@@ -37,14 +37,18 @@
   (declare (type non-negative-fixnum val)
            (type (or null reader) reader))
   (cond
-    ((= val 1) 192)               ; 0001
-    ((and (<= val 5)              ; 0010-0101
+    ;; 0001
+    ((= val 1) 192)
+    ;; 0010-0101
+    ((and (<= val 5)
           (/= val 0))
      (ash 576 (- val 2)))
-    ((= val 6) (1+ (read-octet reader)))   ; 0110
-    ((= val 7) (1+ (the (integer 0 #.(ash 1 16))
-                        (read-octets 2 reader))))   ; 0111
-    ((and (<= val 15)             ; 1000-1111
+    ;; 0110
+    ((= val 6) (1+ (read-octet reader)))
+    ;; 0111
+    ((= val 7) (1+ (read-octets 2 reader)))
+    ;; 1000-1111
+    ((and (<= val 15)
           (/= val 0))
      (ash 1 val))
     (t (error 'flac-bad-frame
@@ -60,8 +64,7 @@
      (nth (1- val) +coded-sample-rates+))
     ((= val 12) (* 1000 (read-octet reader)))
     ((= val 13) (read-octets 2 reader))
-    ((= val 14) (* 10 (the (integer 0 #.(ash 1 16))
-                           (read-octets 2 reader))))
+    ((= val 14) (* 10 (read-octets 2 reader)))
     ((and (= val 0)
           streaminfo)
      (streaminfo-samplerate  streaminfo))
@@ -96,6 +99,7 @@
      (t (error 'flac-bad-frame
 	       :format-control "Invalid residual coding method")))))
 
+;; TODO: type deriver for read-bits / read-octets
 (defun read-residual-body (bit-reader frame out predictor-order param-len esc-code)
   (declare (type fixnum param-len esc-code)
 	   (type (sa-sb 32) out))
