@@ -187,53 +187,31 @@ metadata type"))
   common to all metadata blocks (which are in the header)."))
 
 ;; Subframes
-(defclass subframe ()
-  ((wasted-bps :accessor subframe-wasted-bps
-	       :initarg :wasted-bps
-	       :type non-negative-fixnum)
-   (actual-bps :accessor subframe-actual-bps
-	       :initarg :actual-bps
-	       :type (integer 4 33))
-   (out-buf    :accessor subframe-out-buf
-	       :initarg :out-buf
-	       :type (sa-sb 32)))
-  (:documentation "An ancestor of all 4 types of subframes. Is not instaneated."))
+(deftype subframe ()
+  '(or subframe-constant subframe-verbatim subframe-fixed subframe-lpc))
 
-(defclass subframe-constant (subframe)
-  ((constant-value :accessor subframe-constant-value
-		   :type (sb 32)
-                   :documentation "The value of all samples"))
-  (:documentation "Subframe with швутешсфд samples"))
+(sera:defconstructor subframe-header
+  (wasted-bps non-negative-fixnum)
+  (actual-bps (integer 4 33))
+  (out-buf    (sa-sb 32)))
 
-(defclass subframe-verbatim (subframe) ()
-  (:documentation "Unencoded audio data"))
+(sera:defconstructor subframe-constant
+  (header subframe-header)
+  (value  (sb 32)))
 
-(defclass subframe-lpc (subframe)
-  ((order           :accessor subframe-order
-	            :initarg :order
-	            :type fixnum
-                    :documentation "The predictor's order")
-   (precision       :accessor subframe-lpc-precision
-	            :type fixnum)
-   (predictor-coeff :accessor subframe-lpc-predictor-coeff
-		    :type (sa-sb 32))
-   (coeff-shift     :accessor subframe-lpc-coeff-shift
-		    :type (sb 32)))
-  (:documentation "Subframe with FIR linear predictor"))
+(sera:defconstructor subframe-verbatim
+  (header subframe-header))
 
-(defclass subframe-fixed (subframe)
-  ((order :accessor subframe-order
-	  :initarg :order
-	  :type fixnum
-          :documentation "The predictor's order"))
-  (:documentation "Subframe with fixed linear predictor"))
+(sera:defconstructor subframe-lpc
+  (header subframe-header)
+  (order           (integer 1 32))
+  (precision       fixnum)
+  (coeff-shift     (sb 32))
+  (predictor-coeff (sa-sb 32)))
 
-(defgeneric read-subframe-body (bit-reader subframe frame)
-  (:documentation "Read a SUBFRAME within given FRAME from BIT-READER. Can depend on slots
-common to all subframes (which are in the header)."))
-(defgeneric subframe-decode (subframe frame)
-  (:documentation "Decode a SUBFRAME within current FRAME. Returns buffer of decoded data
-  destructively modifying (and garbaging) the subframe."))
+(sera:defconstructor subframe-fixed
+  (header subframe-header)
+  (order  (integer 0 4)))
 
 ;; Add 1 to values described in FLAC specs
 (defconstant +left-side+ #b1001)  ; 1000 in spec

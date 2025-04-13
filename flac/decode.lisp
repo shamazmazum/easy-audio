@@ -23,42 +23,46 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize (speed 3)))
-
-(defmethod subframe-decode :after ((subframe subframe) frame)
-  (declare (ignore frame))
-  (let ((wasted-bits (subframe-wasted-bps subframe))
-	(out-buf (subframe-out-buf subframe)))
-    (declare (type non-negative-fixnum wasted-bits)
-	     (type (sa-sb 32) out-buf))
+(sera:-> decode-subframe-postprocess (subframe-header (sa-sb 32))
+         (values (sa-sb 32) &optional))
+(defun decode-subframe-postprocess (header output)
+  (declare (optimize (speed 3)))
+  (let ((wasted-bits (subframe-header-wasted-bps header)))
     (if (not (zerop wasted-bits))
-	(map-into out-buf (lambda (sample)
-                            (ash sample wasted-bits))
-		  out-buf))))
+	(map-into output
+                  (lambda (sample)
+                    (ash sample wasted-bits))
+		  output)
+        output)))
 
-;; TODO: Use fill
-(defmethod subframe-decode ((subframe subframe-constant) frame)
-  (declare (ignore frame))
-  (let ((out-buf (subframe-out-buf subframe))
-	(constant (subframe-constant-value subframe)))
-    (declare (type (sb 32) constant)
-	     (type (sa-sb 32) out-buf))
-    (dotimes (i (length out-buf))
-      (setf (aref out-buf i) constant))
-    out-buf))
+(sera:-> decode-subframe-constant (subframe-constant frame)
+         (values (sa-sb 32) &optional))
+(defun decode-subframe-constant (subframe frame)
+  (declare (optimize (speed 3))
+           (ignore frame))
+  (let* ((header (subframe-constant-header subframe))
+         (out-buf (subframe-header-out-buf header))
+	 (constant (subframe-constant-value subframe)))
+    (decode-subframe-postprocess header (fill out-buf constant))))
 
-(defmethod subframe-decode ((subframe subframe-verbatim) frame)
-  (declare (ignore frame))
-  (subframe-out-buf subframe))
+(sera:-> decode-subframe-verbatim (subframe-verbatim frame)
+         (values (sa-sb 32) &optional))
+(defun decode-subframe-verbatim (subframe frame)
+  (declare (optimize (speed 3))
+           (ignore frame))
+  (let ((header (subframe-verbatim-header subframe)))
+    (decode-subframe-postprocess header (subframe-header-out-buf header))))
 
-(defmethod subframe-decode ((subframe subframe-fixed) frame)
+(sera:-> decode-subframe-fixed (subframe-fixed frame)
+         (values (sa-sb 32) &optional))
+(defun decode-subframe-fixed (subframe frame)
   ;; Decodes subframe destructively modifiying it
-  (declare (ignore frame))
-  (let* ((out-buf (subframe-out-buf subframe))
-	 (order (subframe-order subframe))
+  (declare (optimize (speed 3))
+           (ignore frame))
+  (let* ((header (subframe-fixed-header subframe))
+         (out-buf (subframe-header-out-buf header))
+	 (order (subframe-fixed-order subframe))
 	 (len (length out-buf)))
-    (declare (type (sa-sb 32) out-buf)
-	     (type fixnum order len))
     (cond
      ;; 0 - out-buf contains decoded data
      ((= order 1)
@@ -70,7 +74,6 @@
 	    (incf (aref out-buf i)
 		  (- (ash (aref out-buf (1- i)) 1)
 		     (aref out-buf (- i 2))))))
-
      ((= order 3)
       (loop for i from 3 below len do
 	    (incf (aref out-buf i)
@@ -81,7 +84,6 @@
 			     (aref out-buf (- i 2)))
 		     
 		     (aref out-buf (- i 3))))))
-
      ((= order 4)
       (loop for i from 4 below len do
 	    (incf (aref out-buf i)
@@ -92,40 +94,48 @@
 			(ash (aref out-buf (- i 2)) 1))
 
 		     (aref out-buf (- i 4)))))))
-    out-buf))
+    (decode-subframe-postprocess header out-buf)))
 
-(defmethod subframe-decode ((subframe subframe-lpc) frame)
-  (declare (ignore frame))
-  (let* ((out-buf (the (simple-array (signed-byte 32))
-		    (subframe-out-buf subframe)))
+(sera:-> decode-subframe-lpc (subframe-lpc frame)
+         (values (sa-sb 32) &optional))
+(defun decode-subframe-lpc (subframe frame)
+  (declare (optimize (speed 3))
+           (ignore frame))
+  (let* ((header (subframe-lpc-header subframe))
+         (out-buf (subframe-header-out-buf header))
 	 (len (length out-buf))
 	 (shift (subframe-lpc-coeff-shift subframe))
-	 (order (subframe-order subframe))
+	 (order (subframe-lpc-order subframe))
 	 (coeff (subframe-lpc-predictor-coeff subframe)))
-    (declare (type (simple-array (signed-byte 32)) out-buf coeff)
-	     (type fixnum len order)
-	     (type (signed-byte 32) shift))
-
     (do ((i order (1+ i)))
 	((= i len))
-      (declare (type fixnum i))
       (incf (aref out-buf i)
 	    (the fixnum
 	      (ash
 	       (do ((j 0 (1+ j)) (sum 0))
 		   ((= j order) sum)
-		 (declare (type fixnum j sum))
+		 (declare (type fixnum sum))
 		 (incf sum
 		       (* (aref coeff j)
 			  (aref out-buf (- i j 1)))))
 	       (- shift)))))
-    out-buf))
+    (decode-subframe-postprocess header out-buf)))
+
+(sera:-> decode-subframe (subframe frame)
+         (values (sa-sb 32) &optional))
+(declaim (inline decode-subframe))
+(defun decode-subframe (subframe frame)
+  (etypecase subframe
+    (subframe-verbatim (decode-subframe-verbatim subframe frame))
+    (subframe-constant (decode-subframe-constant subframe frame))
+    (subframe-fixed    (decode-subframe-fixed    subframe frame))
+    (subframe-lpc      (decode-subframe-lpc      subframe frame))))
 
 (defun frame-decode (frame)
   "Decode a frame destructively modifying (and garbaging) all subframes within.
 Returns list of decoded audio buffers (one buffer for each channel)."
   (let ((decoded-subframes
-	 (mapcar #'(lambda (subframe) (subframe-decode subframe frame))
+	 (mapcar #'(lambda (subframe) (decode-subframe subframe frame))
 		 (frame-subframes frame)))
   	(assignment (frame-channel-assignment frame)))
     (declare (type non-negative-fixnum assignment))

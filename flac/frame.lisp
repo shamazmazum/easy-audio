@@ -85,29 +85,24 @@
                  :format-control "Invalid sample size"))))
 
 ;; Residual reader
-(defun read-residual (bit-reader subframe frame out)
+(defun read-residual (bit-reader predictor-order frame out)
   (let ((coding-method (read-bits 2 bit-reader)))
     (declare (type (ub 2) coding-method))
     (cond
      ((= coding-method 0) ; 00
-      (read-residual-body bit-reader subframe frame out
-                          :param-len 4
-                          :esc-code #b1111))
+      (read-residual-body bit-reader frame out predictor-order 4 #b1111))
      ((= coding-method 1) ; 01
-      (read-residual-body bit-reader subframe frame out
-                          :param-len 5
-                          :esc-code #b11111))
+      (read-residual-body bit-reader frame out predictor-order 5 #b11111))
      (t (error 'flac-bad-frame
 	       :format-control "Invalid residual coding method")))))
 
-(defun read-residual-body (bit-reader subframe frame out &key param-len esc-code)
+(defun read-residual-body (bit-reader frame out predictor-order param-len esc-code)
   (declare (type fixnum param-len esc-code)
 	   (type (sa-sb 32) out))
   (let* ((part-order (the (ub 4)
 		       (read-bits 4 bit-reader)))
-	 (sample-idx (subframe-order subframe))
+	 (sample-idx predictor-order)
 	 (blocksize (frame-block-size frame))
-	 (predictor-order (subframe-order subframe))
 	 (partition-samples (ash blocksize (- part-order))))
     (declare (type fixnum sample-idx
 		   blocksize predictor-order
@@ -139,87 +134,102 @@
     out))
 
 ;; Subframe reader
+(sera:-> read-subframe-verbatim
+         (reader subframe-header frame)
+         (values subframe-verbatim &optional))
+(defun read-subframe-verbatim (stream header frame)
+  (declare (ignore frame))
+  (let ((bps (subframe-header-actual-bps header)))
+    (read-bits-array stream (subframe-header-out-buf header)
+                     bps :signed t)
+    (subframe-verbatim header)))
 
-(defmethod read-subframe-body (bit-reader (subframe subframe-lpc) frame)
-  (let* ((bps (subframe-actual-bps subframe))
-	 (warm-up-samples (subframe-order subframe))
-	 (out-buf (subframe-out-buf subframe))
-	 (coeff-buf (make-array (list warm-up-samples)
+(sera:-> read-subframe-constant
+         (reader subframe-header frame)
+         (values subframe-constant &optional))
+(defun read-subframe-constant (stream header frame)
+  (declare (ignore frame))
+  (let* ((actual-bps (subframe-header-actual-bps header))
+         (value (unsigned-to-signed
+		 (read-bits actual-bps stream)
+		 actual-bps)))
+    (subframe-constant header value)))
+
+(sera:-> read-subframe-fixed
+         (reader subframe-header frame (integer 0 4))
+         (values subframe-fixed &optional))
+(defun read-subframe-fixed (stream header frame order)
+  (let ((bps (subframe-header-actual-bps header))
+	(warm-up-samples order)
+	(out-buf (subframe-header-out-buf header))
+        (subframe (subframe-fixed header order)))
+    (read-bits-array stream out-buf bps :signed t :len warm-up-samples)
+    (read-residual stream order frame out-buf)
+    subframe))
+
+(sera:-> read-subframe-lpc
+         (reader subframe-header frame (integer 1 32))
+         (values subframe-lpc &optional))
+(defun read-subframe-lpc (stream header frame order)
+  (let* ((bps (subframe-header-actual-bps header))
+	 (warm-up-samples order)
+	 (out-buf (subframe-header-out-buf header))
+	 (coeff-buf (make-array warm-up-samples
 				:element-type '(sb 32))))
-    (read-bits-array bit-reader
-		     out-buf bps :signed t :len warm-up-samples)
-    (let ((precision (1+ (read-bits 4 bit-reader))))
+    (read-bits-array stream out-buf bps
+                     :signed t :len warm-up-samples)
+    (let ((precision (1+ (read-bits 4 stream))))
       (declare (type (integer 1 16) precision))
       (when (= #b10000 precision)
 	(error 'flac-bad-frame
 	       :format-control "lpc coefficients precision cannot be 16"))
-      (setf (subframe-lpc-precision subframe) precision
-            (subframe-lpc-coeff-shift subframe)
-	    (unsigned-to-signed (read-bits 5 bit-reader) 5)
-            (subframe-lpc-predictor-coeff subframe)
-	    (read-bits-array bit-reader
-			     coeff-buf precision :signed t)))
-    (read-residual bit-reader subframe frame out-buf)))
+      (let ((subframe (subframe-lpc header order precision
+	                            (unsigned-to-signed (read-bits 5 stream) 5)
+	                            (read-bits-array stream coeff-buf precision
+                                                     :signed t))))
+        (read-residual stream order frame out-buf)
+        subframe))))
 
-(defmethod read-subframe-body (bit-reader (subframe subframe-fixed) frame)
-  (let ((bps (subframe-actual-bps subframe))
-	(warm-up-samples (subframe-order subframe))
-	(out-buf (subframe-out-buf subframe)))
-    (read-bits-array bit-reader out-buf bps :signed t :len warm-up-samples)
-    (read-residual bit-reader subframe frame out-buf)))
-
-(defmethod read-subframe-body (bit-reader (subframe subframe-constant) frame)
-  (declare (ignore frame))
-  (with-slots (actual-bps) subframe
-	      (setf (subframe-constant-value subframe) ;; FIXME: value is signed in original libFLAC
-		    (unsigned-to-signed
-		     (read-bits actual-bps bit-reader)
-		     actual-bps))))
-
-(defmethod read-subframe-body (bit-reader (subframe subframe-verbatim) frame)
-  (declare (ignore frame))
-  (let ((bps (subframe-actual-bps subframe)))
-    (with-slots (out-buf) subframe
-      (setf out-buf
-	    (read-bits-array bit-reader out-buf bps :signed t)))))
-
+(sera:-> read-subframe (reader frame (integer 4 33))
+         (values subframe &optional))
 (defun read-subframe (stream frame actual-bps)
-  (declare (type (integer 4 33) actual-bps))
   (unless (zerop (read-bit stream))
     (error 'flac-bad-frame
 	   :format-control "Error reading subframe"))
   (let* ((type-num (read-bits 6 stream))
-	 (subframe
-	  (cond
-	    ((= type-num 0) (make-instance 'subframe-constant))         ; 000000
-	    ((= type-num 1) (make-instance 'subframe-verbatim))         ; 000001
-	    ((and
-	      (>= type-num 8)
-	      (<= type-num 12))
-	     (make-instance 'subframe-fixed :order (logand type-num #b111)))     ; 001000-001100
-	    ((and
-	      (>= type-num 32)
-	      (<= type-num 63))
-	     (make-instance 'subframe-lpc :order (1+ (logand type-num #b11111)))) ; 100000-111111
-	    (t (error 'flac-bad-frame
-		      :format-control "Error subframe type"))))
          (wasted-bits
           (let ((lead-in-bit (read-bit stream)))
             (if (= lead-in-bit 1)
                 (1+ (count-zeros stream)) 0)))
-         (blocksize (frame-block-size frame)))
-    (declare (type non-negative-fixnum wasted-bits))
-
-    (setf (subframe-wasted-bps subframe) wasted-bits            
-          (subframe-actual-bps subframe)
-          (- actual-bps wasted-bits)
-          (subframe-out-buf subframe)
-          (make-array
-           (list blocksize)
-           :element-type '(sb 32)))
-
-    (read-subframe-body stream subframe frame)
-    subframe))
+         (blocksize (frame-block-size frame))
+         (header
+          (subframe-header
+           wasted-bits
+           (- actual-bps wasted-bits)
+           (make-array
+            (list blocksize)
+            :element-type '(sb 32)))))
+    (cond
+      ;; 000000
+      ((= type-num 0)
+       (read-subframe-constant stream header frame))
+      ((= type-num 1)
+       ;; 000001
+       (read-subframe-constant stream header frame))
+      ;; 001000-001100
+      ((and
+	(>= type-num 8)
+	(<= type-num 12))
+       (read-subframe-fixed stream header frame
+                            (logand type-num #b111)))
+      ;; 100000-111111
+      ((and
+	(>= type-num 32)
+	(<= type-num 63))
+       (read-subframe-lpc stream header frame
+                          (1+ (logand type-num #b11111))))
+      (t (error 'flac-bad-frame
+		:format-control "Error subframe type")))))
 
 (defmethod read-frame :around (stream &optional streaminfo)
   (restart-case
