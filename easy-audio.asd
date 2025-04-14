@@ -34,8 +34,7 @@
   :pathname "bitreader"
   :components ((:file "package")
                (:file "bitreader")
-               #+easy-audio-check-crc
-               (:file "crc")
+               (:file "crc" :if-feature :easy-audio-check-crc)
                (:file "macros"))
   :depends-on (:easy-audio/core
                :alexandria))
