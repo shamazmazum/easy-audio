@@ -90,7 +90,6 @@
 ;; Residual reader
 (defun read-residual (bit-reader predictor-order frame out)
   (let ((coding-method (read-bits 2 bit-reader)))
-    (declare (type (ub 2) coding-method))
     (cond
      ((= coding-method 0) ; 00
       (read-residual-body bit-reader frame out predictor-order 4 #b1111))
@@ -103,8 +102,7 @@
 (defun read-residual-body (bit-reader frame out predictor-order param-len esc-code)
   (declare (type fixnum param-len esc-code)
 	   (type (sa-sb 32) out))
-  (let* ((part-order (the (ub 4)
-		       (read-bits 4 bit-reader)))
+  (let* ((part-order (read-bits 4 bit-reader))
 	 (sample-idx predictor-order)
 	 (blocksize (frame-block-size frame))
 	 (partition-samples (ash blocksize (- part-order))))
@@ -183,7 +181,6 @@
     (read-bits-array stream out-buf bps
                      :signed t :len warm-up-samples)
     (let ((precision (1+ (read-bits 4 stream))))
-      (declare (type (integer 1 16) precision))
       (when (= #b10000 precision)
 	(error 'flac-bad-frame
 	       :format-control "lpc coefficients precision cannot be 16"))
