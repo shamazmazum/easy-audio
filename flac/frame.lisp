@@ -23,19 +23,20 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize (speed 3)))
+;;(declaim (optimize (speed 3)))
 
+(sera:-> get-blocking-strategy (bit)
+         (values (member :fixed :variable) &optional))
 (defun get-blocking-strategy (val)
-  (declare (type non-negative-fixnum val))
-  (cond
-    ((= val 0) :fixed)
-    ((= val 1) :variable)
-    (t (error 'flac-bad-frame
-              :format-control "Blocking strategy must be 0 or 1"))))
+  (declare (optimize (speed 3)))
+  (ecase val
+    (0 :fixed)
+    (1 :variable)))
 
-(defun get-block-size (val &optional reader)
-  (declare (type non-negative-fixnum val)
-           (type (or null reader) reader))
+(sera:-> get-block-size ((unsigned-byte 4) reader)
+         (values (unsigned-byte 16) &optional))
+(defun get-block-size (val reader)
+  (declare (optimize (speed 3)))
   (cond
     ;; 0001
     ((= val 1) 192)
@@ -54,10 +55,10 @@
     (t (error 'flac-bad-frame
               :format-control "Frame block size is invalid"))))
 
-(defun get-sample-rate (val &optional reader streaminfo)
-  (declare (type non-negative-fixnum val)
-           (type (or null streaminfo) streaminfo)
-           (type (or null reader) reader))
+(sera:-> get-sample-rate ((unsigned-byte 4) reader &optional (or null streaminfo))
+         (values positive-fixnum &optional))
+(defun get-sample-rate (val reader &optional streaminfo)
+  (declare (optimize (speed 3)))
   (cond
     ((and (/= val 0)
           (< val 12))
@@ -65,22 +66,24 @@
     ((= val 12) (* 1000 (read-octet reader)))
     ((= val 13) (read-octets 2 reader))
     ((= val 14) (* 10 (read-octets 2 reader)))
-    ((and (= val 0)
-          streaminfo)
+    ((and (= val 0) streaminfo)
      (streaminfo-samplerate  streaminfo))
     (t
      (error 'flac-bad-frame
             :format-control "Frame sample rate is invalid"))))
 
+(sera:-> get-channel-assignment ((unsigned-byte 4))
+         (values (integer 1 11) &optional))
 (defun get-channel-assignment (val)
-  (declare (type non-negative-fixnum val))
+  (declare (optimize (speed 3)))
   (cond ((<= val 10) (1+ val))
         (t (error 'flac-bad-frame
                   :format-control "Invalid channel assignment"))))
 
+(sera:-> get-sample-size ((unsigned-byte 3) &optional (or null streaminfo))
+         (values (integer 4 32) &optional))
 (defun get-sample-size (val &optional streaminfo)
-  (declare (type non-negative-fixnum val)
-           (type (or null streaminfo) streaminfo))
+  (declare (optimize (speed 3)))
   (if (and (= val 0) streaminfo)
       (streaminfo-bitspersample streaminfo)
       (or (cdr (assoc val +coded-sample-sizes+))
