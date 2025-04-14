@@ -226,15 +226,15 @@ metadata type"))
                        :documentation "Is the blocking strategy :FIXED (frame header contains the
 frame number) or :VARIABLE (frame header contains the sample number)")
    (block-size         :reader frame-block-size
-                       :type non-negative-fixnum
+                       :type (and (unsigned-byte 16) (not (eql 0)))
                        :documentation "Block size in samples")
    (sample-rate        :reader frame-sample-rate
-                       :type non-negative-fixnum
+                       :type positive-fixnum
                        :documentation "Sample rate")
    (channel-assignment :reader frame-channel-assignment
 		       :documentation "Number of channels or one of
                                        :mid/side, :left/side, :right/side"
-		       :type (integer 0 10))
+		       :type (integer 1 11))
    (sample-size        :reader frame-sample-size
 		       :type (integer 4 32)
                        :documentation "Bits per sample")
@@ -249,7 +249,7 @@ frame number) or :VARIABLE (frame header contains the sample number)")
 	               :type list
                        :documentation "List of subframes (one for each channel)")
    (crc-16             :accessor frame-crc-16
-	               :type fixnum
+	               :type (ub 16)
                        :documentation "CRC16 of the frame (back to and including the sync
 code)"))
   (:documentation "Audio frame class"))
