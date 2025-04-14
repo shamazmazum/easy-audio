@@ -319,10 +319,10 @@
         (make-instance 'frame))))
 
 ;; Rather slow (and buggy) absolute sample seek
-(sera:-> seek-sample (reader (ub 16) &key
+(sera:-> seek-sample (reader unsigned-byte &key
                              (:seektable  (or null seektable))
                              (:streaminfo (or null streaminfo)))
-         (values (ub 16) &optional))
+         (values unsigned-byte &optional))
 (defun seek-sample (bitreader sample &key seektable streaminfo)
   "Seeks to an interchannel sample.  Sets input to new frame, which
 contains this sample.  Returns position of this sample in the frame.
