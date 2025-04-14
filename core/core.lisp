@@ -72,3 +72,6 @@ second sample of each channel until all data is written"
                       (first buffers)
                       (second buffers)))
     (t (mixchannels-n out buffers))))
+
+(defun document-fn (function docstring)
+  (setf (documentation function 'function) docstring))

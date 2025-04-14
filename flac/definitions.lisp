@@ -223,6 +223,7 @@ metadata type"))
 (deftype blocksize ()
   '(and (unsigned-byte 16) (not (eql 0))))
 
+;; TODO: restore documentation
 (sera:defconstructor frame
   (blocking-strategy (member :fixed :variable))
   (block-size         blocksize)

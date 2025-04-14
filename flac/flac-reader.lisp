@@ -23,37 +23,37 @@
 
 (in-package :easy-audio.flac)
 
-(declaim (optimize (speed 3)))
-
-(declaim (inline unsigned-to-signed)
-	 (ftype (function ((ub 32)
-			   (integer 0 32))
-			  (sb 32))
-		unsigned-to-signed))
+(sera:-> unsigned-to-signed ((ub 32) (integer 0 32))
+	 (values (sb 32) &optional))
+(declaim (inline unsigned-to-signed))
 (defun unsigned-to-signed (byte len)
-  (declare (type (integer 0 32) len)
-	   (type (ub 32) byte))
   (let ((sign-mask (ash 1 (1- len))))
     (if (< byte sign-mask)
         byte
         (- byte (ash sign-mask 1)))))
 
+(sera:-> read-bits-array (reader (sa-sb 32) non-negative-fixnum &key
+                                 (:signed boolean)
+                                 (:len    non-negative-fixnum)
+                                 (:offset non-negative-fixnum))
+         (values (sa-sb 32) &optional))
 (defun read-bits-array (stream array size &key
 			       signed
 			       (len (length array))
 			       (offset 0))
-  ;; Will be replaced later
-  (declare (type fixnum len offset size)
-	   (type (sa-sb 32) array))
-  (loop for i from offset below len do
+  (declare (optimize (speed 3)))
+  (loop for i from offset below len
+        for val = (read-bits size stream) do
 	(setf (aref array i)
-	      (if signed (unsigned-to-signed (read-bits size stream) size)
-		(read-bits size stream))))
+	      (if signed (unsigned-to-signed val size) val)))
   array)
 
+;; TODO: rewrite
+(sera:-> read-utf8-u32 (reader)
+         (values (ub 32) &optional))
 (defun read-utf8-u32 (stream)
-  "for reading frame number
-   copy from libFLAC"
+  "Read frame number from a stream"
+  (declare (optimize (speed 3)))
   (let ((x (read-octet stream))
 	i
 	(v 0))
@@ -102,26 +102,25 @@
 	  (setq v (logior v (logand x #x3F))))
     v))
 
-(declaim (ftype (function (t (integer 0 30))
-			  (sb 32))
-		read-rice-signed))
+(sera:-> read-rice-signed (reader (integer 0 30))
+	 (values (sb 32) &optional))
 (defun read-rice-signed (bitreader param)
   "Read signed rice-coded value"
-  (declare (type (integer 0 30) param))
+  (declare (optimize (speed 3)))
   (let* ((unary  (count-zeros bitreader))
          (binary (read-bits param bitreader))
          (val    (logior (ash unary param) binary)))
     (declare (type (ub 32) unary))
-
     (if (zerop (logand val 1))
       (ash val -1)
       (- -1 (ash val -1)))))
 
+(sera:-> restore-sync (reader &optional (or streaminfo null))
+         (values unsigned-byte &optional))
 (defun restore-sync (bitreader &optional streaminfo)
-  "Restores lost sync and returns
-   number of frame to be read"
-  ;; Make sure, we are byte aligned
-  ;; We must be, but anyway
+  "Restores lost sync and returns number of frame to be read"
+  (declare (optimize (speed 3)))
+  ;; Make sure, we are byte aligned. We must be, but anyway
   (read-to-byte-alignment bitreader)
   ;; Search first #xff octet
   (peek-octet bitreader #xff)

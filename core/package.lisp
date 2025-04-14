@@ -14,4 +14,5 @@
    #:sa-sb
 
    ;; Utility functions
+   #:document-fn
    #:mixchannels))
