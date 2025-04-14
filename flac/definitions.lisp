@@ -220,42 +220,19 @@ metadata type"))
 (defconstant +max-channels+ 8)
 
 ;; Frame
-(defclass frame ()
-  ((blocking-strategy  :reader frame-blocking-strategy
-		       :type (member :fixed :variable)
-                       :documentation "Is the blocking strategy :FIXED (frame header contains the
-frame number) or :VARIABLE (frame header contains the sample number)")
-   (block-size         :reader frame-block-size
-                       :type (and (unsigned-byte 16) (not (eql 0)))
-                       :documentation "Block size in samples")
-   (sample-rate        :reader frame-sample-rate
-                       :type positive-fixnum
-                       :documentation "Sample rate")
-   (channel-assignment :reader frame-channel-assignment
-		       :documentation "Number of channels or one of
-                                       :mid/side, :left/side, :right/side"
-		       :type (integer 1 11))
-   (sample-size        :reader frame-sample-size
-		       :type (integer 4 32)
-                       :documentation "Bits per sample")
-   (number             :reader frame-number
-                       :type unsigned-byte
-                       :initform #.(ash 1 36)
-                       :documentation "Frame/sample number")
-   (crc-8              :accessor frame-crc-8
-	               :type (ub 8)
-                       :documentation "CRC8 of a frame header (including the sync code)")
-   (subframes          :accessor frame-subframes
-	               :type list
-                       :documentation "List of subframes (one for each channel)")
-   (crc-16             :accessor frame-crc-16
-	               :type (ub 16)
-                       :documentation "CRC16 of the frame (back to and including the sync
-code)"))
-  (:documentation "Audio frame class"))
+(deftype blocksize ()
+  '(and (unsigned-byte 16) (not (eql 0))))
 
-(defgeneric read-frame (stream &optional streaminfo)
-  (:documentation "Read a frame from a stream"))
+(sera:defconstructor frame
+  (blocking-strategy (member :fixed :variable))
+  (block-size         blocksize)
+  (sample-rate        positive-fixnum)
+  (channel-assignment (integer 1 11))
+  (sample-size        (integer 4 32))
+  (number             unsigned-byte)
+  (crc-8              (ub 8))
+  (subframes          list)
+  (crc-16             (ub 16)))
 
 (defparameter +block-name+ '((0 . streaminfo)
                              (1 . padding)
