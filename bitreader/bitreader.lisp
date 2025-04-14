@@ -26,39 +26,11 @@
 
 (in-package :easy-audio.bitreader)
 
-(declaim (type positive-fixnum *buffer-size*))
-(defparameter *buffer-size* 4096)
-
 (defparameter *read-with-zeroing* nil
   "Affects some functions (currently only READ-OCTETS, READ-OCTET and
 READ-OCTET-VECTORS) making them not only read stuff from input buffer,
 but also zero read parts in the buffer. Useful for CRC calculation in
 some containers")
-
-(define-condition bitreader-eof (error)
-  ((bitreader :initarg :bitreader
-              :reader bitreader-eof-bitreader)))
-
-(defstruct reader
-  (ibit      0 :type bit-counter)
-  (ibyte     0 :type non-negative-fixnum)
-  (end       0 :type non-negative-fixnum)
-  (buffer    (make-array *buffer-size*
-		         :element-type '(ub 8))
-	       :type (sa-ub 8))
-  (fill-buffer-fun
-   #'read-buffer-from-stream
-               :type function)
-  #+easy-audio-check-crc
-  (crc       0 :type unsigned-byte)
-  #+easy-audio-check-crc
-  (crc-start 0 :type non-negative-fixnum)
-  #+easy-audio-check-crc
-  (crc-fun #'(lambda (array accum &key start end)
-               (declare (ignore array accum start end))
-               0)
-               :type function)
-  stream)
 
 (serapeum:-> move-forward (reader &optional bit-counter)
              (values reader &optional))
@@ -174,6 +146,7 @@ range."
     (incf (reader-ibyte reader))))
 
 ;; TODO: Split in two
+#-sbcl
 (serapeum:-> read-octets ((integer 0 7) reader &key (:endianness symbol))
              (values (unsigned-byte 56) &optional))
 (defun read-octets (n reader &key (endianness :big))
@@ -291,6 +264,7 @@ Calls #'length on a buffer reader or #'file-length on a stream reader"
         (length (reader-buffer reader)))))
 
 ;; TODO: Split
+#-sbcl
 (serapeum:-> read-bits ((integer 0 56) reader &key (:endianness symbol))
              (values (unsigned-byte 56) &optional))
 (defun read-bits (bits reader &key (endianness :big))

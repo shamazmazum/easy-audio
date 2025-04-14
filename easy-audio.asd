@@ -33,6 +33,8 @@
   :serial t
   :pathname "bitreader"
   :components ((:file "package")
+               (:file "definitions")
+               (:file "sbcl" :if-feature :sbcl)
                (:file "bitreader")
                (:file "crc" :if-feature :easy-audio-check-crc)
                (:file "macros"))
