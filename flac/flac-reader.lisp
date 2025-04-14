@@ -54,53 +54,44 @@
 (defun read-utf8-u32 (stream)
   "Read frame number from a stream"
   (declare (optimize (speed 3)))
-  (let ((x (read-octet stream))
-	i
-	(v 0))
-    (declare (type (ub 8) x)
-	     (type (ub 32) v))
-    (cond
-     (( = 0 (logand x #x80))
-      (setq v x i 0))
-
-     ((and
-       (= 0 (logand x #x20))
-       (/= 0 (logand x #xC0)))
-      (setq v (logand x #x1F) i 1))
-
-     ((and
-       (= 0 (logand x #x10))
-       (/= 0 (logand x #xE0)))
-      (setq v (logand x #x0F) i 2))
-
-     ((and
-       (= 0 (logand x #x08))
-       (/= 0 (logand x #xF0)))
-      (setq v (logand x #x07) i 3))
-
-     ((and
-       (= 0 (logand x #x04))
-       (/= 0 (logand x #xF8)))
-      (setq v (logand x #x03) i 4))
-
-     ((and
-       (= 0 (logand x #x02))
-       (/= 0 (logand x #xFC)))
-      (setq v (logand x #x01) i 5))
-
-     (t (error 'flac-bad-frame
-	       :format-control "Error reading utf-8 coded value")))
-
-    (loop for j from i downto 1 do
-	  (setq x (read-octet stream))
-	  (if (or
-	       (= 0 (logand x #x80))
-	       (/= 0 (logand x #x40)))
+  (flet ((nbytes (x)
+           (cond
+             (( = 0 (logand x #x80))
+              (values x 0))
+             ((and
+               (= 0 (logand x #x20))
+               (/= 0 (logand x #xC0)))
+              (values (logand x #x1F) 1))
+             ((and
+               (= 0 (logand x #x10))
+               (/= 0 (logand x #xE0)))
+              (values (logand x #x0F) 2))
+             ((and
+               (= 0 (logand x #x08))
+               (/= 0 (logand x #xF0)))
+              (values (logand x #x07) 3))
+             ((and
+               (= 0 (logand x #x04))
+               (/= 0 (logand x #xF8)))
+              (values (logand x #x03) 4))
+             ((and
+               (= 0 (logand x #x02))
+               (/= 0 (logand x #xFC)))
+              (values (logand x #x01) 5))
+             (t (error 'flac-bad-frame
+	               :format-control "Error reading utf-8 coded value")))))
+    (multiple-value-bind (v n)
+        (nbytes (read-octet stream))
+      (declare (type (ub 32) v))
+      (loop repeat n
+	    for x = (read-octet stream) do
+	    (when (or (zerop (logand x #x80))
+	              (not (zerop (logand x #x40))))
 	      (error 'flac-bad-frame
 		     :format-control "Error reading utf-8 coded value"))
-	  (setq v (ash v 6))
-	  (setq v (logior v (logand x #x3F))))
-    v))
+	    (setq v (logior (ash v 6)))
+	    (setq v (logior v (logand x #x3F))))
+      v)))
 
 (sera:-> read-rice-signed (reader (integer 0 30))
 	 (values (sb 32) &optional))
