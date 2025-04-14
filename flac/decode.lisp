@@ -166,6 +166,5 @@ Returns list of decoded audio buffers (one buffer for each channel)."
 	      (setf (aref left i)
 		    (ash (+ mid side) -1)
 		    (aref right i)
-		    (ash (- mid side) -1))))))
-       (t (error 'flac-error :format-control "Wrong channel assignment"))))
+		    (ash (- mid side) -1))))))))
     decoded-subframes))
