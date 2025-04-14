@@ -105,7 +105,6 @@
 		  ((zerop i) (- partition-samples predictor-order))
 		  (t partition-samples)))
 		(rice-parameter (read-bits param-len bit-reader)))
-	    (declare (type non-negative-fixnum rice-parameter samples-num))
 	    (cond
 	     ((/= rice-parameter esc-code)
 	      (loop repeat samples-num do
