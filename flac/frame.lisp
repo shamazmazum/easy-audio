@@ -250,7 +250,7 @@
   #-easy-audio-check-crc
   (read-bits 16 stream))
 
-(sera:-> %read-frame (reader &optional streaminfo)
+(sera:-> %read-frame (reader &optional (or null streaminfo))
          (values frame &optional))
 (defun %read-frame (stream &optional streaminfo)
   (declare (optimize (speed 3)))
@@ -306,7 +306,7 @@
                assignment sample-size number crc-8 subframes
                (check-frame-crc stream)))))
 
-(sera:-> read-frame (reader &optional streaminfo)
+(sera:-> read-frame (reader &optional (or null streaminfo))
          (values frame &optional))
 (defun read-frame (stream &optional streaminfo)
   (restart-case
@@ -320,16 +320,16 @@
         (make-instance 'frame))))
 
 ;; Rather slow (and buggy) absolute sample seek
+(sera:-> seek-sample (reader (ub 16) &key
+                             (:seektable  (or null seektable))
+                             (:streaminfo (or null streaminfo)))
+         (values (ub 16) &optional))
 (defun seek-sample (bitreader sample &key seektable streaminfo)
   "Seeks to an interchannel sample.  Sets input to new frame, which
 contains this sample.  Returns position of this sample in the frame.
 @c(seektable) and @c(streaminfo) are optional. Providing
 @c(streaminfo) enables additional sanity checks. Currently only fixed
 block size is supported."
-  (declare (type reader bitreader)
-	   (type (or null streaminfo) streaminfo)
-	   (optimize (speed 0)))
-
   (with-accessors ((totalsamples streaminfo-totalsamples)) streaminfo
     (when (and streaminfo
                (> sample totalsamples)
@@ -346,23 +346,22 @@ block size is supported."
 	(end-pos (reader-length bitreader)))
 
     ;; Now, if seektable is present, correct the boundaries
-    (if seektable
-        (let* ((points (seektable-seekpoints seektable))
-               (pos (position-if #'(lambda (samplenum) (>= samplenum sample))
-                                 points
-                                 :key #'seekpoint-samplenum))
-               (upperpoint (seekpoint-offset (nth pos points)))
-               (lowerpoint (if (= pos 0) 0 (seekpoint-offset (nth (1- pos) points)))))
-
-          (cond
-            ((= sample lowerpoint)
-             ;; We are extremely lucky
-             ;; All we need to do is set input to a new frame
-             (reader-position bitreader (+ start-pos lowerpoint))
-             (return-from seek-sample 0))
-            (t
-             (psetq start-pos (+ start-pos lowerpoint)
-                    end-pos (+ start-pos upperpoint))))))
+    (when seektable
+      (let* ((points (seektable-seekpoints seektable))
+             (pos (position-if #'(lambda (samplenum) (>= samplenum sample))
+                               points
+                               :key #'seekpoint-samplenum))
+             (upperpoint (seekpoint-offset (nth pos points)))
+             (lowerpoint (if (= pos 0) 0 (seekpoint-offset (nth (1- pos) points)))))
+        (cond
+          ((= sample lowerpoint)
+           ;; We are extremely lucky
+           ;; All we need to do is set input to a new frame
+           (reader-position bitreader (+ start-pos lowerpoint))
+           (return-from seek-sample 0))
+          (t
+           (psetq start-pos (+ start-pos lowerpoint)
+                  end-pos (+ start-pos upperpoint))))))
 
     ;; Check implementation limitations
     (when (and streaminfo
