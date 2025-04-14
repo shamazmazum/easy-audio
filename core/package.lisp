@@ -14,5 +14,6 @@
    #:sa-sb
 
    ;; Utility functions
-   #:document-fn
+   #:define-documented-accessor
+   #:define-documented-accessors
    #:mixchannels))

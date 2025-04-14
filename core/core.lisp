@@ -73,5 +73,18 @@ second sample of each channel until all data is written"
                       (second buffers)))
     (t (mixchannels-n out buffers))))
 
-(defun document-fn (function docstring)
-  (setf (documentation function 'function) docstring))
+(defmacro define-documented-accessor (structure slot docstring)
+  (let ((accessor (intern (format nil "~a-%~a" structure slot)
+                          (symbol-package structure)))
+        (wrapper  (intern (format nil "~a-~a" structure slot)
+                          (symbol-package structure))))
+    `(progn
+       (declaim (inline ,wrapper))
+       (defun ,wrapper (obj)
+         ,docstring
+         (,accessor obj)))))
+
+(defmacro define-documented-accessors (structure &body slots)
+  `(progn
+     ,@(loop for entry in slots collect
+             `(define-documented-accessor ,structure ,(first entry) ,(second entry)))))

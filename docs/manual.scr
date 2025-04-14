@@ -46,9 +46,18 @@
    )
    @u(Working with audio frames).
    @cl:with-package[name="easy-audio.flac"](
-      @cl:doc(class frame)
-      @cl:doc(generic read-frame)
+      @cl:doc(function read-frame)
       @cl:doc(function frame-decode)
+      @cl:doc(function frame-decode)
+      @cl:doc(function frame-blocking-strategy)
+      @cl:doc(function frame-block-size)
+      @cl:doc(function frame-sample-rate)
+      @cl:doc(function frame-channel-assignment)
+      @cl:doc(function frame-sample-size)
+      @cl:doc(function frame-number)
+      @cl:doc(function frame-crc-8)
+      @cl:doc(function frame-subframes)
+      @cl:doc(function frame-crc-16)
    )
    @u(Other functions / helpers).
    @cl:with-package[name="easy-audio.flac"](

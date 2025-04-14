@@ -308,6 +308,9 @@
 (sera:-> read-frame (reader &optional (or null streaminfo))
          (values frame &optional))
 (defun read-frame (stream &optional streaminfo)
+  "Read a frame from a flac stream. An additional metadata
+@c(streaminfo) may be required for some files which do not support
+streaming."
   (restart-case
       (%read-frame stream streaminfo)
       (skip-malformed-frame ()

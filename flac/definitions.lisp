@@ -223,17 +223,39 @@ metadata type"))
 (deftype blocksize ()
   '(and (unsigned-byte 16) (not (eql 0))))
 
-;; TODO: restore documentation
 (sera:defconstructor frame
-  (blocking-strategy (member :fixed :variable))
-  (block-size         blocksize)
-  (sample-rate        positive-fixnum)
-  (channel-assignment (integer 1 11))
-  (sample-size        (integer 4 32))
-  (number             unsigned-byte)
-  (crc-8              (ub 8))
-  (subframes          list)
-  (crc-16             (ub 16)))
+  (%blocking-strategy (member :fixed :variable))
+  (%block-size         blocksize)
+  (%sample-rate        positive-fixnum)
+  (%channel-assignment (integer 1 11))
+  (%sample-size        (integer 4 32))
+  (%number             unsigned-byte)
+  (%crc-8              (ub 8))
+  (%subframes          list)
+  (%crc-16             (ub 16)))
+
+
+;; Document accessors
+(define-documented-accessors frame
+  (blocking-strategy
+   "Is the blocking strategy :FIXED (frame header contains the frame
+number) or :VARIABLE (frame header contains the sample number)?")
+  (block-size
+   "Block size in samples.")
+  (sample-rate
+   "Block sample rate in Hertz.")
+  (channel-assignment
+   "Number of channels or one of @c(+mid-side+), @c(+left-side+), @c(+right-side+).")
+  (sample-size
+   "Bits per sample.")
+  (number
+   "Number of a frame or of the first sample in the frame.")
+  (crc-8
+   "CRC8 of a frame header (including the sync code).")
+  (subframes
+   "List of subframes (one for each channel).")
+  (crc-16
+   "CRC16 of the frame (back to and including the sync code)."))
 
 (defparameter +block-name+ '((0 . streaminfo)
                              (1 . padding)

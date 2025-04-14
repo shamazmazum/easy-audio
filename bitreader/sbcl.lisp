@@ -2,11 +2,13 @@
 
 (sb-c:defknown read-bits ((integer 0 56) reader &key (:endianness symbol))
     (unsigned-byte 56)
-    ())
+    ()
+  :overwrite-fndb-silently t)
 
 (sb-c:defknown read-octets ((integer 0 7) reader &key (:endianness symbol))
     (unsigned-byte 56)
-    ())
+    ()
+  :overwrite-fndb-silently t)
 
 (defun make-ub-type (bits)
   (sb-kernel:make-numeric-type
