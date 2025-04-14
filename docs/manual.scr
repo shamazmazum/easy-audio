@@ -21,7 +21,7 @@
             step to @c(flac:read-metadata).)
       @item(Do whatever you want with metadata and read the first audio frame with
             @c(flac:read-frame).)
-      @item(Decode the frame with @c(flac:frame-decode) and repeat previous step
+      @item(Decode the frame with @c(flac:decode-frame) and repeat previous step
             until all data is read and decoded.)
    @end(enum)
 
@@ -47,8 +47,7 @@
    @u(Working with audio frames).
    @cl:with-package[name="easy-audio.flac"](
       @cl:doc(function read-frame)
-      @cl:doc(function frame-decode)
-      @cl:doc(function frame-decode)
+      @cl:doc(function decode-frame)
       @cl:doc(function frame-blocking-strategy)
       @cl:doc(function frame-block-size)
       @cl:doc(function frame-sample-rate)

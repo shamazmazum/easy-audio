@@ -100,7 +100,7 @@
            #:open-ogg-flac
            #:read-ogg-metadata
 	   #:read-ogg-frame
-	   #:frame-decode
+	   #:decode-frame
 	   #:seek-sample
 	   #:metadata-find-seektable
 

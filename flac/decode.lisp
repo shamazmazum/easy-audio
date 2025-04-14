@@ -127,7 +127,7 @@
     (subframe-fixed    (decode-subframe-fixed    subframe))
     (subframe-lpc      (decode-subframe-lpc      subframe))))
 
-(defun frame-decode (frame)
+(defun decode-frame (frame)
   "Decode a frame destructively modifying (and garbaging) all subframes within.
 Returns list of decoded audio buffers (one buffer for each channel)."
   (declare (optimize (speed 3)))
@@ -137,7 +137,7 @@ Returns list of decoded audio buffers (one buffer for each channel)."
     (declare (type non-negative-fixnum assignment))
 
     (when (<= assignment +max-channels+)
-      (return-from frame-decode decoded-subframes))
+      (return-from decode-frame decoded-subframes))
     (when (/= 2 (length decoded-subframes))
       (error 'flac-error
              :format-control "Bad channel assignment/number of subframes"))

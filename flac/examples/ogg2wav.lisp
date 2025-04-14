@@ -33,5 +33,7 @@
         (loop for i below totalsamples by blocksize
               for bufsize = (min (- totalsamples i) blocksize)
               for buf = (make-array (* bufsize channels) :element-type '(signed-byte 32)) do
-              (write-sequence (mixchannels buf (frame-decode (read-ogg-frame in-reader streaminfo)))
+              (write-sequence (mixchannels
+                               buf (decode-frame
+                                    (read-ogg-frame in-reader streaminfo)))
                               out-stream))))))
