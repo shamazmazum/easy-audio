@@ -92,8 +92,8 @@
               ;; FIXME: read unencoded signed rice
               ;; Do we need to store bps?
               ;; Read bps:
-              (setq rice-parameter (read-bits 5 bit-reader))
-              (read-bits-array bit-reader out rice-parameter
+              (read-bits-array bit-reader out
+                               (read-bits 5 bit-reader)
                                :signed t
                                :offset sample-idx)
               (incf sample-idx samples-num)))))
