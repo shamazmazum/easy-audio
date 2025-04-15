@@ -111,29 +111,23 @@ Returns list of decoded audio buffers (one buffer for each channel)."
       (error 'flac-error
              :format-control "Bad channel assignment/number of subframes"))
 
-    (destructuring-bind (left right) decoded-subframes
+    (let ((left  (first  decoded-subframes))
+          (right (second decoded-subframes)))
       (declare (type (sa-sb 32) left right))
       (cond
        ((= +left-side+ assignment)
-        ;; Maybe just a loop?
-        (map-into right #'-
-                  left right))
-
+        (map-into right #'- left right))
        ((= +right-side+ assignment)
-        (map-into left #'+
-                  left right))
-
+        (map-into left #'+ left right))
        ((= +mid-side+ assignment)
-        (let ((block-size (frame-block-size frame)))
-          (declare (type fixnum block-size))
-          (dotimes (i block-size)
-            (let* ((side (aref right i))
-                   (mid (logior
+        (loop for i below (frame-block-size frame)
+              for side = (aref right i)
+              for mid = (logior
                          (ash (aref left i) 1)
-                         (logand side 1))))
-
+                         (logand side 1))
+              do
               (setf (aref left i)
                     (ash (+ mid side) -1)
                     (aref right i)
-                    (ash (- mid side) -1))))))))
+                    (ash (- mid side) -1))))))
     decoded-subframes))
