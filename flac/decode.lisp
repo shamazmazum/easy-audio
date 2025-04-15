@@ -72,22 +72,18 @@
   (declare (optimize (speed 3)))
   (let* ((header (subframe-lpc-header subframe))
          (out-buf (subframe-header-out-buf header))
-         (len (length out-buf))
          (shift (subframe-lpc-coeff-shift subframe))
          (order (subframe-lpc-order subframe))
          (coeff (subframe-lpc-predictor-coeff subframe)))
-    (do ((i order (1+ i)))
-        ((= i len))
-      (incf (aref out-buf i)
-            (the fixnum
-              (ash
-               (do ((j 0 (1+ j)) (sum 0))
-                   ((= j order) sum)
-                 (declare (type fixnum sum))
-                 (incf sum
-                       (* (aref coeff j)
-                          (aref out-buf (- i j 1)))))
-               (- shift)))))
+    (loop for i from order below (length out-buf) do
+          (incf (aref out-buf i)
+                (the fixnum
+                     (ash
+                      (loop for j below order sum
+                            (* (aref coeff j)
+                               (aref out-buf (- i j 1)))
+                            fixnum)
+                      (- shift)))))
     (decode-subframe-postprocess header out-buf)))
 
 (sera:-> decode-subframe (subframe)
