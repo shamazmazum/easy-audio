@@ -95,31 +95,31 @@
 (defun read-residual-body (bit-reader out predictor-order blocksize param-len esc-code)
   (declare (optimize (speed 3)))
   (let* ((part-order (read-bits 4 bit-reader))
-	 (sample-idx predictor-order)
-	 (partition-samples (ash blocksize (- part-order))))
+         (sample-idx predictor-order)
+         (partition-samples (ash blocksize (- part-order))))
     (declare (type fixnum sample-idx))
     (loop for i below (ash 1 part-order) do
-	  (let ((samples-num
-		 (cond
-		  ;; FIXME:: Check following lines
-		  ((zerop i) (- partition-samples predictor-order))
-		  (t partition-samples)))
-		(rice-parameter (read-bits param-len bit-reader)))
-	    (cond
-	     ((/= rice-parameter esc-code)
-	      (loop repeat samples-num do
-		    (setf (aref out sample-idx)
-			  (read-rice-signed bit-reader rice-parameter))
-		    (incf sample-idx)))
-	     (t
-	      ;; FIXME: read unencoded signed rice
-	      ;; Do we need to store bps?
-	      ;; Read bps:
-	      (setq rice-parameter (read-bits 5 bit-reader))
-	      (read-bits-array bit-reader out rice-parameter
-			       :signed t
-			       :offset sample-idx)
-	      (incf sample-idx samples-num)))))
+          (let ((samples-num
+                 (cond
+                  ;; FIXME:: Check following lines
+                  ((zerop i) (- partition-samples predictor-order))
+                  (t partition-samples)))
+                (rice-parameter (read-bits param-len bit-reader)))
+            (cond
+             ((/= rice-parameter esc-code)
+              (loop repeat samples-num do
+                    (setf (aref out sample-idx)
+                          (read-rice-signed bit-reader rice-parameter))
+                    (incf sample-idx)))
+             (t
+              ;; FIXME: read unencoded signed rice
+              ;; Do we need to store bps?
+              ;; Read bps:
+              (setq rice-parameter (read-bits 5 bit-reader))
+              (read-bits-array bit-reader out rice-parameter
+                               :signed t
+                               :offset sample-idx)
+              (incf sample-idx samples-num)))))
     out))
 
 (sera:-> read-residual
@@ -134,7 +134,7 @@
      ((= coding-method 1) ; 01
       (read-residual-body bit-reader out predictor-order blocksize 5 #b11111))
      (t (error 'flac-bad-frame
-	       :format-control "Invalid residual coding method")))))
+               :format-control "Invalid residual coding method")))))
 
 ;; Subframe reader
 (sera:-> read-subframe-verbatim
@@ -154,8 +154,8 @@
   (declare (optimize (speed 3)))
   (let* ((actual-bps (subframe-header-actual-bps header))
          (value (unsigned-to-signed
-		 (read-bits actual-bps stream)
-		 actual-bps)))
+                 (read-bits actual-bps stream)
+                 actual-bps)))
     (subframe-constant header value)))
 
 (sera:-> read-subframe-fixed
@@ -164,8 +164,8 @@
 (defun read-subframe-fixed (stream header blocksize order)
   (declare (optimize (speed 3)))
   (let ((bps (subframe-header-actual-bps header))
-	(warm-up-samples order)
-	(out-buf (subframe-header-out-buf header)))
+        (warm-up-samples order)
+        (out-buf (subframe-header-out-buf header)))
     (read-bits-array stream out-buf bps :signed t :len warm-up-samples)
     (read-residual stream out-buf order blocksize)
     (subframe-fixed header order)))
@@ -176,14 +176,14 @@
 (defun read-subframe-lpc (stream header blocksize order)
   (declare (optimize (speed 3)))
   (let ((bps (subframe-header-actual-bps header))
-	(warm-up-samples order)
-	(out-buf (subframe-header-out-buf header)))
+        (warm-up-samples order)
+        (out-buf (subframe-header-out-buf header)))
     (read-bits-array stream out-buf bps
                      :signed t :len warm-up-samples)
     (flet ((check-precision (precision)
              (when (= #b10000 precision)
-	       (error 'flac-bad-frame
-	              :format-control "lpc coefficients precision cannot be 16"))
+               (error 'flac-bad-frame
+                      :format-control "lpc coefficients precision cannot be 16"))
              precision))
       (let* ((precision (check-precision (1+ (read-bits 4 stream))))
              (coeff-shift (unsigned-to-signed (read-bits 5 stream) 5))
@@ -200,7 +200,7 @@
   (declare (optimize (speed 3)))
   (unless (zerop (read-bit stream))
     (error 'flac-bad-frame
-	   :format-control "Error reading subframe"))
+           :format-control "Error reading subframe"))
   (let* ((type-num (read-bits 6 stream))
          (wasted-bits
           (let ((lead-in-bit (read-bit stream)))
@@ -222,18 +222,18 @@
        (read-subframe-constant stream header))
       ;; 001000-001100
       ((and
-	(>= type-num 8)
-	(<= type-num 12))
+        (>= type-num 8)
+        (<= type-num 12))
        (read-subframe-fixed stream header blocksize
                             (logand type-num #b111)))
       ;; 100000-111111
       ((and
-	(>= type-num 32)
-	(<= type-num 63))
+        (>= type-num 32)
+        (<= type-num 63))
        (read-subframe-lpc stream header blocksize
                           (1+ (logand type-num #b11111))))
       (t (error 'flac-bad-frame
-		:format-control "Error subframe type")))))
+                :format-control "Error subframe type")))))
 
 (sera:-> check-frame-crc (reader)
          (values (ub 16) &optional))
@@ -260,7 +260,7 @@
            :format-control "Frame sync code is not 11111111111110"))
   (unless (zerop (read-bit stream))
     (error 'flac-bad-frame
-	   :format-control "Error reading frame"))
+           :format-control "Error reading frame"))
 
   (let ((blocking-strategy (get-blocking-strategy (read-bit stream)))
         (block-size (read-bits 4 stream))
@@ -345,7 +345,7 @@ block size is supported."
   (restore-sync bitreader)
   ;; Init the boundaries where desired sample must be
   (let ((start-pos (reader-position bitreader))
-	(end-pos (reader-length bitreader)))
+        (end-pos (reader-length bitreader)))
 
     ;; Now, if seektable is present, correct the boundaries
     (when seektable
@@ -370,35 +370,33 @@ block size is supported."
                (/= (streaminfo-minblocksize streaminfo)
                    (streaminfo-maxblocksize streaminfo)))
       (error 'flac-bad-metadata
-	     :format-control "Cannot seek with variable blocksize"))
+             :format-control "Cannot seek with variable blocksize"))
 
     (multiple-value-bind (needed-num remainder)
-	(floor sample (if streaminfo
+        (floor sample (if streaminfo
                           (streaminfo-minblocksize streaminfo)
                           (frame-block-size (read-frame bitreader))))
       (declare (type non-negative-fixnum needed-num remainder))
 
       (labels ((dichotomy-search (start end)
-				 "Searches for desired frame num by
+                                 "Searches for desired frame num by
                                   dividing stream in half"
-				 (let* ((first-half start)
-					(second-half (floor (+ start end) 2))
-					
-					(firstnum (progn (reader-position bitreader first-half)
-							 (restore-sync bitreader streaminfo)))
-					
-					(secondnum (progn (reader-position bitreader (1- second-half))
-							  (restore-sync bitreader streaminfo))))
+                                 (let* ((first-half start)
+                                        (second-half (floor (+ start end) 2))
+                                        (firstnum (progn (reader-position bitreader first-half)
+                                                         (restore-sync bitreader streaminfo)))
+                                        (secondnum (progn (reader-position bitreader (1- second-half))
+                                                          (restore-sync bitreader streaminfo))))
 
-				   (when (< needed-num firstnum)
+                                   (when (< needed-num firstnum)
                                      (error 'flac-error :format-control "Seek error"))
 
-				   (cond 
-				    ((< secondnum needed-num)
-				     (dichotomy-search second-half end))
-				    ((> secondnum needed-num)
-				     (dichotomy-search start second-half))
-				    (t t)))))
+                                   (cond
+                                    ((< secondnum needed-num)
+                                     (dichotomy-search second-half end))
+                                    ((> secondnum needed-num)
+                                     (dichotomy-search start second-half))
+                                    (t t)))))
 
-	(dichotomy-search start-pos end-pos)
-	remainder))))
+        (dichotomy-search start-pos end-pos)
+        remainder))))

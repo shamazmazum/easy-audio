@@ -31,7 +31,7 @@
                    (+ (metadata-start-position metadata)
                       4))
   (let ((chunk (make-array (list (metadata-length metadata))
-			   :element-type '(ub 8))))
+                           :element-type '(ub 8))))
     (setf (slot-value metadata 'rawdata)
           (read-octet-vector chunk bitreader))))
 

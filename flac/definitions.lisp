@@ -25,7 +25,7 @@
 
 (define-condition flac-error (error simple-condition) ()
   (:report (lambda (c s)
-	     (apply #'format s
+             (apply #'format s
                     (concatenate 'string "General flac error: "
                                  (simple-condition-format-control c))
                     (simple-condition-format-arguments c))))
@@ -33,10 +33,10 @@
 
 (define-condition flac-bad-metadata (flac-error)
   ((metadata     :reader flac-metadata
-		 :initarg :metadata
-		 :documentation "Current metadata"))
+                 :initarg :metadata
+                 :documentation "Current metadata"))
   (:report (lambda (c s)
-	     (apply #'format s
+             (apply #'format s
                     (concatenate 'string "Bad metadata: "
                                  (simple-condition-format-control c))
                     (simple-condition-format-arguments c))))
@@ -44,7 +44,7 @@
 
 (define-condition flac-bad-frame (flac-error) ()
   (:report (lambda (c s)
-	     (apply #'format s
+             (apply #'format s
                     (concatenate 'string "Bad frame: "
                                  (simple-condition-format-control c))
                     (simple-condition-format-arguments c))))
@@ -54,7 +54,7 @@
 (defclass metadata-header ()
   ((last-block-p    :initarg :last-block-p
                     :accessor metadata-last-block-p
-		    :type boolean
+                    :type boolean
                     :documentation "T if this metadata block is the last in file")
    (length          :initarg :length
                     :accessor metadata-length
@@ -65,36 +65,36 @@ header)")
                     :type (sa-ub 8))
    (start-position  :initarg :start-position
                     :documentation "Strart position of metadata block"
-		    :type non-negative-integer
-		    :accessor metadata-start-position))
+                    :type non-negative-integer
+                    :accessor metadata-start-position))
   (:documentation "Class for storing flac metadata. Instance of this class means unknown
 metadata type"))
 
 (defclass streaminfo (metadata-header)
   ((minblocksize  :accessor streaminfo-minblocksize
-		  :type non-negative-fixnum
+                  :type non-negative-fixnum
                   :documentation "The minimum block size (in samples) used in the stream")
    (maxblocksize  :accessor streaminfo-maxblocksize
-		  :type non-negative-fixnum
+                  :type non-negative-fixnum
                   :documentation "The maximum block size (in samples) used in the stream")
    (minframesize  :accessor streaminfo-minframesize
-		  :type non-negative-fixnum
+                  :type non-negative-fixnum
                   :documentation "The minimum frame size (in bytes) used in the stream")
    (maxframesize  :accessor streaminfo-maxframesize
-		  :type non-negative-fixnum
+                  :type non-negative-fixnum
                   :documentation "The maximum frame size (in bytes) used in the stream. May be
 0 to imply the value is not known.")
    (samplerate    :accessor streaminfo-samplerate
-		  :type non-negative-fixnum
+                  :type non-negative-fixnum
                   :documentation "Sample rate in Hz")
    (channels      :accessor streaminfo-channels
-		  :type (integer 1 8)
+                  :type (integer 1 8)
                   :documentation "Number of channels in stream. May be from 1 to 8.")
    (bitspersample :accessor streaminfo-bitspersample
-		  :type non-negative-fixnum
+                  :type non-negative-fixnum
                   :documentation "Bits per sample (from 4 to 32)")
    (totalsamples  :accessor streaminfo-totalsamples
-		  :type positive-integer
+                  :type positive-integer
                   :documentation "Total samples in stream. May be 0 if unknown.")
    (md5           :accessor streaminfo-md5
                   :documentation "MD5 checksum of the whole unencoded data"))
@@ -111,28 +111,28 @@ metadata type"))
 
 (defclass seektable (metadata-header)
   ((seekpoints :accessor seektable-seekpoints
-	       :type list
+               :type list
                :documentation "List of seekpoints"))
   (:documentation "SEEKTABLE metadata block"))
 
 (defclass vorbis-comment (metadata-header)
   ((vendor-comment :type string
-		   :accessor vorbis-vendor-comment
+                   :accessor vorbis-vendor-comment
                    :documentation "Vendor comment")
    (user-comments  :type list
-		   :accessor vorbis-user-comments
+                   :accessor vorbis-user-comments
                    :documentation "List of user comments"))
   (:documentation "VORBIS_COMMENT metadata block"))
 
 (defclass cuesheet (metadata-header)
   ((catalog-id     :type string
-		   :accessor cuesheet-catalog-id
+                   :accessor cuesheet-catalog-id
                    :documentation "Media catalog number")
    (lead-in        :accessor cuesheet-lead-in
                    :documentation "For CD-DA cuesheets, number of lead-in samples; 0 otherwise")
    (cdp            :accessor cuesheet-cdp
-		   :type boolean
-		   :documentation "t if cueshhet corresponds to Compact Disk")
+                   :type boolean
+                   :documentation "t if cueshhet corresponds to Compact Disk")
    (tracks         :accessor cuesheet-tracks
                    :type list
                    :documentation "List of tracks"))

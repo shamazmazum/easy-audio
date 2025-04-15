@@ -29,10 +29,10 @@
   (declare (optimize (speed 3)))
   (let ((wasted-bits (subframe-header-wasted-bps header)))
     (if (not (zerop wasted-bits))
-	(map-into output
+        (map-into output
                   (lambda (sample)
                     (ash sample wasted-bits))
-		  output)
+                  output)
         output)))
 
 (sera:-> decode-subframe-constant (subframe-constant)
@@ -41,7 +41,7 @@
   (declare (optimize (speed 3)))
   (let* ((header (subframe-constant-header subframe))
          (out-buf (subframe-header-out-buf header))
-	 (constant (subframe-constant-value subframe)))
+         (constant (subframe-constant-value subframe)))
     (decode-subframe-postprocess header (fill out-buf constant))))
 
 (sera:-> decode-subframe-verbatim (subframe-verbatim)
@@ -58,39 +58,35 @@
   (declare (optimize (speed 3)))
   (let* ((header (subframe-fixed-header subframe))
          (out-buf (subframe-header-out-buf header))
-	 (order (subframe-fixed-order subframe))
-	 (len (length out-buf)))
+         (order (subframe-fixed-order subframe))
+         (len (length out-buf)))
     (cond
      ;; 0 - out-buf contains decoded data
      ((= order 1)
       (loop for i from 1 below len do
-	    (incf (aref out-buf i)
-		  (aref out-buf (1- i)))))
+            (incf (aref out-buf i)
+                  (aref out-buf (1- i)))))
      ((= order 2)
       (loop for i from 2 below len do
-	    (incf (aref out-buf i)
-		  (- (ash (aref out-buf (1- i)) 1)
-		     (aref out-buf (- i 2))))))
+            (incf (aref out-buf i)
+                  (- (ash (aref out-buf (1- i)) 1)
+                     (aref out-buf (- i 2))))))
      ((= order 3)
       (loop for i from 3 below len do
-	    (incf (aref out-buf i)
-		  (+ (ash (- (aref out-buf (1- i))
-			     (aref out-buf (- i 2))) 1)
-		     
-		     (- (aref out-buf (1- i))
-			     (aref out-buf (- i 2)))
-		     
-		     (aref out-buf (- i 3))))))
+            (incf (aref out-buf i)
+                  (+ (ash (- (aref out-buf (1- i))
+                             (aref out-buf (- i 2))) 1)
+                     (- (aref out-buf (1- i))
+                             (aref out-buf (- i 2)))
+                     (aref out-buf (- i 3))))))
      ((= order 4)
       (loop for i from 4 below len do
-	    (incf (aref out-buf i)
-		  (- (ash (+ (aref out-buf (1- i))
-			     (aref out-buf (- i 3))) 2)
-
-		     (+ (ash (aref out-buf (- i 2)) 2)
-			(ash (aref out-buf (- i 2)) 1))
-
-		     (aref out-buf (- i 4)))))))
+            (incf (aref out-buf i)
+                  (- (ash (+ (aref out-buf (1- i))
+                             (aref out-buf (- i 3))) 2)
+                     (+ (ash (aref out-buf (- i 2)) 2)
+                        (ash (aref out-buf (- i 2)) 1))
+                     (aref out-buf (- i 4)))))))
     (decode-subframe-postprocess header out-buf)))
 
 (sera:-> decode-subframe-lpc (subframe-lpc)
@@ -99,22 +95,22 @@
   (declare (optimize (speed 3)))
   (let* ((header (subframe-lpc-header subframe))
          (out-buf (subframe-header-out-buf header))
-	 (len (length out-buf))
-	 (shift (subframe-lpc-coeff-shift subframe))
-	 (order (subframe-lpc-order subframe))
-	 (coeff (subframe-lpc-predictor-coeff subframe)))
+         (len (length out-buf))
+         (shift (subframe-lpc-coeff-shift subframe))
+         (order (subframe-lpc-order subframe))
+         (coeff (subframe-lpc-predictor-coeff subframe)))
     (do ((i order (1+ i)))
-	((= i len))
+        ((= i len))
       (incf (aref out-buf i)
-	    (the fixnum
-	      (ash
-	       (do ((j 0 (1+ j)) (sum 0))
-		   ((= j order) sum)
-		 (declare (type fixnum sum))
-		 (incf sum
-		       (* (aref coeff j)
-			  (aref out-buf (- i j 1)))))
-	       (- shift)))))
+            (the fixnum
+              (ash
+               (do ((j 0 (1+ j)) (sum 0))
+                   ((= j order) sum)
+                 (declare (type fixnum sum))
+                 (incf sum
+                       (* (aref coeff j)
+                          (aref out-buf (- i j 1)))))
+               (- shift)))))
     (decode-subframe-postprocess header out-buf)))
 
 (sera:-> decode-subframe (subframe)
@@ -132,8 +128,8 @@
 Returns list of decoded audio buffers (one buffer for each channel)."
   (declare (optimize (speed 3)))
   (let ((decoded-subframes
-	 (mapcar #'decode-subframe (frame-subframes frame)))
-  	(assignment (frame-channel-assignment frame)))
+         (mapcar #'decode-subframe (frame-subframes frame)))
+        (assignment (frame-channel-assignment frame)))
     (declare (type non-negative-fixnum assignment))
 
     (when (<= assignment +max-channels+)
@@ -146,25 +142,25 @@ Returns list of decoded audio buffers (one buffer for each channel)."
       (declare (type (sa-sb 32) left right))
       (cond
        ((= +left-side+ assignment)
-	;; Maybe just a loop?
-	(map-into right #'-
-		  left right))
+        ;; Maybe just a loop?
+        (map-into right #'-
+                  left right))
 
        ((= +right-side+ assignment)
-	(map-into left #'+
-		  left right))
+        (map-into left #'+
+                  left right))
 
        ((= +mid-side+ assignment)
-	(let ((block-size (frame-block-size frame)))
-	  (declare (type fixnum block-size))
-	  (dotimes (i block-size)
-	    (let* ((side (aref right i))
-		   (mid (logior
-			 (ash (aref left i) 1)
-			 (logand side 1))))
+        (let ((block-size (frame-block-size frame)))
+          (declare (type fixnum block-size))
+          (dotimes (i block-size)
+            (let* ((side (aref right i))
+                   (mid (logior
+                         (ash (aref left i) 1)
+                         (logand side 1))))
 
-	      (setf (aref left i)
-		    (ash (+ mid side) -1)
-		    (aref right i)
-		    (ash (- mid side) -1))))))))
+              (setf (aref left i)
+                    (ash (+ mid side) -1)
+                    (aref right i)
+                    (ash (- mid side) -1))))))))
     decoded-subframes))

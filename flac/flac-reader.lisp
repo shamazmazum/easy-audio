@@ -24,7 +24,7 @@
 (in-package :easy-audio.flac)
 
 (sera:-> unsigned-to-signed ((ub 32) (integer 0 32))
-	 (values (sb 32) &optional))
+         (values (sb 32) &optional))
 (declaim (inline unsigned-to-signed))
 (defun unsigned-to-signed (byte len)
   (let ((sign-mask (ash 1 (1- len))))
@@ -38,14 +38,14 @@
                                  (:offset non-negative-fixnum))
          (values (sa-sb 32) &optional))
 (defun read-bits-array (stream array size &key
-			       signed
-			       (len (length array))
-			       (offset 0))
+                               signed
+                               (len (length array))
+                               (offset 0))
   (declare (optimize (speed 3)))
   (loop for i from offset below len
         for val = (read-bits size stream) do
-	(setf (aref array i)
-	      (if signed (unsigned-to-signed val size) val)))
+        (setf (aref array i)
+              (if signed (unsigned-to-signed val size) val)))
   array)
 
 ;; TODO: rewrite
@@ -79,22 +79,22 @@
                (/= 0 (logand x #xFC)))
               (values (logand x #x01) 5))
              (t (error 'flac-bad-frame
-	               :format-control "Error reading utf-8 coded value")))))
+                       :format-control "Error reading utf-8 coded value")))))
     (multiple-value-bind (v n)
         (nbytes (read-octet stream))
       (declare (type (ub 32) v))
       (loop repeat n
-	    for x = (read-octet stream) do
-	    (when (or (zerop (logand x #x80))
-	              (not (zerop (logand x #x40))))
-	      (error 'flac-bad-frame
-		     :format-control "Error reading utf-8 coded value"))
-	    (setq v (logior (ash v 6)))
-	    (setq v (logior v (logand x #x3F))))
+            for x = (read-octet stream) do
+            (when (or (zerop (logand x #x80))
+                      (not (zerop (logand x #x40))))
+              (error 'flac-bad-frame
+                     :format-control "Error reading utf-8 coded value"))
+            (setq v (logior (ash v 6)))
+            (setq v (logior v (logand x #x3F))))
       v)))
 
 (sera:-> read-rice-signed (reader (integer 0 30))
-	 (values (sb 32) &optional))
+         (values (sb 32) &optional))
 (defun read-rice-signed (bitreader param)
   "Read signed rice-coded value"
   (declare (optimize (speed 3)))

@@ -59,7 +59,7 @@
 (defmethod read-metadata-body (stream (data padding))
   ;; Read zero padding bytes
   (let ((chunk (make-array (list (metadata-length data))
-			   :element-type '(ub 8))))
+                           :element-type '(ub 8))))
     (read-octet-vector chunk stream)
     ;; Do sanity checks
     (when (notevery #'zerop  chunk)
@@ -70,37 +70,37 @@
 
 (defmethod read-metadata-body (stream (data vorbis-comment))
   (flet ((read-comment-string (stream)
-	  (let ((buffer (make-array (list (read-bits 32 stream :endianness :little))
-					   :element-type '(unsigned-byte 8))))
-	    (flexi-streams:octets-to-string
+          (let ((buffer (make-array (list (read-bits 32 stream :endianness :little))
+                                           :element-type '(unsigned-byte 8))))
+            (flexi-streams:octets-to-string
              (read-octet-vector buffer stream)
              :external-format :utf-8))))
     (setf (vorbis-vendor-comment data)
-	  (read-comment-string stream))
+          (read-comment-string stream))
     (let ((comments-num (read-bits 32 stream :endianness :little)))
       (setf (vorbis-user-comments data)
-	    (loop for i below comments-num collect
-		  (read-comment-string stream)))))
+            (loop for i below comments-num collect
+                  (read-comment-string stream)))))
   data)
 
 (defmethod read-metadata-body (stream (data seektable))
   (flet ((read-seekpoint (stream)
-			 (let ((samplenum (read-eight-octets stream)))
-			   (if (/= samplenum +seekpoint-placeholder+)
-			       (let ((offset (read-eight-octets stream))
-				     (samples-in-frame (read-bits 16 stream)))
-				 (make-seekpoint :samplenum samplenum
-						 :offset offset
-						 :samples-in-frame samples-in-frame))))))
+                         (let ((samplenum (read-eight-octets stream)))
+                           (if (/= samplenum +seekpoint-placeholder+)
+                               (let ((offset (read-eight-octets stream))
+                                     (samples-in-frame (read-bits 16 stream)))
+                                 (make-seekpoint :samplenum samplenum
+                                                 :offset offset
+                                                 :samples-in-frame samples-in-frame))))))
     (multiple-value-bind (seekpoints-num remainder)
-	(floor (metadata-length data) 18)
+        (floor (metadata-length data) 18)
       (unless (zerop remainder)
         (error 'flac-bad-metadata
-	       :format-control "Bad seektable"
-	       :metadata data))
+               :format-control "Bad seektable"
+               :metadata data))
       (setf (seektable-seekpoints data)
-	    (loop for i below seekpoints-num collect
-		  (read-seekpoint stream)))))
+            (loop for i below seekpoints-num collect
+                  (read-seekpoint stream)))))
   data)
 
 (declaim (inline read-streaminfo-body))
@@ -124,7 +124,7 @@
     (read-octet-vector buffer stream)
     (let ((pos (position 0 buffer)))
       (setq buffer
-	    (if pos (subseq buffer 0 pos) buffer)))
+            (if pos (subseq buffer 0 pos) buffer)))
     (flexi-streams:octets-to-string buffer)))
 
 (defun read-cuesheet-index (stream)
@@ -137,8 +137,8 @@
     (let ((reserved (read-bits #.(* 3 8) stream)))
       (unless (zerop reserved)
         (error 'flac-bad-metadata
-	       :format-control "Bad cuesheet index"
-	       :metadata *data*)))
+               :format-control "Bad cuesheet index"
+               :metadata *data*)))
     index))
 
 (defun read-cuesheet-track (stream)
@@ -151,9 +151,9 @@
           (read-cuesheet-string stream 12)
           (cuesheet-track-type track)
           (if (zerop (read-bit stream))
-	      :audio :non-audio)
+              :audio :non-audio)
           (cuesheet-track-pre-emphasis track)
-	  (if (zerop (read-bit stream))
+          (if (zerop (read-bit stream))
               :no-pre-emphasis :pre-emphasis))
 
     (let ((reserved1 (read-bits 6 stream))
@@ -162,13 +162,13 @@
                       stream)))
       (unless (and (zerop reserved1) (every #'zerop reserved2))
         (error 'flac-bad-metadata
-	       :format-control "Bad cuesheet track"
-	       :metadata *data*)))
+               :format-control "Bad cuesheet track"
+               :metadata *data*)))
 
     (let ((number-of-indices (read-octet stream)))
       (setf (cuesheet-track-indices track)
-	    (loop for track below number-of-indices collect
-		  (read-cuesheet-index stream))))
+            (loop for track below number-of-indices collect
+                  (read-cuesheet-index stream))))
 
     track))
 
@@ -187,13 +187,13 @@
                       stream)))
       (unless (and (zerop reserved1) (every #'zerop reserved2))
         (error 'flac-bad-metadata
-	       :format-control "Bad cuesheet"
-	       :metadata data)))
+               :format-control "Bad cuesheet"
+               :metadata data)))
 
     (let ((number-of-tracks (read-octet stream)))
       (setf (cuesheet-tracks data)
-	    (loop for track below number-of-tracks collect
-		  (read-cuesheet-track stream)))))
+            (loop for track below number-of-tracks collect
+                  (read-cuesheet-track stream)))))
   data)
 
 (defmethod read-metadata-body (stream (data picture))
