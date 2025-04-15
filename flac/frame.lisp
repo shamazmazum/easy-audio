@@ -165,34 +165,34 @@
   (declare (optimize (speed 3)))
   (let ((bps (subframe-header-actual-bps header))
 	(warm-up-samples order)
-	(out-buf (subframe-header-out-buf header))
-        (subframe (subframe-fixed header order)))
+	(out-buf (subframe-header-out-buf header)))
     (read-bits-array stream out-buf bps :signed t :len warm-up-samples)
     (read-residual stream out-buf order blocksize)
-    subframe))
+    (subframe-fixed header order)))
 
 (sera:-> read-subframe-lpc
          (reader subframe-header blocksize (integer 1 32))
          (values subframe-lpc &optional))
 (defun read-subframe-lpc (stream header blocksize order)
   (declare (optimize (speed 3)))
-  (let* ((bps (subframe-header-actual-bps header))
-	 (warm-up-samples order)
-	 (out-buf (subframe-header-out-buf header))
-	 (coeff-buf (make-array warm-up-samples
-				:element-type '(sb 32))))
+  (let ((bps (subframe-header-actual-bps header))
+	(warm-up-samples order)
+	(out-buf (subframe-header-out-buf header)))
     (read-bits-array stream out-buf bps
                      :signed t :len warm-up-samples)
-    (let ((precision (1+ (read-bits 4 stream))))
-      (when (= #b10000 precision)
-	(error 'flac-bad-frame
-	       :format-control "lpc coefficients precision cannot be 16"))
-      (let ((subframe (subframe-lpc header order precision
-	                            (unsigned-to-signed (read-bits 5 stream) 5)
-	                            (read-bits-array stream coeff-buf precision
-                                                     :signed t))))
+    (flet ((check-precision (precision)
+             (when (= #b10000 precision)
+	       (error 'flac-bad-frame
+	              :format-control "lpc coefficients precision cannot be 16"))
+             precision))
+      (let* ((precision (check-precision (1+ (read-bits 4 stream))))
+             (coeff-shift (unsigned-to-signed (read-bits 5 stream) 5))
+             (predictor-coeff
+              (read-bits-array
+               stream (make-array warm-up-samples :element-type '(sb 32)) precision
+               :signed t)))
         (read-residual stream out-buf order blocksize)
-        subframe))))
+        (subframe-lpc header order precision coeff-shift predictor-coeff)))))
 
 (sera:-> read-subframe (reader blocksize (integer 4 33))
          (values subframe &optional))
