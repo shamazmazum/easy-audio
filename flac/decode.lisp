@@ -46,24 +46,24 @@
      ((= order 2)
       (loop for i from 2 below len do
             (incf (aref out-buf i)
-                  (- (ash (aref out-buf (1- i)) 1)
-                     (aref out-buf (- i 2))))))
+                  (+
+                   (+ (* (aref out-buf (- i 1)) 2))
+                   (- (* (aref out-buf (- i 2))))))))
      ((= order 3)
       (loop for i from 3 below len do
             (incf (aref out-buf i)
-                  (+ (ash (- (aref out-buf (1- i))
-                             (aref out-buf (- i 2))) 1)
-                     (- (aref out-buf (1- i))
-                             (aref out-buf (- i 2)))
-                     (aref out-buf (- i 3))))))
+                  (+
+                   (+ (* (aref out-buf (- i 1)) 3))
+                   (- (* (aref out-buf (- i 2)) 3))
+                   (+ (* (aref out-buf (- i 3))))))))
      ((= order 4)
       (loop for i from 4 below len do
             (incf (aref out-buf i)
-                  (- (ash (+ (aref out-buf (1- i))
-                             (aref out-buf (- i 3))) 2)
-                     (+ (ash (aref out-buf (- i 2)) 2)
-                        (ash (aref out-buf (- i 2)) 1))
-                     (aref out-buf (- i 4)))))))
+                  (+
+                   (+ (* (aref out-buf (- i 1)) 4))
+                   (- (* (aref out-buf (- i 2)) 6))
+                   (+ (* (aref out-buf (- i 3)) 4))
+                   (- (* (aref out-buf (- i 4)))))))))
     (decode-subframe-postprocess header out-buf)))
 
 (sera:-> decode-subframe-lpc (subframe-lpc)
