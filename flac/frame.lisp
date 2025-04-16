@@ -67,13 +67,13 @@
 
 ;; Residual reader
 (sera:-> read-residual-body
-         (reader (sa-sb 32) fixnum blocksize fixnum fixnum)
+         (reader (sa-sb 32) fixnum fixnum fixnum)
          (values (sa-sb 32) &optional))
-(defun read-residual-body (bit-reader out predictor-order blocksize param-len esc-code)
+(defun read-residual-body (bit-reader out predictor-order param-len esc-code)
   (declare (optimize (speed 3)))
   (let* ((part-order (read-bits 4 bit-reader))
          (sample-idx predictor-order)
-         (partition-samples (ash blocksize (- part-order))))
+         (partition-samples (ash (length out) (- part-order))))
     (declare (type fixnum sample-idx))
     (loop for i below (ash 1 part-order) do
           (let ((samples-num
@@ -100,16 +100,16 @@
     out))
 
 (sera:-> read-residual
-         (reader (sa-sb 32) fixnum blocksize)
+         (reader (sa-sb 32) fixnum)
          (values (sa-sb 32) &optional))
-(defun read-residual (bit-reader out predictor-order blocksize)
+(defun read-residual (bit-reader out predictor-order)
   (declare (optimize (speed 3)))
   (let ((coding-method (read-bits 2 bit-reader)))
     (cond
      ((= coding-method 0) ; 00
-      (read-residual-body bit-reader out predictor-order blocksize 4 #b1111))
+      (read-residual-body bit-reader out predictor-order 4 #b1111))
      ((= coding-method 1) ; 01
-      (read-residual-body bit-reader out predictor-order blocksize 5 #b11111))
+      (read-residual-body bit-reader out predictor-order 5 #b11111))
      (t (error 'flac-bad-frame
                :format-control "Invalid residual coding method")))))
 
@@ -136,21 +136,21 @@
     (subframe-constant header value)))
 
 (sera:-> read-subframe-fixed
-         (reader subframe-header blocksize (integer 0 4))
+         (reader subframe-header (integer 0 4))
          (values subframe-fixed &optional))
-(defun read-subframe-fixed (stream header blocksize order)
+(defun read-subframe-fixed (stream header order)
   (declare (optimize (speed 3)))
   (let ((bps (subframe-header-actual-bps header))
         (warm-up-samples order)
         (out-buf (subframe-header-out-buf header)))
     (read-bits-array stream out-buf bps :signed t :len warm-up-samples)
-    (read-residual stream out-buf order blocksize)
+    (read-residual stream out-buf order)
     (subframe-fixed header order)))
 
 (sera:-> read-subframe-lpc
-         (reader subframe-header blocksize (integer 1 32))
+         (reader subframe-header (integer 1 32))
          (values subframe-lpc &optional))
-(defun read-subframe-lpc (stream header blocksize order)
+(defun read-subframe-lpc (stream header order)
   (declare (optimize (speed 3)))
   (let ((bps (subframe-header-actual-bps header))
         (warm-up-samples order)
@@ -168,7 +168,7 @@
               (read-bits-array
                stream (make-array warm-up-samples :element-type '(sb 32)) precision
                :signed t)))
-        (read-residual stream out-buf order blocksize)
+        (read-residual stream out-buf order)
         (subframe-lpc header order precision coeff-shift predictor-coeff)))))
 
 (sera:-> read-subframe (reader blocksize (integer 4 33))
@@ -201,14 +201,16 @@
       ((and
         (>= type-num 8)
         (<= type-num 12))
-       (read-subframe-fixed stream header blocksize
-                            (logand type-num #b111)))
+       (read-subframe-fixed
+        stream header
+        (logand type-num #b111)))
       ;; 100000-111111
       ((and
         (>= type-num 32)
         (<= type-num 63))
-       (read-subframe-lpc stream header blocksize
-                          (1+ (logand type-num #b11111))))
+       (read-subframe-lpc
+        stream header
+        (1+ (logand type-num #b11111))))
       (t (error 'flac-bad-frame
                 :format-control "Error subframe type")))))
 
