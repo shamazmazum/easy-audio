@@ -119,10 +119,11 @@
          (values subframe-verbatim &optional))
 (defun read-subframe-verbatim (stream header)
   (declare (optimize (speed 3)))
-  (let ((bps (subframe-header-actual-bps header)))
-    (read-bits-array stream (subframe-header-out-buf header)
-                     bps :signed t)
-    (subframe-verbatim header)))
+  (let ((bps (subframe-header-actual-bps header))
+        (data (make-array (subframe-header-block-size header)
+                          :element-type '(signed-byte 32))))
+    (subframe-verbatim
+     header (read-bits-array stream data bps :signed t))))
 
 (sera:-> read-subframe-constant
          (reader subframe-header)
@@ -142,10 +143,11 @@
   (declare (optimize (speed 3)))
   (let ((bps (subframe-header-actual-bps header))
         (warm-up-samples order)
-        (out-buf (subframe-header-out-buf header)))
-    (read-bits-array stream out-buf bps :signed t :len warm-up-samples)
-    (read-residual stream out-buf order)
-    (subframe-fixed header order)))
+        (residual (make-array (subframe-header-block-size header)
+                              :element-type '(signed-byte 32))))
+    (read-bits-array stream residual bps :signed t :len warm-up-samples)
+    (read-residual stream residual order)
+    (subframe-fixed header order residual)))
 
 (sera:-> read-subframe-lpc
          (reader subframe-header (integer 1 32))
@@ -154,9 +156,9 @@
   (declare (optimize (speed 3)))
   (let ((bps (subframe-header-actual-bps header))
         (warm-up-samples order)
-        (out-buf (subframe-header-out-buf header)))
-    (read-bits-array stream out-buf bps
-                     :signed t :len warm-up-samples)
+        (residual (make-array (subframe-header-block-size header)
+                              :element-type '(signed-byte 32))))
+    (read-bits-array stream residual bps :signed t :len warm-up-samples)
     (flet ((check-precision (precision)
              (when (= #b10000 precision)
                (error 'flac-bad-frame
@@ -168,8 +170,8 @@
               (read-bits-array
                stream (make-array warm-up-samples :element-type '(sb 32)) precision
                :signed t)))
-        (read-residual stream out-buf order)
-        (subframe-lpc header order precision coeff-shift predictor-coeff)))))
+        (read-residual stream residual order)
+        (subframe-lpc header order precision coeff-shift predictor-coeff residual)))))
 
 (sera:-> read-subframe (reader blocksize (integer 4 33))
          (values subframe &optional))
@@ -184,12 +186,7 @@
             (if (= lead-in-bit 1)
                 (1+ (count-zeros stream)) 0)))
          (header
-          (subframe-header
-           wasted-bits
-           (- actual-bps wasted-bits)
-           (make-array
-            (list blocksize)
-            :element-type '(sb 32)))))
+          (subframe-header wasted-bits (- actual-bps wasted-bits) blocksize)))
     (cond
       ;; 000000
       ((= type-num 0)

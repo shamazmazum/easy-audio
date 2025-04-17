@@ -164,31 +164,37 @@ metadata type"))
   common to all metadata blocks (which are in the header)."))
 
 ;; Subframes
+(deftype blocksize ()
+  '(and (unsigned-byte 16) (not (eql 0))))
+
 (deftype subframe ()
   '(or subframe-constant subframe-verbatim subframe-fixed subframe-lpc))
 
 (sera:defconstructor subframe-header
   (wasted-bps non-negative-fixnum)
   (actual-bps (integer 4 33))
-  (out-buf    (sa-sb 32)))
+  (block-size blocksize))
 
 (sera:defconstructor subframe-constant
   (header subframe-header)
   (value  (sb 32)))
 
 (sera:defconstructor subframe-verbatim
-  (header subframe-header))
+  (header subframe-header)
+  (data   (sa-sb 32)))
 
 (sera:defconstructor subframe-lpc
   (header subframe-header)
   (order           (integer 1 32))
   (precision       fixnum)
   (coeff-shift     (sb 32))
-  (predictor-coeff (sa-sb 32)))
+  (predictor-coeff (sa-sb 32))
+  (residual        (sa-sb 32)))
 
 (sera:defconstructor subframe-fixed
-  (header subframe-header)
-  (order  (integer 0 4)))
+  (header   subframe-header)
+  (order    (integer 0 4))
+  (residual (sa-sb 32)))
 
 ;; Add 1 to values described in FLAC specs
 (defconstant +left-side+ #b1001)  ; 1000 in spec
@@ -197,9 +203,6 @@ metadata type"))
 (defconstant +max-channels+ 8)
 
 ;; Frame
-(deftype blocksize ()
-  '(and (unsigned-byte 16) (not (eql 0))))
-
 (sera:defconstructor frame
   (%blocking-strategy (member :fixed :variable))
   (%block-size         blocksize)

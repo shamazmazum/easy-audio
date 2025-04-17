@@ -16,75 +16,91 @@
          (values (sa-sb 32) &optional))
 (defun decode-subframe-constant (subframe)
   (declare (optimize (speed 3)))
-  (let* ((header (subframe-constant-header subframe))
-         (out-buf (subframe-header-out-buf header))
-         (constant (subframe-constant-value subframe)))
-    (decode-subframe-postprocess header (fill out-buf constant))))
+  (let ((header (subframe-constant-header subframe)))
+    (decode-subframe-postprocess
+     header (make-array (subframe-header-block-size header)
+                        :element-type '(sb 32)
+                        :initial-element (subframe-constant-value subframe)))))
 
 (sera:-> decode-subframe-verbatim (subframe-verbatim)
          (values (sa-sb 32) &optional))
 (defun decode-subframe-verbatim (subframe)
   (declare (optimize (speed 3)))
-  (let ((header (subframe-verbatim-header subframe)))
-    (decode-subframe-postprocess header (subframe-header-out-buf header))))
+  (decode-subframe-postprocess
+   (subframe-verbatim-header subframe)
+   (subframe-verbatim-data   subframe)))
 
 (sera:-> decode-subframe-fixed (subframe-fixed)
          (values (sa-sb 32) &optional))
 (defun decode-subframe-fixed (subframe)
   ;; Decodes subframe destructively modifiying it
   (declare (optimize (speed 3)))
-  (let* ((header (subframe-fixed-header subframe))
-         (out-buf (subframe-header-out-buf header))
-         (order (subframe-fixed-order subframe))
-         (len (length out-buf)))
-    (cond
-     ;; 0 - out-buf contains decoded data
-     ((= order 1)
-      (loop for i from 1 below len do
-            (incf (aref out-buf i)
-                  (aref out-buf (1- i)))))
-     ((= order 2)
-      (loop for i from 2 below len do
-            (incf (aref out-buf i)
-                  (+
-                   (+ (* (aref out-buf (- i 1)) 2))
-                   (- (* (aref out-buf (- i 2))))))))
-     ((= order 3)
-      (loop for i from 3 below len do
-            (incf (aref out-buf i)
-                  (+
-                   (+ (* (aref out-buf (- i 1)) 3))
-                   (- (* (aref out-buf (- i 2)) 3))
-                   (+ (* (aref out-buf (- i 3))))))))
-     ((= order 4)
-      (loop for i from 4 below len do
-            (incf (aref out-buf i)
-                  (+
-                   (+ (* (aref out-buf (- i 1)) 4))
-                   (- (* (aref out-buf (- i 2)) 6))
-                   (+ (* (aref out-buf (- i 3)) 4))
-                   (- (* (aref out-buf (- i 4)))))))))
-    (decode-subframe-postprocess header out-buf)))
+  (let* ((header   (subframe-fixed-header   subframe))
+         (residual (subframe-fixed-residual subframe))
+         (order    (subframe-fixed-order    subframe))
+         (blocksize (subframe-header-block-size header)))
+    (decode-subframe-postprocess
+     header
+     (if (zerop order)
+         (copy-seq residual)
+         (let ((data (make-array blocksize :element-type '(sb 32))))
+           (replace data residual :end1 order)
+           (cond
+             ;; 0 - out-buf contains decoded data
+             ((= order 1)
+              (loop for i from 1 below blocksize do
+                    (setf (aref data i)
+                          (+ (aref residual i)
+                             (aref data (1- i))))))
+             ((= order 2)
+              (loop for i from 2 below blocksize do
+                    (setf (aref data i)
+                          (+
+                           (aref residual i)
+                           (+ (* (aref data (- i 1)) 2))
+                           (- (* (aref data (- i 2))))))))
+             ((= order 3)
+              (loop for i from 3 below blocksize do
+                    (setf (aref data i)
+                          (+
+                           (aref residual i)
+                           (+ (* (aref data (- i 1)) 3))
+                           (- (* (aref data (- i 2)) 3))
+                           (+ (* (aref data (- i 3))))))))
+             ((= order 4)
+              (loop for i from 4 below blocksize do
+                    (setf (aref data i)
+                          (+
+                           (aref residual i)
+                           (+ (* (aref data (- i 1)) 4))
+                           (- (* (aref data (- i 2)) 6))
+                           (+ (* (aref data (- i 3)) 4))
+                           (- (* (aref data (- i 4)))))))))
+           data)))))
 
 (sera:-> decode-subframe-lpc (subframe-lpc)
          (values (sa-sb 32) &optional))
 (defun decode-subframe-lpc (subframe)
   (declare (optimize (speed 3)))
-  (let* ((header (subframe-lpc-header subframe))
-         (out-buf (subframe-header-out-buf header))
-         (shift (subframe-lpc-coeff-shift subframe))
-         (order (subframe-lpc-order subframe))
-         (coeff (subframe-lpc-predictor-coeff subframe)))
-    (loop for i from order below (length out-buf) do
-          (incf (aref out-buf i)
-                (the fixnum
-                     (ash
-                      (loop for j below order sum
-                            (* (aref coeff j)
-                               (aref out-buf (- i j 1)))
-                            fixnum)
-                      (- shift)))))
-    (decode-subframe-postprocess header out-buf)))
+  (let* ((header   (subframe-lpc-header          subframe))
+         (residual (subframe-lpc-residual        subframe))
+         (shift    (subframe-lpc-coeff-shift     subframe))
+         (order    (subframe-lpc-order           subframe))
+         (coeff    (subframe-lpc-predictor-coeff subframe))
+         (blocksize (subframe-header-block-size header))
+         (data (make-array blocksize :element-type '(sb 32))))
+    (replace data residual :end1 order)
+    (loop for i from order below blocksize do
+          (setf (aref data i)
+                (+ (aref residual i)
+                   (the fixnum
+                        (ash
+                         (loop for j below order sum
+                               (* (aref coeff j)
+                                  (aref data (- i j 1)))
+                               fixnum)
+                         (- shift))))))
+    (decode-subframe-postprocess header data)))
 
 (sera:-> decode-subframe (subframe)
          (values (sa-sb 32) &optional))
@@ -97,8 +113,7 @@
     (subframe-lpc      (decode-subframe-lpc      subframe))))
 
 (defun decode-frame (frame)
-  "Decode a frame destructively modifying (and garbaging) all subframes within.
-Returns list of decoded audio buffers (one buffer for each channel)."
+  "Decode a frame. Returns list of decoded audio buffers (one buffer for each channel)."
   (declare (optimize (speed 3)))
   (let ((decoded-subframes
          (mapcar #'decode-subframe (frame-subframes frame)))
