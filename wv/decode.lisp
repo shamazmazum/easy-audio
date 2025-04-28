@@ -209,9 +209,9 @@
   ;; How slow is this?
   (let ((int32-info (block-int32-info wv-block))
         (wvx-bits (block-wvx-bits wv-block)))
-    (if (not int32-info)
-        (error 'block-error
-               :format-control "sample size is > 24 bits and no int32-info metadata block"))
+    (unless int32-info
+      (error 'block-error
+             :format-control "sample size is > 24 bits and no int32-info metadata block"))
     (let ((sent-bits (metadata-sent-bits int32-info))
           (zeros (metadata-zeros int32-info))
           (ones (metadata-ones int32-info))
@@ -283,7 +283,8 @@ channel."
                       ((= term -1) #'correlation-pass/w-term--1)
                       ((= term -2) #'correlation-pass/w-term--2)
                       ((= term -3) #'correlation-pass/w-term--3))
-                    (first residual) (second residual) delta weights decorr-samples)))))
+                    (first residual) (second residual) delta weights decorr-samples)))
+             (values)))
 
       (when decorr-passes
         (destructuring-bind (last . first) decorr-passes
