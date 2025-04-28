@@ -51,10 +51,11 @@
 
 (macrolet ((define-correlation-pass/w-term>8 (name correlate-sample-name)
              `(progn
-                (sera:-> ,name ((sa-sb 32) (sb 32) (sb 32) (maybe (sa-sb 32)))
+                (sera:-> ,name ((sa-sb 32) (sb 32) (sb 32) integer (maybe (sa-sb 32)))
                          (values (sb 32) &optional))
-                (defun ,name (residual delta weight decorr-samples)
-                  (declare (optimize (speed 3)))
+                (defun ,name (residual delta weight term decorr-samples)
+                  (declare (optimize (speed 3))
+                           (ignore term))
                   (cond
                     (decorr-samples
                      ;; The first sample in the block
@@ -86,8 +87,8 @@
   (define-correlation-pass/w-term>8 correlation-pass/w-term-17 correlate-sample/w-term-17)
   (define-correlation-pass/w-term>8 correlation-pass/w-term-18 correlate-sample/w-term-18))
 
-(sera:-> correlation-pass/w-term-i ((sa-sb 32) (sb 32) (sb 32) (integer 1 8)
-                                    (maybe (sa-sb 32)))
+(sera:-> correlation-pass/w-term-i
+         ((sa-sb 32) (sb 32) (sb 32) (integer 1 8) (maybe (sa-sb 32)))
          (values (sb 32) &optional))
 (defun correlation-pass/w-term-i (residual delta weight term decorr-samples)
   (declare (optimize (speed 3)))
@@ -102,104 +103,106 @@
                          weight update-weight))
   weight)
 
-(defun correlation-pass/w-term--1 (residual delta weights decorr-samples)
+(sera:-> correlation-pass/w-term--1
+         ((sa-sb 32) (sa-sb 32) (sb 32) (sa-sb 32) list)
+         (values &optional))
+(defun correlation-pass/w-term--1 (residual-1 residual-2 delta weights decorr-samples)
   (declare (optimize (speed 3)))
-  (let ((residual-1 (first  residual))
-        (residual-2 (second residual)))
-    (declare (type (sa-sb 32) residual-1 residual-2 weights)
-             (type (sb 32) delta))
-    (when decorr-samples
-      (correlate-sample (first decorr-samples)
-                        (aref residual-1 0)
-                        (aref weights 0)
-                        update-weight-clip))
-
-    (correlate-sample (aref residual-1 0)
-                      (aref residual-2 0)
-                      (aref weights 1)
-                      update-weight-clip)
-
-    (loop for i from 1 below (length residual-1) do
-         (correlate-sample
-          (aref residual-2 (1- i))
-          (aref residual-1 i)
-          (aref weights 0)
-          update-weight-clip)
-         (correlate-sample
-          (aref residual-1 i)
-          (aref residual-2 i)
-          (aref weights 1)
-          update-weight-clip))))
-
-(defun correlation-pass/w-term--2 (residual delta weights decorr-samples)
-  (declare (optimize (speed 3)))
-  (let ((residual-1 (first  residual))
-        (residual-2 (second residual)))
-    (declare (type (sa-sb 32) residual-1 residual-2 weights)
-             (type (sb 32) delta))
-    (when decorr-samples
-      (correlate-sample (second decorr-samples)
-                        (aref residual-2 0)
-                        (aref weights 1)
-                        update-weight-clip))
-
-    (correlate-sample (aref residual-2 0)
+  (when decorr-samples
+    (correlate-sample (first decorr-samples)
                       (aref residual-1 0)
                       (aref weights 0)
-                      update-weight-clip)
+                      update-weight-clip))
 
-    (loop for i from 1 below (length residual-1) do
-         (correlate-sample
-          (aref residual-1 (1- i))
-          (aref residual-2 i)
-          (aref weights 1)
-          update-weight-clip)
-         (correlate-sample
-          (aref residual-2 i)
-          (aref residual-1 i)
-          (aref weights 0)
-          update-weight-clip))))
+  (correlate-sample (aref residual-1 0)
+                    (aref residual-2 0)
+                    (aref weights 1)
+                    update-weight-clip)
 
-(defun correlation-pass/w-term--3 (residual delta weights decorr-samples)
+  (loop for i from 1 below (length residual-1) do
+        (correlate-sample
+         (aref residual-2 (1- i))
+         (aref residual-1 i)
+         (aref weights 0)
+         update-weight-clip)
+        (correlate-sample
+         (aref residual-1 i)
+         (aref residual-2 i)
+         (aref weights 1)
+         update-weight-clip))
+  (values))
+
+(sera:-> correlation-pass/w-term--2
+         ((sa-sb 32) (sa-sb 32) (sb 32) (sa-sb 32) list)
+         (values &optional))
+(defun correlation-pass/w-term--2 (residual-1 residual-2 delta weights decorr-samples)
   (declare (optimize (speed 3)))
-  (let ((residual-1 (first  residual))
-        (residual-2 (second residual)))
-    (declare (type (sa-sb 32) residual-1 residual-2 weights)
-             (type (sb 32) delta))
-    (when decorr-samples
-      (correlate-sample
-       (first decorr-samples)
-       (aref residual-1 0)
-       (aref weights 0)
-       update-weight-clip)
-      (correlate-sample
-       (second decorr-samples)
-       (aref residual-1 1)
-       (aref weights 1)
-       update-weight-clip))
+  (when decorr-samples
+    (correlate-sample (second decorr-samples)
+                      (aref residual-2 0)
+                      (aref weights 1)
+                      update-weight-clip))
 
-    (loop for i from 1 below (length residual-1) do
-         (correlate-sample
-          (aref residual-1 (1- i))
-          (aref residual-2 i)
-          (aref weights 1)
-          update-weight-clip)
-         (correlate-sample
-          (aref residual-2 (1- i))
-          (aref residual-1 i)
-          (aref weights 0)
-          update-weight-clip))))
+  (correlate-sample (aref residual-2 0)
+                    (aref residual-1 0)
+                    (aref weights 0)
+                    update-weight-clip)
 
+  (loop for i from 1 below (length residual-1) do
+        (correlate-sample
+         (aref residual-1 (1- i))
+         (aref residual-2 i)
+         (aref weights 1)
+         update-weight-clip)
+        (correlate-sample
+         (aref residual-2 i)
+         (aref residual-1 i)
+         (aref weights 0)
+         update-weight-clip))
+  (values))
+
+(sera:-> correlation-pass/w-term--3
+         ((sa-sb 32) (sa-sb 32) (sb 32) (sa-sb 32) list)
+         (values &optional))
+(defun correlation-pass/w-term--3 (residual-1 residual-2 delta weights decorr-samples)
+  (declare (optimize (speed 3)))
+  (when decorr-samples
+    (correlate-sample
+     (first decorr-samples)
+     (aref residual-1 0)
+     (aref weights 0)
+     update-weight-clip)
+    (correlate-sample
+     (second decorr-samples)
+     (aref residual-1 1)
+     (aref weights 1)
+     update-weight-clip))
+
+  (loop for i from 1 below (length residual-1) do
+        (correlate-sample
+         (aref residual-1 (1- i))
+         (aref residual-2 i)
+         (aref weights 1)
+         update-weight-clip)
+        (correlate-sample
+         (aref residual-2 (1- i))
+         (aref residual-1 i)
+         (aref weights 0)
+         update-weight-clip))
+  (values))
+
+(sera:-> restore-joint-stereo ((sa-sb 32) (sa-sb 32))
+         (values (sa-sb 32) &optional))
 (defun restore-joint-stereo (residual-1 residual-2)
-  (declare (optimize (speed 3))
-           (type (sa-sb 32) residual-1 residual-2))
-  (map-into residual-2 (lambda (sample-1 sample-2)
-                         (declare (type (sb 32) sample-1 sample-2))
-                         (- sample-2 (ash sample-1 -1)))
+  (declare (optimize (speed 3)))
+  (map-into residual-2
+            (lambda (sample-1 sample-2)
+              (- sample-2 (ash sample-1 -1)))
             residual-1 residual-2)
   (map-into residual-1 #'+
             residual-1 residual-2))
 
+;; TODO: Refactor
 (defun int32-fixup (wv-block)
   "Do samples fixup if sample size is > 24 bits"
   (declare (optimize (speed 3)))
@@ -207,7 +210,8 @@
   (let ((int32-info (block-int32-info wv-block))
         (wvx-bits (block-wvx-bits wv-block)))
     (if (not int32-info)
-        (error 'block-error :format-control "sample size is > 24 bits and no int32-info metadata block"))
+        (error 'block-error
+               :format-control "sample size is > 24 bits and no int32-info metadata block"))
     (let ((sent-bits (metadata-sent-bits int32-info))
           (zeros (metadata-zeros int32-info))
           (ones (metadata-ones int32-info))
@@ -246,67 +250,59 @@
         shift-add)))
 
 (defun decode-wv-block (wv-block)
-  "Decode a wavpack block, destructively modifying it.
-   This function returns a list of simple-arrays, each
-   correspoding to a separate channel"
+  "Decode a wavpack block, destructively modifying it. This function
+returns a list of simple-arrays, each correspoding to a separate
+channel."
   (declare (optimize (speed 3)))
   (let ((decorr-samples (block-decorr-samples wv-block))
         (decorr-passes (block-decorr-passes wv-block))
         (residual (block-residual wv-block))) ; Will be destructively modified to output
 
-    (if (flag-set-p wv-block +flags-hybrid-mode+)
-        (error 'block-error :format-control "Hybrid encoding is not supported"))
+    (when (flag-set-p wv-block +flags-hybrid-mode+)
+      (error 'block-error :format-control "Hybrid encoding is not supported"))
 
-    (flet ((correlation-pass (pass &key decorr-samples)
+    (flet ((correlation-pass (pass &optional decorr-samples)
              (let ((term (decorr-pass-term pass))
                    (delta (decorr-pass-delta pass))
                    (weights (decorr-pass-weight pass)))
-               (cond
-                 ((> term 0)
-                  (do ((i 0 (1+ i))
-                       (residual% residual (cdr residual%))
-                       (decorr-samples% decorr-samples (cdr decorr-samples%)))
-                      ((null residual%))
+               (if (> term 0)
+                   (do ((i 0 (1+ i))
+                        (residual% residual (cdr residual%))
+                        (decorr-samples% decorr-samples (cdr decorr-samples%)))
+                       ((null residual%))
+                     (setf (aref weights i)
+                           (funcall
+                            (cond
+                              ((= term 18) #'correlation-pass/w-term-18)
+                              ((= term 17) #'correlation-pass/w-term-17)
+                              (t           #'correlation-pass/w-term-i))
+                            (car residual%) delta (aref weights i) term
+                            (car decorr-samples%))))
+                   (funcall
+                    (cond
+                      ((= term -1) #'correlation-pass/w-term--1)
+                      ((= term -2) #'correlation-pass/w-term--2)
+                      ((= term -3) #'correlation-pass/w-term--3))
+                    (first residual) (second residual) delta weights decorr-samples)))))
 
-                    (setf (aref weights i)
-                          (cond
-                            ((= term 18) (correlation-pass/w-term-18
-                                          (car residual%) delta (aref weights i)
-                                          (car decorr-samples%)))
-                            ((= term 17) (correlation-pass/w-term-17
-                                          (car residual%) delta (aref weights i)
-                                          (car decorr-samples%)))
-                            (t           (correlation-pass/w-term-i
-                                          (car residual%) delta (aref weights i) term
-                                          (car decorr-samples%)))))))
-                 (t
-                  (cond
-                    ((= term -1)
-                     (correlation-pass/w-term--1 residual delta weights decorr-samples))
-                    ((= term -2)
-                     (correlation-pass/w-term--2 residual delta weights decorr-samples))
-                    ((= term -3)
-                     (correlation-pass/w-term--3 residual delta weights decorr-samples))))))
-             t))
-
-      (if decorr-passes
-          (destructuring-bind (last . first) decorr-passes
-            (mapc #'correlation-pass (reverse first))
-            (correlation-pass last :decorr-samples decorr-samples))))
+      (when decorr-passes
+        (destructuring-bind (last . first) decorr-passes
+          (mapc #'correlation-pass (reverse first))
+          (correlation-pass last decorr-samples))))
 
     (let ((shift (left-shift-amount wv-block)))
       (declare (type (ub 8) shift))
-      (if (flag-set-p wv-block +flags-shifted-int+)
-          (incf shift (int32-fixup wv-block)))
+      (when (flag-set-p wv-block +flags-shifted-int+)
+        (incf shift (int32-fixup wv-block)))
       (labels ((shift-sample (sample)
                  (the (sb 32) (ash sample shift)))
                (shift-channel (channel-out)
                  (declare (type (sa-sb 32) channel-out))
                  (map-into channel-out #'shift-sample channel-out)))
-        (if (/= shift 0)
-            (mapc #'shift-channel residual))))
+        (when (/= shift 0)
+          (mapc #'shift-channel residual))))
 
-    (if (flag-set-p wv-block +flags-stereo-joint+)
-        (restore-joint-stereo (first residual) (second residual)))
+    (when (flag-set-p wv-block +flags-stereo-joint+)
+      (restore-joint-stereo (first residual) (second residual)))
 
     residual))
