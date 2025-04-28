@@ -1,43 +1,43 @@
 (in-package :easy-audio.wv)
 
 ;; NB: multiplication of weight and sample may be a bignum
-(declaim (ftype (function ((sb 32) (sb 32)) (sb 32)) apply-weight))
+(sera:-> apply-weight ((sb 32) (sb 32))
+         (values (sb 32) &optional))
 (defun apply-weight (weight sample)
   (declare (optimize (speed 3)))
   (ash (+ 512 (* weight sample)) -10))
 
-(declaim (ftype (function ((sb 32) (sb 32) (sb 32) (sb 32)) (sb 32))
-                update-weight update-weight-clip))
+(sera:-> update-weight ((sb 32) (sb 32) (sb 32) (sb 32))
+         (values (sb 32) &optional))
 (defun update-weight (weight delta source result)
   (declare (optimize (speed 3)))
-  (if (and (/= source 0)
-           (/= result 0))
+  (if (or (zerop source)
+          (zerop result))
+      weight
       (let ((sign (ash (logxor source result) -31)))
-        (+ (logxor delta sign)
-           weight
-           (- sign))) weight))
+        (+ (logxor delta sign) weight (- sign)))))
 
+(sera:-> update-weight-clip ((sb 32) (sb 32) (sb 32) (sb 32))
+         (values (sb 32) &optional))
 (defun update-weight-clip (weight delta source result)
   (declare (optimize (speed 3)))
-  (if (and (/= source 0)
-           (/= result 0))
+  (if (or (zerop source)
+          (zerop result))
+      weight
       (let* ((sign (ash (logxor source result) -31))
              (weight (+ (logxor weight sign) (- delta sign))))
-        (if (> weight 1024)
-            (setq weight 1024))
-        (- (logxor weight sign) sign))
-      weight))
+        (- (logxor (min weight 1024) sign) sign))))
 
-(declaim (ftype (function ((sb 32) (sb 32)) (sb 32))
-                correlate-sample/w-term-17
-                correlate-sample/w-term-18))
-
+(sera:-> correlate-sample/w-term-17 ((sb 32) (sb 32))
+         (values (sb 32) &optional))
+(declaim (inline correlate-sample/w-term-17))
 (defun correlate-sample/w-term-17 (i-1 i-2)
-  (declare (optimize (speed 3)))
   (- (* 2 i-1) i-2))
 
+(sera:-> correlate-sample/w-term-18 ((sb 32) (sb 32))
+         (values (sb 32) &optional))
+(declaim (inline correlate-sample/w-term-18))
 (defun correlate-sample/w-term-18 (i-1 i-2)
-  (declare (optimize (speed 3)))
   (+ i-1 (ash (- i-1 i-2) -1)))
 
 (defmacro correlate-sample (sample-form result-place weight-place update-method)
@@ -50,43 +50,39 @@
               (,update-method ,weight-place delta ,sample-sym ,result-place)))))
 
 (macrolet ((define-correlation-pass/w-term>8 (name correlate-sample-name)
-             `(defun ,name (residual delta weight &key decorr-samples)
-                (declare (type (sb 32) weight delta)
-                         (type (sa-sb 32) residual)
-                         (optimize (speed 3)))
-
-                (cond
-                  (decorr-samples
-                   (let ((decorr-samples decorr-samples))
-                     (declare (type (sa-sb 32) decorr-samples))
-
+             `(progn
+                (sera:-> ,name ((sa-sb 32) (sb 32) (sb 32) &key (:decorr-samples
+                                                                 (or null (sa-sb 32))))
+                         (values (sb 32) &optional))
+                (defun ,name (residual delta weight &key decorr-samples)
+                  (declare (optimize (speed 3)))
+                  (cond
+                    (decorr-samples
                      ;; The first sample in the block
                      (correlate-sample (,correlate-sample-name
                                         (aref decorr-samples 0)
                                         (aref decorr-samples 1))
                                        (aref residual 0)
                                        weight update-weight)
-
                      ;; The second sample in the block
                      (correlate-sample (,correlate-sample-name
                                         (aref residual 0)
                                         (aref decorr-samples 0))
                                        (aref residual 1)
-                                       weight update-weight)))
-                  (t
-                   (correlate-sample (,correlate-sample-name
-                                      (aref residual 0)
-                                      0)
-                                     (aref residual 1)
-                                     weight update-weight)))
-
-                (loop for j from 2 below (length residual) do
-                     (correlate-sample (,correlate-sample-name
-                                        (aref residual (- j 1))
-                                        (aref residual (- j 2)))
-                                       (aref residual j)
                                        weight update-weight))
-                weight)))
+                    (t
+                     (correlate-sample (,correlate-sample-name
+                                        (aref residual 0)
+                                        0)
+                                       (aref residual 1)
+                                       weight update-weight)))
+                  (loop for j from 2 below (length residual) do
+                        (correlate-sample (,correlate-sample-name
+                                           (aref residual (- j 1))
+                                           (aref residual (- j 2)))
+                                          (aref residual j)
+                                          weight update-weight))
+                  weight))))
 
   (define-correlation-pass/w-term>8 correlation-pass/w-term-17 correlate-sample/w-term-17)
   (define-correlation-pass/w-term>8 correlation-pass/w-term-18 correlate-sample/w-term-18))
