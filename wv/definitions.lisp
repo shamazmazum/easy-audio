@@ -1,5 +1,8 @@
 (in-package :easy-audio.wv)
 
+;; TODO: Figure out why I need this
+(deftype maybe (type) `(or null ,type))
+
 ;; Conditions
 (define-condition wavpack-condition (simple-condition) ()
   (:report (lambda (c s)

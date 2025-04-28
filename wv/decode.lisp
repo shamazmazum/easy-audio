@@ -51,10 +51,9 @@
 
 (macrolet ((define-correlation-pass/w-term>8 (name correlate-sample-name)
              `(progn
-                (sera:-> ,name ((sa-sb 32) (sb 32) (sb 32) &key (:decorr-samples
-                                                                 (or null (sa-sb 32))))
+                (sera:-> ,name ((sa-sb 32) (sb 32) (sb 32) (maybe (sa-sb 32)))
                          (values (sb 32) &optional))
-                (defun ,name (residual delta weight &key decorr-samples)
+                (defun ,name (residual delta weight decorr-samples)
                   (declare (optimize (speed 3)))
                   (cond
                     (decorr-samples
@@ -87,26 +86,23 @@
   (define-correlation-pass/w-term>8 correlation-pass/w-term-17 correlate-sample/w-term-17)
   (define-correlation-pass/w-term>8 correlation-pass/w-term-18 correlate-sample/w-term-18))
 
-(defun correlation-pass/w-term-i (residual delta weight term &key decorr-samples)
-  (declare (optimize (speed 3))
-           (type (sb 32) weight delta)
-           (type (integer 1 8) term)
-           (type (sa-sb 32) residual))
-
-  (if decorr-samples
-      (loop for j below term do
-           (correlate-sample (aref (the (sa-sb 32) decorr-samples) j)
-                             (aref residual j)
-                             weight update-weight)))
-
+(sera:-> correlation-pass/w-term-i ((sa-sb 32) (sb 32) (sb 32) (integer 1 8)
+                                    (maybe (sa-sb 32)))
+         (values (sb 32) &optional))
+(defun correlation-pass/w-term-i (residual delta weight term decorr-samples)
+  (declare (optimize (speed 3)))
+  (when decorr-samples
+    (loop for j below term do
+          (correlate-sample (aref decorr-samples j)
+                            (aref residual j)
+                            weight update-weight)))
   (loop for j from term below (length residual) do
        (correlate-sample (aref residual (- j term))
                          (aref residual j)
                          weight update-weight))
-
   weight)
 
-(defun correlation-pass/w-term--1 (residual delta weights &key decorr-samples)
+(defun correlation-pass/w-term--1 (residual delta weights decorr-samples)
   (declare (optimize (speed 3)))
   (let ((residual-1 (first  residual))
         (residual-2 (second residual)))
@@ -135,7 +131,7 @@
           (aref weights 1)
           update-weight-clip))))
 
-(defun correlation-pass/w-term--2 (residual delta weights &key decorr-samples)
+(defun correlation-pass/w-term--2 (residual delta weights decorr-samples)
   (declare (optimize (speed 3)))
   (let ((residual-1 (first  residual))
         (residual-2 (second residual)))
@@ -164,7 +160,7 @@
           (aref weights 0)
           update-weight-clip))))
 
-(defun correlation-pass/w-term--3 (residual delta weights &key decorr-samples)
+(defun correlation-pass/w-term--3 (residual delta weights decorr-samples)
   (declare (optimize (speed 3)))
   (let ((residual-1 (first  residual))
         (residual-2 (second residual)))
@@ -276,21 +272,21 @@
                           (cond
                             ((= term 18) (correlation-pass/w-term-18
                                           (car residual%) delta (aref weights i)
-                                          :decorr-samples (car decorr-samples%)))
+                                          (car decorr-samples%)))
                             ((= term 17) (correlation-pass/w-term-17
                                           (car residual%) delta (aref weights i)
-                                          :decorr-samples (car decorr-samples%)))
+                                          (car decorr-samples%)))
                             (t           (correlation-pass/w-term-i
                                           (car residual%) delta (aref weights i) term
-                                          :decorr-samples (car decorr-samples%)))))))
+                                          (car decorr-samples%)))))))
                  (t
                   (cond
-                    ((= term -1) (correlation-pass/w-term--1 residual delta weights
-                                                             :decorr-samples decorr-samples))
-                    ((= term -2) (correlation-pass/w-term--2 residual delta weights
-                                                             :decorr-samples decorr-samples))
-                    ((= term -3) (correlation-pass/w-term--3 residual delta weights
-                                                             :decorr-samples decorr-samples))))))
+                    ((= term -1)
+                     (correlation-pass/w-term--1 residual delta weights decorr-samples))
+                    ((= term -2)
+                     (correlation-pass/w-term--2 residual delta weights decorr-samples))
+                    ((= term -3)
+                     (correlation-pass/w-term--3 residual delta weights decorr-samples))))))
              t))
 
       (if decorr-passes
