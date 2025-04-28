@@ -1,19 +1,15 @@
 (in-package :easy-audio.wv)
 
-(declaim (optimize
-          #+easy-audio-unsafe-code
-          (safety 0) (speed 3)))
-
 ;; NB: multiplication of weight and sample may be a bignum
 (declaim (ftype (function ((sb 32) (sb 32)) (sb 32)) apply-weight))
 (defun apply-weight (weight sample)
-  (declare (type (sb 32) weight sample))
+  (declare (optimize (speed 3)))
   (ash (+ 512 (* weight sample)) -10))
 
 (declaim (ftype (function ((sb 32) (sb 32) (sb 32) (sb 32)) (sb 32))
                 update-weight update-weight-clip))
 (defun update-weight (weight delta source result)
-  (declare (type (sb 32) delta result source))
+  (declare (optimize (speed 3)))
   (if (and (/= source 0)
            (/= result 0))
       (let ((sign (ash (logxor source result) -31)))
@@ -22,7 +18,7 @@
            (- sign))) weight))
 
 (defun update-weight-clip (weight delta source result)
-  (declare (type (signed-byte 32) weight delta source result))
+  (declare (optimize (speed 3)))
   (if (and (/= source 0)
            (/= result 0))
       (let* ((sign (ash (logxor source result) -31))
@@ -37,11 +33,11 @@
                 correlate-sample/w-term-18))
 
 (defun correlate-sample/w-term-17 (i-1 i-2)
-  (declare (type (sb 32) i-1 i-2))
+  (declare (optimize (speed 3)))
   (- (* 2 i-1) i-2))
 
 (defun correlate-sample/w-term-18 (i-1 i-2)
-  (declare (type (sb 32) i-1 i-2))
+  (declare (optimize (speed 3)))
   (+ i-1 (ash (- i-1 i-2) -1)))
 
 (defmacro correlate-sample (sample-form result-place weight-place update-method)
@@ -56,7 +52,8 @@
 (macrolet ((define-correlation-pass/w-term>8 (name correlate-sample-name)
              `(defun ,name (residual delta weight &key decorr-samples)
                 (declare (type (sb 32) weight delta)
-                         (type (sa-sb 32) residual))
+                         (type (sa-sb 32) residual)
+                         (optimize (speed 3)))
 
                 (cond
                   (decorr-samples
@@ -95,7 +92,8 @@
   (define-correlation-pass/w-term>8 correlation-pass/w-term-18 correlate-sample/w-term-18))
 
 (defun correlation-pass/w-term-i (residual delta weight term &key decorr-samples)
-  (declare (type (sb 32) weight delta)
+  (declare (optimize (speed 3))
+           (type (sb 32) weight delta)
            (type (integer 1 8) term)
            (type (sa-sb 32) residual))
 
@@ -113,6 +111,7 @@
   weight)
 
 (defun correlation-pass/w-term--1 (residual delta weights &key decorr-samples)
+  (declare (optimize (speed 3)))
   (let ((residual-1 (first  residual))
         (residual-2 (second residual)))
     (declare (type (sa-sb 32) residual-1 residual-2 weights)
@@ -141,6 +140,7 @@
           update-weight-clip))))
 
 (defun correlation-pass/w-term--2 (residual delta weights &key decorr-samples)
+  (declare (optimize (speed 3)))
   (let ((residual-1 (first  residual))
         (residual-2 (second residual)))
     (declare (type (sa-sb 32) residual-1 residual-2 weights)
@@ -169,6 +169,7 @@
           update-weight-clip))))
 
 (defun correlation-pass/w-term--3 (residual delta weights &key decorr-samples)
+  (declare (optimize (speed 3)))
   (let ((residual-1 (first  residual))
         (residual-2 (second residual)))
     (declare (type (sa-sb 32) residual-1 residual-2 weights)
@@ -198,7 +199,8 @@
           update-weight-clip))))
 
 (defun restore-joint-stereo (residual-1 residual-2)
-  (declare (type (sa-sb 32) residual-1 residual-2))
+  (declare (optimize (speed 3))
+           (type (sa-sb 32) residual-1 residual-2))
   (map-into residual-2 (lambda (sample-1 sample-2)
                          (declare (type (sb 32) sample-1 sample-2))
                          (- sample-2 (ash sample-1 -1)))
@@ -208,6 +210,7 @@
 
 (defun int32-fixup (wv-block)
   "Do samples fixup if sample size is > 24 bits"
+  (declare (optimize (speed 3)))
   ;; How slow is this?
   (let ((int32-info (block-int32-info wv-block))
         (wvx-bits (block-wvx-bits wv-block)))
@@ -254,6 +257,7 @@
   "Decode a wavpack block, destructively modifying it.
    This function returns a list of simple-arrays, each
    correspoding to a separate channel"
+  (declare (optimize (speed 3)))
   (let ((decorr-samples (block-decorr-samples wv-block))
         (decorr-passes (block-decorr-passes wv-block))
         (residual (block-residual wv-block))) ; Will be destructively modified to output
