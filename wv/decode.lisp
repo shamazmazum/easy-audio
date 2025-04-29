@@ -300,7 +300,7 @@ channel."
                (shift-channel (channel-out)
                  (declare (type (sa-sb 32) channel-out))
                  (map-into channel-out #'shift-sample channel-out)))
-        (when (/= shift 0)
+        (unless (zerop shift)
           (mapc #'shift-channel residual))))
 
     (when (flag-set-p wv-block +flags-stereo-joint+)
