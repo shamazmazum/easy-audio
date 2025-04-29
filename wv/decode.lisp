@@ -267,17 +267,17 @@ channel."
                    (weights (decorr-pass-weight pass)))
                (if (> term 0)
                    (do ((i 0 (1+ i))
-                        (residual% residual (cdr residual%))
-                        (decorr-samples% decorr-samples (cdr decorr-samples%)))
-                       ((null residual%))
+                        (r residual (cdr r))
+                        (ds decorr-samples (cdr ds)))
+                       ((null r))
                      (setf (aref weights i)
                            (funcall
                             (cond
                               ((= term 18) #'correlation-pass/w-term-18)
                               ((= term 17) #'correlation-pass/w-term-17)
                               (t           #'correlation-pass/w-term-i))
-                            (car residual%) delta (aref weights i) term
-                            (car decorr-samples%))))
+                            (car r) delta (aref weights i) term
+                            (car ds))))
                    (funcall
                     (cond
                       ((= term -1) #'correlation-pass/w-term--1)
