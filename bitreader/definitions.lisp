@@ -18,7 +18,7 @@
    #'read-buffer-from-stream
                :type function)
   #+easy-audio-check-crc
-  (crc       0 :type unsigned-byte)
+  (crc       0 :type (ub 32))
   #+easy-audio-check-crc
   (crc-start 0 :type non-negative-fixnum)
   #+easy-audio-check-crc
