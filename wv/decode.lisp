@@ -3,14 +3,14 @@
 ;; NB: multiplication of weight and sample may be a bignum
 (sera:-> apply-weight ((sb 32) (sb 32))
          (values (sb 32) &optional))
+(declaim (inline apply-weight))
 (defun apply-weight (weight sample)
-  (declare (optimize (speed 3)))
   (ash (+ 512 (* weight sample)) -10))
 
 (sera:-> update-weight ((sb 32) (sb 32) (sb 32) (sb 32))
          (values (sb 32) &optional))
+(declaim (inline update-weight))
 (defun update-weight (weight delta source result)
-  (declare (optimize (speed 3)))
   (if (or (zerop source)
           (zerop result))
       weight
@@ -19,8 +19,8 @@
 
 (sera:-> update-weight-clip ((sb 32) (sb 32) (sb 32) (sb 32))
          (values (sb 32) &optional))
+(declaim (inline update-weight-clip))
 (defun update-weight-clip (weight delta source result)
-  (declare (optimize (speed 3)))
   (if (or (zerop source)
           (zerop result))
       weight
