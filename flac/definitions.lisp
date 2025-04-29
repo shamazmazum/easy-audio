@@ -126,9 +126,11 @@ metadata type"))
 (defstruct cuesheet-index offset number)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter +picture-types+ '(:other :file-icon :other-file-icon
-                                  :cover-front :cover-back) ; Etc
-    "Meaning of picture type codes"))
+  (define-constant +picture-types+
+      '(:other :file-icon :other-file-icon
+        :cover-front :cover-back) ; Etc
+    :documentation "Meaning of picture type codes"
+    :test #'equalp))
 (deftype picture-type-id () `(or (integer 0 20) (member ,@+picture-types+)))
 
 (defclass picture (metadata-header)
@@ -237,33 +239,37 @@ number) or :VARIABLE (frame header contains the sample number)?")
   (crc-16
    "CRC16 of the frame (back to and including the sync code)."))
 
-(defparameter +block-name+ '((0 . streaminfo)
-                             (1 . padding)
-                             (3 . seektable)
-                             (4 . vorbis-comment)
-                             (5 . cuesheet)
-                             (6 . picture)))
+(define-constant +block-name+
+    '((0 . streaminfo)
+      (1 . padding)
+      (3 . seektable)
+      (4 . vorbis-comment)
+      (5 . cuesheet)
+      (6 . picture))
+  :test #'equalp)
 (defconstant +frame-sync-code+ 16382) ; 11111111111110
 (defconstant +seekpoint-placeholder+ #xFFFFFFFFFFFFFFFF)
-(defparameter +coded-sample-rates+
-  '(88200   ; 0001
-    176400  ; 0010
-    192000  ; 0011
-    8000    ; 0100
-    16000   ; 0101
-    22050   ; 0110
-    24000   ; 0111
-    32000   ; 1000
-    44100   ; 1001
-    48000   ; 1010
-    96000)) ; 1011
+(define-constant +coded-sample-rates+
+    '(88200  ; 0001
+      176400 ; 0010
+      192000 ; 0011
+      8000   ; 0100
+      16000  ; 0101
+      22050  ; 0110
+      24000  ; 0111
+      32000  ; 1000
+      44100  ; 1001
+      48000  ; 1010
+      96000) ; 1011
+  :test #'equalp)
 
-(defparameter +coded-sample-sizes+
-  '((#b001 . 8)
-    (#b010 . 12)
-    (#b100 . 16)
-    (#b101 . 20)
-    (#b110 . 24)))
+(define-constant +coded-sample-sizes+
+    '((#b001 . 8)
+      (#b010 . 12)
+      (#b100 . 16)
+      (#b101 . 20)
+      (#b110 . 24))
+  :test #'equalp)
 
 ;; Other stuff
 (defun get-metadata-type (code)
