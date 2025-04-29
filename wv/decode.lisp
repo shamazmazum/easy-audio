@@ -296,7 +296,7 @@ channel."
       (when (flag-set-p wv-block +flags-shifted-int+)
         (incf shift (int32-fixup wv-block)))
       (labels ((shift-sample (sample)
-                 (the (sb 32) (ash sample shift)))
+                 (ash sample shift))
                (shift-channel (channel-out)
                  (declare (type (sa-sb 32) channel-out))
                  (map-into channel-out #'shift-sample channel-out)))
