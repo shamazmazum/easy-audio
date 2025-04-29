@@ -1,10 +1,5 @@
 (in-package :easy-audio.wv)
 
-(defvar *wvx-buffers* nil
-  "Works with @c(make-output-buffers) to reduce consing.
-Bind this variable to wvx buffers when you read multiple
-block in a loop to reduce consing.")
-
 ;; Metadata body readers
 (defmethod read-metadata-body ((metadata metadata) reader)
   (let ((data (make-array (list (metadata-actual-size metadata))
@@ -163,8 +158,8 @@ block in a loop to reduce consing.")
 
 (defmethod read-metadata-body ((metadata metadata-wvx-bits) reader)
   (let ((int32-info (find 'metadata-int32-info (block-metadata *current-block*) :key #'type-of)))
-    (if (not int32-info)
-        (error 'block-error :format-control "No int32-info prior to wvx-bitstream"))
+    (unless int32-info
+      (error 'block-error :format-control "No int32-info prior to wvx-bitstream"))
     (let* ((block-samples (block-block-samples *current-block*))
            (channels (block-channels *current-block*))
            (sent-bits (metadata-sent-bits int32-info))
@@ -172,10 +167,8 @@ block in a loop to reduce consing.")
            (bits-wasted (- (* 8 size) (* channels block-samples sent-bits))))
       (if (< bits-wasted 0)
           (error 'block-error :format-control "wvx-bitstream is too small"))
-      (let ((bits
-             (or *wvx-buffers*
-                 (loop repeat channels collect
-                      (make-array (list block-samples) :element-type '(sb 32))))))
+      (let ((bits (loop repeat channels collect
+                        (make-array (list block-samples) :element-type '(sb 32)))))
         (loop for i below block-samples do
              (loop for j below channels do
                   (setf (aref (nth j bits) i)
