@@ -121,7 +121,7 @@
 ;; 3) When I need to get a value from flags using masks and shifts, use
 ;;    automatically generated special functions
 
-(defreader (read-wv-block%%) ((make-wv-block))
+(defreader (%%read-wv-block) ((make-wv-block))
     (block-id            (:octets 4) :endianness :big)
     (block-size          (:octets 4) :endianness :little)
     (block-version       (:octets 2) :endianness :little)
@@ -133,9 +133,9 @@
     (block-flags         (:octets 4) :endianness :little)
     (block-crc           (:octets 4) :endianness :little))
 
-(defun read-wv-block% (reader)
+(defun %read-wv-block (reader)
   (declare (optimize (speed 3)))
-  (let ((wv-block (read-wv-block%% reader)))
+  (let ((wv-block (%%read-wv-block reader)))
     (if (/= (block-id wv-block) +wv-id+)
         (error 'lost-sync :format-control "WavPack ckID /= 'wvpk'"))
 
@@ -168,7 +168,7 @@
   "Read the next block in the stream. @c(reader)'s position must be set to the
 beginning of this block explicitly (e.g. by calling @c(restore-sync))"
   (restart-case
-      (read-wv-block% reader)
+      (%read-wv-block reader)
     (read-new-block-single ()
         :report "Restore sync and read a new block"
         (restore-sync reader)
