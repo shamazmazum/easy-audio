@@ -104,7 +104,7 @@
                             (setf (aref median 2) (inc-med (aref median 2) 32))))))))
                    (incf low (read-code coded-residual-reader (- high low)))
                    (setf (aref (the (sa-sb 32) (nth channel residual)) sample)
-                         (if (= (residual-read-bit coded-residual-reader) 1)
+                         (if (= (read-bit-bw coded-residual-reader) 1)
                              (lognot low) low))))
                (incf i))))
           (read-to-byte-alignment coded-residual-reader)

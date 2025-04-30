@@ -27,27 +27,6 @@
         (ash m (- exp 9)))
       (- (exp2s (1+ (logxor #xffff val))))))
 
-
-;; Next two functions are just a KLUDGE and almost copy functionality of the bitreader.
-;; Try to develop more flexible bitreader instead
-(declaim (ftype (function (reader) bit) residual-read-bit))
-(defun residual-read-bit (reader)
-  (declare (optimize #+easy-audio-unsafe-code
-                     (safety 0) (speed 3)))
-  (with-accessors ((ibyte easy-audio.bitreader::reader-ibyte)
-                   (ibit  easy-audio.bitreader::reader-ibit)
-                   (end   easy-audio.bitreader::reader-end))
-      reader
-  (if (< ibyte end)
-      (prog1
-          (ldb (byte 1 ibit)
-               (aref (easy-audio.bitreader::reader-buffer reader) ibyte))
-        (if (= ibit 7)
-            (setf ibit 0
-                  ibyte (1+ ibyte))
-            (incf ibit)))
-      (error 'bitreader-eof :bitreader reader))))
-
 ;; Will always return fixnum on x86-64
 (declaim (ftype (function (non-negative-integer reader) non-negative-fixnum) residual-read-bits))
 (defun residual-read-bits (bits reader)
@@ -91,7 +70,7 @@
 arithmetical 1, 0 bit signals termination."
   (declare (optimize (speed 3)))
   (loop for res fixnum from 0 by 1
-        until (or (zerop (residual-read-bit bitreader))
+        until (or (zerop (read-bit-bw bitreader))
                   (and limit (= res limit)))
         finally (return res)))
 
@@ -111,9 +90,9 @@ arithmetical 1, 0 bit signals termination."
 (defun read-code (reader maxvalue)
   (declare (optimize (speed 3)))
   (if (< maxvalue 2)
-      (if (zerop maxvalue) 0 (residual-read-bit reader))
+      (if (zerop maxvalue) 0 (read-bit-bw reader))
       (let* ((bits (integer-length maxvalue))
              (extra (- (ash 1 bits) maxvalue 1))
              (res (residual-read-bits (1- bits) reader)))
         (if (< res extra) res
-            (+ (ash res 1) (residual-read-bit reader) (- extra))))))
+            (+ (ash res 1) (read-bit-bw reader) (- extra))))))

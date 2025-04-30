@@ -5,13 +5,13 @@
    #:bitreader-eof
 
    ;; Reader structure and accessors
-   #:reader              
+   #:reader
    #:make-reader ; Obsolete
    #:make-reader-from-stream
    #:make-reader-from-buffer
 
    ;; "End user" functions
-   #:read-bit            
+   #:read-bit #:read-bit-bw
    #:read-bits
    #:read-octet
    #:read-octet-vector

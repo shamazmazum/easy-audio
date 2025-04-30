@@ -107,6 +107,19 @@ range."
 		 (reader-ibyte reader)))
     (move-forward reader)))
 
+(serapeum:-> read-bit-bw (reader)
+             (values bit &optional))
+(defun read-bit-bw (reader)
+  "Read a single bit from READER from the end of the current IBYTE
+(WavPack style)."
+  (declare (optimize (speed 3)))
+  (ensure-data-available reader)
+  (prog1
+      (ldb (byte 1 (reader-ibit reader))
+	   (aref (reader-buffer reader)
+		 (reader-ibyte reader)))
+    (move-forward reader)))
+
 (serapeum:-> read-octet (reader)
              (values (ub 8) &optional))
 (defun read-octet (reader)
