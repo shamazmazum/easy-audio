@@ -84,41 +84,36 @@
     result))
 
 ;; From flac reader
-(declaim (ftype (function (t &optional (or non-negative-fixnum null))
-                          non-negative-fixnum)
-		read-unary-coded-integer))
+(sera:-> read-unary-coded-integer (reader &optional (or non-negative-fixnum null))
+         (values non-negative-fixnum &optional))
 (defun read-unary-coded-integer (bitreader &optional limit)
-  "Read an unary coded integer from bitreader
-   1 bit is considered as arithmetical 1,
-   0 bit signals termination"
-  (declare (optimize (speed 3))
-           (type (or non-negative-fixnum null) limit))
-  (do ((res   0 (1+ res)))
-      ((or (= (residual-read-bit bitreader) 0)
-           (and limit (= res limit))) res)
-    (declare (type non-negative-fixnum res)) ()))
+  "Read an unary coded integer from bitreader 1 bit is considered as
+arithmetical 1, 0 bit signals termination."
+  (declare (optimize (speed 3)))
+  (loop for res fixnum from 0 by 1
+        until (or (zerop (residual-read-bit bitreader))
+                  (and limit (= res limit)))
+        finally (return res)))
 
-(declaim (ftype (function (t) non-negative-fixnum) read-elias-code))
+(sera:-> read-elias-code (reader)
+         (values non-negative-fixnum &optional))
 (defun read-elias-code (reader)
   (declare (optimize (speed 3)))
   (let ((ones-num (read-unary-coded-integer reader)))
     (declare (type (integer 0 32) ones-num))
-    (if (/= ones-num 0)
-        (let ((shift (the (integer 0 32) ; as to format limits
-                          (1- ones-num))))
+    (if (zerop ones-num) 0
+        (let ((shift (1- ones-num)))
           (logior (ash 1 shift)
-                  (residual-read-bits shift reader))) 0)))
+                  (residual-read-bits shift reader))))))
 
-(declaim (ftype (function (t non-negative-fixnum) non-negative-fixnum) read-code))
+(sera:-> read-code (reader non-negative-fixnum)
+         (values non-negative-fixnum &optional))
 (defun read-code (reader maxvalue)
-  (declare (optimize (speed 3))
-           (type non-negative-fixnum maxvalue))
+  (declare (optimize (speed 3)))
   (if (< maxvalue 2)
-      (if (/= maxvalue 0) (residual-read-bit reader) 0)
+      (if (zerop maxvalue) 0 (residual-read-bit reader))
       (let* ((bits (integer-length maxvalue))
              (extra (- (ash 1 bits) maxvalue 1))
              (res (residual-read-bits (1- bits) reader)))
-        (declare (type non-negative-fixnum bits extra res)
-                 (type (integer 0 32) bits))
         (if (< res extra) res
             (+ (ash res 1) (residual-read-bit reader) (- extra))))))
