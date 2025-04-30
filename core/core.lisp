@@ -80,11 +80,11 @@ second sample of each channel until all data is written"
                           (symbol-package structure))))
     `(progn
        (declaim (inline ,wrapper))
-       (defun ,wrapper (obj)
+       (defun ,wrapper (,structure)
          ,docstring
-         (,accessor obj)))))
+         (,accessor ,structure)))))
 
 (defmacro define-documented-accessors (structure &body slots)
   `(progn
-     ,@(loop for entry in slots collect
-             `(define-documented-accessor ,structure ,(first entry) ,(second entry)))))
+     ,@(loop for (slot docstring) in slots collect
+             `(define-documented-accessor ,structure ,slot ,docstring))))
