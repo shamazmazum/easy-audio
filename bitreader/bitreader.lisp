@@ -258,7 +258,7 @@ Calls #'length on a buffer reader or #'file-length on a stream reader"
 (serapeum:-> read-bits ((integer 0 56) reader &key (:endianness symbol))
              (values (unsigned-byte 56) &optional))
 (defun read-bits (bits reader &key (endianness :big))
-  "Read any number of bits from reader"
+  "Read any number of bits from the reader"
   (declare (optimize (speed 3)))
   (let ((result 0)
         (already-read 0))
@@ -281,6 +281,34 @@ Calls #'length on a buffer reader or #'file-length on a stream reader"
                 bits (- bits bits-to-add)
                 already-read (+ already-read bits-to-add))
 
+          (move-forward reader bits-to-add))))
+    result))
+
+;; Big endian variant is not used anywhere in this code
+(serapeum:-> read-bits-bw ((integer 0 56) reader)
+             (values (unsigned-byte 56) &optional))
+(defun read-bits-bw (bits reader)
+  "Read any number of bits from the reader. Bits are read from the end
+of the current IBYTE (WavPack style). Little endian only."
+  (declare (optimize (speed 3)))
+  (let ((result 0)
+        (already-read 0))
+    (declare (type (integer 0 56) already-read)
+             (type (unsigned-byte 56) result))
+    (with-accessors ((ibit reader-ibit)) reader
+      (dotimes (i (ceiling (+ bits ibit) 8))
+        (ensure-data-available reader)
+        (let ((bits-to-add (min bits (- 8 ibit))))
+          (declare (type bit-counter bits-to-add))
+          (setq result
+                (logior result
+                        (ash
+                         (ldb (byte bits-to-add ibit)
+                              (aref (reader-buffer reader)
+                                    (reader-ibyte reader)))
+                         already-read))
+                bits (- bits bits-to-add)
+                already-read (+ already-read bits-to-add))
           (move-forward reader bits-to-add))))
     result))
 

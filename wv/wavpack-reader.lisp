@@ -27,41 +27,6 @@
         (ash m (- exp 9)))
       (- (exp2s (1+ (logxor #xffff val))))))
 
-;; Will always return fixnum on x86-64
-(declaim (ftype (function (non-negative-integer reader) non-negative-fixnum) residual-read-bits))
-(defun residual-read-bits (bits reader)
-  (declare (optimize #+easy-audio-unsafe-code
-                     (safety 0) (speed 3))
-           (type non-negative-fixnum bits))
-
-  (let ((result 0)
-        (already-read 0))
-    (declare (type non-negative-fixnum result already-read))
-
-    (with-accessors ((ibit  easy-audio.bitreader::reader-ibit)
-                     (ibyte easy-audio.bitreader::reader-ibyte)
-                     (end   easy-audio.bitreader::reader-end))
-        reader
-      (dotimes (i (ceiling (+ bits ibit) 8))
-        (if (= ibyte end) (error 'bitreader-eof :bitreader reader))
-        (let ((bits-to-add (min bits (- 8 ibit))))
-          (declare (type bit-counter bits-to-add))
-          (setq result
-                (logior result
-                        (the non-negative-fixnum
-                             (ash (ldb
-                                   (byte bits-to-add ibit)
-                                   (aref (easy-audio.bitreader::reader-buffer reader) ibyte))
-                                  already-read)))
-                bits (- bits bits-to-add)
-                already-read (+ already-read bits-to-add))
-
-          (incf ibit bits-to-add)
-          (if (= ibit 8)
-              (setf ibit 0
-                    ibyte (1+ ibyte))))))
-    result))
-
 ;; From flac reader
 (sera:-> read-unary-coded-integer (reader &optional (or non-negative-fixnum null))
          (values non-negative-fixnum &optional))
@@ -83,7 +48,7 @@ arithmetical 1, 0 bit signals termination."
     (if (zerop ones-num) 0
         (let ((shift (1- ones-num)))
           (logior (ash 1 shift)
-                  (residual-read-bits shift reader))))))
+                  (read-bits-bw shift reader))))))
 
 (sera:-> read-code (reader non-negative-fixnum)
          (values non-negative-fixnum &optional))
@@ -93,6 +58,6 @@ arithmetical 1, 0 bit signals termination."
       (if (zerop maxvalue) 0 (read-bit-bw reader))
       (let* ((bits (integer-length maxvalue))
              (extra (- (ash 1 bits) maxvalue 1))
-             (res (residual-read-bits (1- bits) reader)))
+             (res (read-bits-bw (1- bits) reader)))
         (if (< res extra) res
             (+ (ash res 1) (read-bit-bw reader) (- extra))))))

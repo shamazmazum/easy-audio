@@ -11,8 +11,8 @@
    #:make-reader-from-buffer
 
    ;; "End user" functions
-   #:read-bit #:read-bit-bw
-   #:read-bits
+   #:read-bit  #:read-bit-bw
+   #:read-bits #:read-bits-bw
    #:read-octet
    #:read-octet-vector
    #:read-octets
