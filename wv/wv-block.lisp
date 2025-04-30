@@ -1,18 +1,15 @@
 (in-package :easy-audio.wv)
 
+(declaim (inline get-med))
 (defun get-med (median)
-  (declare (optimize (speed 3))
-           (type (ub 32) median))
   (1+ (ash median -4)))
 
+(declaim (inline inc-med))
 (defun inc-med (median amount)
-  (declare (optimize (speed 3))
-           (type (ub 32) median amount))
   (+ median (* 5 (floor (+ amount median) amount))))
 
+(declaim (inline dec-med))
 (defun dec-med (median amount)
-  (declare (optimize (speed 3))
-           (type (ub 32) median amount))
   (- median (* 2 (floor (+ amount median -2) amount))))
 
 (defun decode-residual (wv-block)
