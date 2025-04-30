@@ -227,7 +227,7 @@
 
 (define-get-value/shift+mask left-shift-amount)
 (define-get-value/shift+mask max-magnitude)
-(define-get-value/shift+mask (block-samplerate% samplerate))
+(define-get-value/shift+mask (%block-samplerate samplerate))
 
 (declaim (inline flag-set-p bit-set-p))
 (defun flag-set-p (wv-block mask)
@@ -242,17 +242,21 @@
   (= (logand value mask) mask))
 
 ;; Place these here too
+(define-constant +samplerate-list+
+    '(6000  8000  9600
+      11025 12000 16000
+      22050 24000 32000
+      44100 48000 64000
+      88200 96000 192000)
+  :test #'equalp)
+
 (defun block-samplerate (wv-block)
   "Return a sample rate of a block."
-  (let ((samplerate% (block-samplerate% wv-block))
-        (samplerate-list (list 6000  8000  9600
-                               11025 12000 16000
-                               22050 24000 32000
-                               44100 48000 64000
-                               88200 96000 192000)))
-    (declare (dynamic-extent samplerate-list))
-    (nth samplerate% samplerate-list)))
+  (let ((samplerate (%block-samplerate wv-block)))
+    (nth samplerate +samplerate-list+)))
 
+(sera:-> block-bps (wv-block)
+         (values (member 8 16 24 32) &optional))
 (defun block-bps (wv-block)
   "Return bits per second of a block."
   (cond
@@ -261,7 +265,8 @@
     ((flag-set-p wv-block +flags-2-byte/sample+) 16)
     (t 8)))
 
-(declaim (ftype (function (t) (integer 1 2)) block-channels))
+(sera:-> block-channels (wv-block)
+         (values (integer 1 2) &optional))
 (defun block-channels (wv-block)
   "Return a number of channels (a block can have 1 or 2 channels)."
   (if (flag-set-p wv-block +flags-mono-output+) 1 2))
