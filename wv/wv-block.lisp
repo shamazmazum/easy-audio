@@ -110,7 +110,8 @@
         (when (> (- (reader-length coded-residual-reader)
                     (reader-position coded-residual-reader))
                  1)
-          (error 'block-error :format-control "Too much useful data is lost in residual reader"))
+          (error 'block-error
+                 :format-control "Too much useful data is lost in residual reader"))
         (setf (block-residual wv-block) residual))))
   wv-block)
 
@@ -168,7 +169,7 @@
 
 (defun read-wv-block (reader)
   "Read the next block in the stream. @c(reader)'s position must be set to the
-beginning of this block explicitly (e.g. by calling @c(restore-sync))"
+beginning of this block explicitly (e.g. by calling @c(restore-sync))."
   (restart-case
       (%read-wv-block reader)
     (read-new-block-single ()
@@ -177,8 +178,8 @@ beginning of this block explicitly (e.g. by calling @c(restore-sync))"
         (read-wv-block reader))))
 
 (defun restore-sync (reader)
-  "Restore the reader's position to the first occurring
-   block in the stream"
+  "Restore the reader's position to the first occurring block in the
+stream."
   (peek-octet reader +wv-id/first-octet+)
   (let ((position (reader-position reader)))
     (handler-case
@@ -191,11 +192,9 @@ beginning of this block explicitly (e.g. by calling @c(restore-sync))"
 
 (defun seek-sample (reader number)
   (declare (type (integer 0) number))
-  "Set reader position to beginning of the block
-   which contains a sample with the specified number.
-   Works for readers associated with files.
-   Return a position of the sample in the block"
-
+  "Set reader position to beginning of the block which contains a
+sample with the specified number.  Works for readers associated with
+files.  Return a position of the sample in the block."
   ;; Reset position of the reader
   (reader-position reader 0)
   (restore-sync reader)
@@ -233,12 +232,12 @@ beginning of this block explicitly (e.g. by calling @c(restore-sync))"
         remainder))))
 
 (defun open-wv (stream)
-  "Return @c(bitreader) handle of Wavpack stream"
+  "Return @c(bitreader) handle of Wavpack stream."
   (make-reader-from-stream stream))
 
 (defmacro with-open-wv ((reader name &rest options) &body body)
-  "Binds READER to an open wavpack stream associated with
-   file with the name NAME"
+  "Binds READER to an open wavpack stream associated with a file with
+the name NAME."
   (let ((stream (gensym)))
     `(let* ((,stream (open ,name :element-type '(ub 8) ,@options))
             (,reader (open-wv ,stream)))
