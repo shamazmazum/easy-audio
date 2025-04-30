@@ -1,25 +1,24 @@
 ;; This is actually utility functions just like in flac/flac-reader.lisp
 (in-package :easy-audio.wv)
 
-;; FIXME: is there a better way to keep these magic numbers out of code?
-;; Can we calculate them in place?
 (declaim (type (sa-ub 8) +exp2-table+))
-(defparameter +exp2-table+
-  (make-array (list 256)
-              :element-type '(ub 8)
-              :initial-contents
-              '#.(flet ((calc (x)
-                          (let* ((val (* 256 (1- (expt 2 (/ x 256.0)))))
-                                 (int-val (floor val)))
-                            (if (< (- val int-val)
-                                   (- int-val val -1))
-                                int-val (1+ int-val)))))
-                   (loop for x below 256 collect (calc x)))))
+(define-constant +exp2-table+
+    (make-array (list 256)
+                :element-type '(ub 8)
+                :initial-contents
+                '#.(flet ((calc (x)
+                            (let* ((val (* 256 (1- (expt 2 (/ x 256.0)))))
+                                   (int-val (floor val)))
+                              (if (< (- val int-val)
+                                     (- int-val val -1))
+                                  int-val (1+ int-val)))))
+                     (loop for x below 256 collect (calc x))))
+  :test #'equalp)
 
-(declaim (ftype (function ((ub 16)) (sb 32)) exp2s))
+(sera:-> exp2s ((ub 16))
+         (values (sb 32) &optional))
 (defun exp2s (val)
-  (declare (optimize (speed 3))
-           (type (ub 16) val))
+  (declare (optimize (speed 3)))
   (if (< val #x8000)
       (let ((m (logior (aref +exp2-table+
                              (logand val #xff))
