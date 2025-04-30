@@ -113,6 +113,9 @@
       @cl:doc(function read-wv-block)
       @cl:doc(function read-wv-block-multichannel)
       @cl:doc(function decode-wv-block)
+      @cl:doc(function block-samplerate)
+      @cl:doc(function block-bps)
+      @cl:doc(function block-channels)
    )
    @u(Other stuff).
    @cl:with-package[name="easy-audio.wv"](

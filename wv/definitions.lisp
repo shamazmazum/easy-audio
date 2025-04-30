@@ -243,7 +243,7 @@
 
 ;; Place these here too
 (defun block-samplerate (wv-block)
-  "Return a sample rate of the block WV-BLOCK"
+  "Return a sample rate of a block."
   (let ((samplerate% (block-samplerate% wv-block))
         (samplerate-list (list 6000  8000  9600
                                11025 12000 16000
@@ -254,7 +254,7 @@
     (nth samplerate% samplerate-list)))
 
 (defun block-bps (wv-block)
-  "Return bits per second of the block WV-BLOCK"
+  "Return bits per second of a block."
   (cond
     ((flag-set-p wv-block +flags-4-byte/sample+) 32)
     ((flag-set-p wv-block +flags-3-byte/sample+) 24)
@@ -263,6 +263,5 @@
 
 (declaim (ftype (function (t) (integer 1 2)) block-channels))
 (defun block-channels (wv-block)
-  "Return a number of channels (a block can have 1 or 2)
-   in the block WV-BLOCK"
+  "Return a number of channels (a block can have 1 or 2 channels)."
   (if (flag-set-p wv-block +flags-mono-output+) 1 2))
