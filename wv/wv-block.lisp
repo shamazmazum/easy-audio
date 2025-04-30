@@ -158,7 +158,8 @@
             while (< bytes-read sub-blocks-size)
             for metadata = (read-metadata reader)
             do (incf bytes-read (+ 1 (if (bit-set-p (metadata-id metadata)
-                                                    +meta-id-large-block+) 3 1)
+                                                    +meta-id-large-block+)
+                                         3 1)
                                    (the (ub 24) (metadata-size metadata))))
             (push metadata (block-metadata wv-block))
             finally

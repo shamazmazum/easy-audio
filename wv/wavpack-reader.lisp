@@ -54,10 +54,13 @@ arithmetical 1, 0 bit signals termination."
          (values non-negative-fixnum &optional))
 (defun read-code (reader maxvalue)
   (declare (optimize (speed 3)))
-  (if (< maxvalue 2)
-      (if (zerop maxvalue) 0 (read-bit-bw reader))
-      (let* ((bits (integer-length maxvalue))
-             (extra (- (ash 1 bits) maxvalue 1))
-             (res (read-bits-bw (1- bits) reader)))
-        (if (< res extra) res
-            (+ (ash res 1) (read-bit-bw reader) (- extra))))))
+  (cond
+    ((= maxvalue 0) 0)
+    ((= maxvalue 1)
+     (read-bit-bw reader))
+    (t
+     (let* ((bits (integer-length maxvalue))
+            (extra (- (ash 1 bits) maxvalue 1))
+            (res (read-bits-bw (1- bits) reader)))
+       (if (< res extra) res
+           (+ (ash res 1) (read-bit-bw reader) (- extra)))))))

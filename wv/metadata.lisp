@@ -73,50 +73,46 @@
     (error 'block-error :format-control "Hybrid encoding is not supported"))
 
   (let ((first-pass (first (metadata-decorr-passes metadata))))
-    (if first-pass
-        (let ((channels (block-channels *current-block*))
-              (first-term (decorr-pass-term first-pass))
-              (bytes-read 0))
-          (when (and (< first-term 0)
-                     (= channels 1))
-            (error 'block-error :format-control "decorrelation term < 0 and mono audio"))
+    (when first-pass
+      (let ((channels (block-channels *current-block*))
+            (first-term (decorr-pass-term first-pass))
+            (bytes-read 0))
+        (when (and (< first-term 0)
+                   (= channels 1))
+          (error 'block-error :format-control "decorrelation term < 0 and mono audio"))
+        (let ((decorr-samples
+               (cond
+                 ((> first-term 8)
+                  (let ((decorr-samples
+                         (loop repeat channels collect
+                               (make-array (list 2) :element-type '(sb 32)))))
+                    (loop for samples in decorr-samples do
+                          (setf (aref samples 0)
+                                (exp2s (read-octets 2 reader :endianness :little))
+                                (aref samples 1)
+                                (exp2s (read-octets 2 reader :endianness :little)))
+                          (incf bytes-read 4))
+                    decorr-samples))
+                 ((< first-term 0)
+                  (loop for i below channels do (incf bytes-read 2) collect
+                        (exp2s (read-octets 2 reader :endianness :little))))
+                 (t
+                  (let ((decorr-samples
+                         (loop repeat channels collect
+                               (make-array (list first-term) :element-type '(sb 32)))))
+                    (loop for i below first-term do
+                          (loop for samples in decorr-samples do
+                                (setf (aref samples i)
+                                      (exp2s (read-octets 2 reader :endianness :little)))
+                                (incf bytes-read 2)))
+                    decorr-samples)))))
 
-          (let ((decorr-samples
-                 (cond
-                   ((> first-term 8)
-                    (let ((decorr-samples
-                           (loop repeat channels collect
-                                 (make-array (list 2) :element-type '(sb 32)))))
-                      (loop for samples in decorr-samples do
-                            (setf (aref samples 0)
-                                  (exp2s (read-octets 2 reader :endianness :little))
-                                  (aref samples 1)
-                                  (exp2s (read-octets 2 reader :endianness :little)))
-                            (incf bytes-read 4))
-                      decorr-samples))
-
-                   ((< first-term 0)
-                    (loop for i below channels do (incf bytes-read 2) collect
-                          (exp2s (read-octets 2 reader :endianness :little))))
-
-                   (t
-                    (let ((decorr-samples
-                           (loop repeat channels collect
-                                 (make-array (list first-term) :element-type '(sb 32)))))
-                      (loop for i below first-term do
-                            (loop for samples in decorr-samples do
-                                  (setf (aref samples i)
-                                        (exp2s (read-octets 2 reader :endianness :little)))
-                                  (incf bytes-read 2)))
-                      decorr-samples)))))
-
-            (unless (= bytes-read (metadata-actual-size metadata))
-              (error 'block-error
-                     :format-control "Size of metadata sub-block ~a is invalid"
-                     :format-arguments (list metadata)))
-
-            (setf (metadata-decorr-samples metadata) decorr-samples
-                  (block-decorr-samples *current-block*) decorr-samples)))))
+          (unless (= bytes-read (metadata-actual-size metadata))
+            (error 'block-error
+                   :format-control "Size of metadata sub-block ~a is invalid"
+                   :format-arguments (list metadata)))
+          (setf (metadata-decorr-samples metadata) decorr-samples
+                (block-decorr-samples *current-block*) decorr-samples)))))
   metadata)
 
 (defmethod read-metadata-body ((metadata metadata-entropy) reader)
