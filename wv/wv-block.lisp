@@ -62,7 +62,8 @@
                  (t
                   (setq ones-count (read-unary-coded-integer coded-residual-reader #.(1+ 16)))
                   (when (>= ones-count 16)
-                    (if (= ones-count 17) (error 'block-error :format-control "Invalid residual code"))
+                    (when (= ones-count 17)
+                      (error 'block-error :format-control "Invalid residual code"))
                     (incf ones-count (read-elias-code coded-residual-reader)))
                   (psetq
                    holding-one (/= (logand ones-count 1) 0)
@@ -136,31 +137,32 @@
 (defun %read-wv-block (reader)
   (declare (optimize (speed 3)))
   (let ((wv-block (%%read-wv-block reader)))
-    (if (/= (block-id wv-block) +wv-id+)
-        (error 'lost-sync :format-control "WavPack ckID /= 'wvpk'"))
+    (unless (= (block-id wv-block) +wv-id+)
+      (error 'lost-sync :format-control "WavPack ckID /= 'wvpk'"))
 
     (let ((version (block-version wv-block)))
-      (if (or (< version #x402) ; FIXME: is this range inclusive?
-              (> version #x410))
-          (error 'block-error :format-control "Unsupported WavPack block version")))
+      (when (or (< version #x402) ; FIXME: is this range inclusive?
+                (> version #x410))
+        (error 'block-error :format-control "Unsupported WavPack block version")))
 
-    (if (flag-set-p wv-block +flags-reserved-zero+)
-        ;; Specification says we should "refuse to decode if set"
-        (error 'block-error :format-control "Reserved flag is set to 1"))
+    (when (flag-set-p wv-block +flags-reserved-zero+)
+      ;; Specification says we should "refuse to decode if set"
+      (error 'block-error :format-control "Reserved flag is set to 1"))
 
     (let ((sub-blocks-size (- (block-size wv-block) 24))
           (*current-block* wv-block))
-      (if (< sub-blocks-size 0)
-          (error 'block-error :format-control "Sub-blocks size is less than 0"))
+      (when (< sub-blocks-size 0)
+        (error 'block-error :format-control "Sub-blocks size is less than 0"))
       (loop with bytes-read fixnum = 0
-         while (< bytes-read sub-blocks-size)
-         for metadata = (read-metadata reader)
-         do (incf bytes-read (+ 1 (if (bit-set-p (metadata-id metadata)
-                                                 +meta-id-large-block+) 3 1)
-                                (the (ub 24) (metadata-size metadata))))
-           (push metadata (block-metadata wv-block))
-         finally (if (> bytes-read sub-blocks-size)
-                     (error 'block-error :format-control "Read more sub-block bytes than needed"))))
+            while (< bytes-read sub-blocks-size)
+            for metadata = (read-metadata reader)
+            do (incf bytes-read (+ 1 (if (bit-set-p (metadata-id metadata)
+                                                    +meta-id-large-block+) 3 1)
+                                   (the (ub 24) (metadata-size metadata))))
+            (push metadata (block-metadata wv-block))
+            finally
+            (when (> bytes-read sub-blocks-size)
+              (error 'block-error :format-control "Read more sub-block bytes than needed"))))
 
     (decode-residual wv-block)))
 
@@ -203,9 +205,9 @@ beginning of this block explicitly (e.g. by calling @c(restore-sync))"
          (total-samples (block-total-samples test-block))
          (block-samples (block-block-samples test-block)))
 
-    (if (> number total-samples)
-        (error 'wavpack-error
-               :format-control "Requested sample number is too big"))
+    (when (> number total-samples)
+      (error 'wavpack-error
+             :format-control "Requested sample number is too big"))
 
     (multiple-value-bind (complete-blocks remainder)
         (floor number block-samples)
@@ -218,9 +220,9 @@ beginning of this block explicitly (e.g. by calling @c(restore-sync))"
                           (second-half (progn
                                          (reader-position reader (1- middle))
                                          (restore-sync reader))))
-                     (if (< block-starting-number first-half)
-                         (error 'wavpack-error
-                                :format-control "Seeking error: wrong half chosen"))
+                     (when (< block-starting-number first-half)
+                       (error 'wavpack-error
+                              :format-control "Seeking error: wrong half chosen"))
                      (cond
                        ((< block-starting-number second-half)
                         (binary-search start middle))
