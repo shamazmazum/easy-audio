@@ -3,7 +3,6 @@
 (defun wv2wav (wv-name wav-name)
   "Decode wavpack to wav."
   (with-open-wv (reader wv-name)
-    (restore-sync reader)
     (let* ((first-block (read-wv-block reader))
            (channels (block-channels first-block))
            (bps (block-bps first-block))
