@@ -71,3 +71,34 @@ itself will be returned from reader function."
                       `(if ,conditional-form ,read-form)
                       read-form))))
        ,(if (or obj-sym-given make-form) obj-sym reader))))
+
+(defmacro defreader* ((name ctor (&rest args)) &rest entries)
+  "Like a DEFREADER but does not expand into SETFs. Can be used to
+read into read-only structures."
+  (let ((reader (gensym)) ignored)
+    `(defun ,name (,reader ,@args)
+       (let ,(loop for entry in entries collect
+                   (destructuring-bind (variable (read-how &optional read-how-many)
+                                                 &key endianness function cond-form ignore)
+                       entry
+                     (when ignore (push variable ignored))
+                     (let* ((function-name (ecase read-how
+                                             (:octets       'read-octets)
+                                             (:bits         'read-bits)
+                                             (:bit          'read-bit)
+                                             (:octet-vector 'read-octet-vector)))
+                            (function-call `(,function-name
+                                             ,@(reader-function-amount read-how read-how-many)
+                                             ,reader
+                                             ,@(if endianness
+                                                   (list :endianness endianness))))
+                            (binding-form (if function
+                                              `(,function ,function-call) function-call))
+                            (final-form (if cond-form
+                                            `(if ,cond-form ,binding-form) binding-form)))
+                       `(,variable ,final-form))))
+         ,@(if ignored `((declare (ignore ,ignored))))
+         (,ctor ,@args ,@(mapcar
+                          #'first (remove-if
+                                   (lambda (var) (member var ignored))
+                                   entries :key #'first)))))))
