@@ -9,33 +9,30 @@
 
 (defmacro defreader ((name &optional docstring) (&optional make-form (obj-sym (gensym) obj-sym-given))
                      &rest slots)
-  "Generate a reader function to read data from bit-reader into
-  an arbitrary object with accessor-like interface. NAME is the
-  name of such function. The new function will accept two
-  arguments: a bit-reader and an optional object to be
-  modified. If no object is passed, it will be created with
-  MAKE-FORM. You can assign a symbol OBJ-SYM to newly created
-  instance. Each slot from SLOTS is a list. It has the
-  following syntax:
+  "Generate a reader function to read data from bit-reader into an
+arbitrary object with accessor-like interface. NAME is the name of
+such function. The new function will accept two arguments: a
+bit-reader and an optional object to be modified. If no object is
+passed, it will be created with MAKE-FORM. You can assign a symbol
+OBJ-SYM to newly created instance. Each slot from SLOTS is a list. It
+has the following syntax:
 
   (ACCESSOR (:BIT)|(:OCTETS n)|(:BITS n)|(:OCTET-VECTOR v)
-            [:ENDIANNESS :BIG|:LITTLE] [:FUNCTION FUNC-NAME]
-            [:COND FORM])
+            [:ENDIANNESS :BIG|:LITTLE] [:FUNCTION FUNC-NAME] [:COND
+            FORM])
 
-  (ACCESSOR object) must be a 'place' understandable for setf.
-  One and only one of BITS, OCTETS or OCTET-VECTOR must be
-  supplied. Endianness may be supplied and will be passed to
-  low-level bitreader function. if FUNC-NAME is supplied,
-  readed value will be passed to this function and then
-  assigned to the slot. If COND is supplied, data will be read only if
-  FORM evaluates to T.
+(ACCESSOR object) must be a 'place' understandable for setf.  One and
+only one of BITS, OCTETS or OCTET-VECTOR must be supplied. Endianness
+may be supplied and will be passed to low-level bitreader function. if
+FUNC-NAME is supplied, readed value will be passed to this function
+and then assigned to the slot. If COND is supplied, data will be read
+only if FORM evaluates to T.
 
-  UPD: If ACCESSOR is NIL, no data will be stored to anywhere,
-  but it will be read accordingly to specifications and then lost
-  for good.
+UPD: If ACCESSOR is NIL, no data will be stored to anywhere, but it
+will be read accordingly to specifications and then lost for good.
 
-  If both OBJ-SYM is not given and MAKE-FORM is NIL, the bitreader itself
-  will be returned from reader function."
+If both OBJ-SYM is not given and MAKE-FORM is NIL, the bitreader
+itself will be returned from reader function."
   (let ((reader (gensym))
         (only-reading (not (or obj-sym-given make-form))))
     `(defun ,name ,(cond
