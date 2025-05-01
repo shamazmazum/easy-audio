@@ -20,8 +20,9 @@
       (when (/= minblocksize maxblocksize)
         (error "Block size must be fixed"))
       (unless (or (= 8 bps)
-                  (= 16 bps))
-        (error "Bps must be 16 or 8"))
+                  (= 16 bps)
+                  (= 24 bps))
+        (error "Bps must be 8, 16 or 24"))
 
       (with-output-to-wav (out-stream    wav-name
                            :supersede    t
