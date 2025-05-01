@@ -1,11 +1,22 @@
 (in-package :easy-audio.bitreader)
 
-(defun reader-function-amount (symbol amount)
-  (let ((read-bit-p (eq symbol :bit)))
-    (if (and (or (not amount) read-bit-p)
-             (or amount (not read-bit-p)))
-        (error "You must specify amount if you do not read :BIT"))
-    (if (not read-bit-p) (list amount))))
+(defun make-reader-call (reader read-how read-how-many endianness)
+  (cond
+    ((eq read-how :custom)
+     ;; READ-HOW-MANY contains a custom reader
+     (assert (not endianness))
+     `(,read-how-many ,reader))
+    ((eq read-how :bit)
+     (assert (not (or endianness read-how-many)))
+     `(read-bit ,reader))
+    (t
+     (let ((function-name
+            (ecase read-how
+              (:octets       'read-octets)
+              (:bits         'read-bits)
+              (:octet-vector 'read-octet-vector))))
+       `(,function-name ,read-how-many ,reader
+                        ,@(if endianness `(:endianness ,endianness)))))))
 
 (defmacro defreader ((name &optional docstring) (&optional make-form (obj-sym (gensym) obj-sym-given))
                      &rest slots)
@@ -41,25 +52,14 @@ itself will be returned from reader function."
                      (t (list reader obj-sym)))
        ,@(if docstring (list docstring) nil)
        ,@(loop for slot-spec in slots collect
-              (destructuring-bind (accessor (read-how &optional read-how-many) . options)
+              (destructuring-bind (accessor (read-how &optional read-how-many)
+                                            &key endianness function cond)
                   slot-spec
-                (let* ((function-name
-                        (ecase read-how
-                          (:octets       'read-octets)
-                          (:bits         'read-bits)
-                          (:bit          'read-bit)
-                          (:octet-vector 'read-octet-vector)))
-                       (endianness (getf options :endianness))
-                       (aux-function (getf options :function))
-                       (conditional-form (getf options :cond))
-                       (function-call
-                        `(,function-name
-                          ,@(reader-function-amount read-how read-how-many)
-                          ,reader
-                          ,@(if endianness (list :endianness endianness))))
+                (let* ((function-call
+                        (make-reader-call reader read-how read-how-many endianness))
                        (read-value
-                        (if aux-function
-                            (list aux-function function-call) function-call))
+                        (if function
+                            (list function function-call) function-call))
                        (read-form
                          (if accessor
                              (progn
@@ -67,9 +67,7 @@ itself will be returned from reader function."
                                  (error "There cannot be any accessors in this reader"))
                                `(setf (,accessor ,obj-sym) ,read-value))
                              read-value)))
-                  (if conditional-form
-                      `(if ,conditional-form ,read-form)
-                      read-form))))
+                  (if cond `(if ,cond ,read-form) read-form))))
        ,(if (or obj-sym-given make-form) obj-sym reader))))
 
 (defmacro defreader* ((name ctor (&rest args)) &rest entries)
@@ -79,23 +77,15 @@ read into read-only structures."
     `(defun ,name (,reader ,@args)
        (let ,(loop for entry in entries collect
                    (destructuring-bind (variable (read-how &optional read-how-many)
-                                                 &key endianness function cond-form ignore)
+                                                 &key endianness function cond ignore)
                        entry
                      (when ignore (push variable ignored))
-                     (let* ((function-name (ecase read-how
-                                             (:octets       'read-octets)
-                                             (:bits         'read-bits)
-                                             (:bit          'read-bit)
-                                             (:octet-vector 'read-octet-vector)))
-                            (function-call `(,function-name
-                                             ,@(reader-function-amount read-how read-how-many)
-                                             ,reader
-                                             ,@(if endianness
-                                                   (list :endianness endianness))))
-                            (binding-form (if function
-                                              `(,function ,function-call) function-call))
-                            (final-form (if cond-form
-                                            `(if ,cond-form ,binding-form) binding-form)))
+                     (let* ((function-call (make-reader-call
+                                            reader read-how read-how-many endianness))
+                            (binding-form
+                             (if function `(,function ,function-call) function-call))
+                            (final-form
+                             (if cond `(if ,cond ,binding-form) binding-form)))
                        `(,variable ,final-form))))
          ,@(if ignored `((declare (ignore ,ignored))))
          (,ctor ,@args ,@(mapcar
