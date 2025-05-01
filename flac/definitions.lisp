@@ -115,15 +115,17 @@ metadata type"))
                    :documentation "List of tracks"))
   (:documentation "CUESHEET metadata block"))
 
-(defstruct cuesheet-track
-  offset
-  number
-  isrc
-  type
-  pre-emphasis
-  indices)
+(sera:defconstructor cuesheet-track
+  (offset       (unsigned-byte 64))
+  (number       (unsigned-byte 8))
+  (isrc         string)
+  (type         (member :audio :non-audio))
+  (pre-emphasis boolean)
+  (indices      list))
 
-(defstruct cuesheet-index offset number)
+(sera:defconstructor cuesheet-index
+  (offset (unsigned-byte 64))
+  (number (unsigned-byte 8)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (define-constant +picture-types+

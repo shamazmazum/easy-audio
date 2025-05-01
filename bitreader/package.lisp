@@ -15,6 +15,7 @@
    #:read-bits #:read-bits-bw
    #:read-octet
    #:read-octet-vector
+   #:read-octet-vector/new
    #:read-octets
    #:read-to-byte-alignment
    #:count-zeros

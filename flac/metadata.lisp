@@ -1,11 +1,5 @@
 (in-package :easy-audio.flac)
 
-;; For signaling errors from functions called from body-readers
-;; (they usual requires just a stream, so no need pass data object as argument)
-(sera:defvar-unbound *data*
-    "READ-METADATA-BODY bounds this var to metadata block
-     it is reading at the moment")
-
 ;; READ-OCTETS can read mostly 4 octets at once
 (sera:-> read-eight-octets (reader)
          (values (unsigned-byte 64) &optional))
@@ -13,6 +7,15 @@
 (defun read-eight-octets (stream)
   (logior (ash (read-octets 4 stream) 32)
           (ash (read-octets 4 stream) 0)))
+
+(declaim (inline check-reserved-field))
+(defun check-reserved-field (x metadata string)
+  (unless (or (and (numberp x) (zerop x))
+              (and (arrayp x) (every #'zerop x)))
+    (error 'flac-bad-metadata
+           :format-control string
+           :metadata metadata))
+  x)
 
 (defun read-metadata-header (stream)
   "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
@@ -39,10 +42,7 @@
                            :element-type '(ub 8))))
     (read-octet-vector chunk stream)
     ;; Do sanity checks
-    (when (notevery #'zerop  chunk)
-      (error 'flac-bad-metadata
-             :format-control "Padding bytes is not zero"
-             :metadata data)))
+    (check-reserved-field chunk data "Padding bytes is not zero"))
   data)
 
 (defmethod read-metadata-body (stream (data vorbis-comment))
@@ -71,10 +71,7 @@
                                                  :samples-in-frame samples-in-frame))))))
     (multiple-value-bind (seekpoints-num remainder)
         (floor (metadata-length data) 18)
-      (unless (zerop remainder)
-        (error 'flac-bad-metadata
-               :format-control "Bad seektable"
-               :metadata data))
+      (check-reserved-field remainder data "Bad seektable")
       (setf (seektable-seekpoints data)
             (loop for i below seekpoints-num collect
                   (read-seekpoint stream)))))
@@ -104,73 +101,43 @@
             (if pos (subseq buffer 0 pos) buffer)))
     (flexi-streams:octets-to-string buffer)))
 
-(defun read-cuesheet-index (stream)
-  (let ((index (make-cuesheet-index)))
-    (setf (cuesheet-index-offset index)
-          (read-eight-octets stream)
-          (cuesheet-index-number index)
-          (read-octet stream))
+(defreader* (read-cuesheet-index cuesheet-index () (data))
+  (offset   (:custom read-eight-octets))
+  (number   (:octet))
+  (reserved (:bits 24)
+            :lambda ((x) (check-reserved-field x data "Bad cuesheet index"))
+            :ignore t))
 
-    (let ((reserved (read-bits #.(* 3 8) stream)))
-      (unless (zerop reserved)
-        (error 'flac-bad-metadata
-               :format-control "Bad cuesheet index"
-               :metadata *data*)))
-    index))
-
-(defun read-cuesheet-track (stream)
-  (let ((track (make-cuesheet-track)))
-    (setf (cuesheet-track-offset track)
-          (read-eight-octets stream)
-          (cuesheet-track-number track)
-          (read-octet stream)
-          (cuesheet-track-isrc track)
-          (read-cuesheet-string stream 12)
-          (cuesheet-track-type track)
-          (if (zerop (read-bit stream))
-              :audio :non-audio)
-          (cuesheet-track-pre-emphasis track)
-          (if (zerop (read-bit stream))
-              :no-pre-emphasis :pre-emphasis))
-
-    (let ((reserved1 (read-bits 6 stream))
-          (reserved2 (read-octet-vector
-                      (make-array 13 :element-type '(ub 8))
-                      stream)))
-      (unless (and (zerop reserved1) (every #'zerop reserved2))
-        (error 'flac-bad-metadata
-               :format-control "Bad cuesheet track"
-               :metadata *data*)))
-
-    (let ((number-of-indices (read-octet stream)))
-      (setf (cuesheet-track-indices track)
-            (loop for track below number-of-indices collect
-                  (read-cuesheet-index stream))))
-
-    track))
+(defreader* (read-cuesheet-track cuesheet-track () (data))
+  (offset       (:custom read-eight-octets))
+  (number       (:octet))
+  (isrc         (:custom (lambda (r) (read-cuesheet-string r 12))))
+  (type         (:bit) :lambda ((x) (if (zerop x) :audio :non-audio)))
+  (pre-emphasis (:bit) :lambda ((x) (not (zerop x))))
+  (reserved1    (:bits 6)
+                :lambda ((x) (check-reserved-field x data "Bad cuesheet track"))
+                :ignore t)
+  (reserved2    (:octet-vector 13)
+                :lambda ((x) (check-reserved-field x data "Bad cuesheet track"))
+                :ignore t)
+  (indices      (:custom (lambda (r) (loop for track below (read-octet r) collect
+                                           (read-cuesheet-index r data))))))
 
 (defmethod read-metadata-body (stream (data cuesheet))
-  (let ((*data* data))
-    (setf (cuesheet-catalog-id data)
-          (read-cuesheet-string stream 128)
-          (cuesheet-lead-in data)
-          (read-eight-octets stream)
-          (cuesheet-cdp data)
-          (not (zerop (read-bit stream))))
-
-    (let ((reserved1 (read-bits 7 stream))
-          (reserved2 (read-octet-vector
-                      (make-array 258 :element-type '(ub 8))
-                      stream)))
-      (unless (and (zerop reserved1) (every #'zerop reserved2))
-        (error 'flac-bad-metadata
-               :format-control "Bad cuesheet"
-               :metadata data)))
-
-    (let ((number-of-tracks (read-octet stream)))
-      (setf (cuesheet-tracks data)
-            (loop for track below number-of-tracks collect
-                  (read-cuesheet-track stream)))))
+  (setf (cuesheet-catalog-id data)
+        (read-cuesheet-string stream 128)
+        (cuesheet-lead-in data)
+        (read-eight-octets stream)
+        (cuesheet-cdp data)
+        (not (zerop (read-bit stream))))
+  (check-reserved-field (read-bits 7 stream)
+                        data "Bad cuesheet")
+  (check-reserved-field (read-octet-vector/new 258 stream)
+                        data "Bad cuesheet")
+  (let ((number-of-tracks (read-octet stream)))
+    (setf (cuesheet-tracks data)
+          (loop for track below number-of-tracks collect
+                (read-cuesheet-track stream data))))
   data)
 
 (defmethod read-metadata-body (stream (data picture))
