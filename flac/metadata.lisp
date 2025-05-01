@@ -90,7 +90,7 @@
   (streaminfo-channels      (:bits 3) :function 1+)
   (streaminfo-bitspersample (:bits 5) :function 1+)
   (streaminfo-totalsamples  (:bits 36))
-  (streaminfo-md5           (:octet-vector (make-array (list 16) :element-type '(ub 8)))))
+  (streaminfo-md5           (:octet-vector 16)))
 
 (defmethod read-metadata-body (stream (data streaminfo))
   (read-streaminfo-body stream data)

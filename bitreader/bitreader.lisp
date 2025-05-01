@@ -176,6 +176,14 @@ range."
     (incf (reader-ibyte reader)))
   array)
 
+(serapeum:-> read-octet-vector/new (non-negative-fixnum reader)
+             (values (sa-ub 8) &optional))
+(defun read-octet-vector/new (n reader)
+  (declare (optimize (speed 3)))
+  (read-octet-vector
+   (make-array n :element-type '(ub 8))
+   reader))
+
 (serapeum:-> read-to-byte-alignment (reader)
              (values non-negative-fixnum &optional))
 (defun read-to-byte-alignment (reader)

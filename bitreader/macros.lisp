@@ -9,12 +9,15 @@
     ((eq read-how :bit)
      (assert (not (or endianness read-how-many)))
      `(read-bit ,reader))
+    ((eq read-how :octet)
+     (assert (not (or endianness read-how-many)))
+     `(read-octet ,reader))
     (t
      (let ((function-name
             (ecase read-how
               (:octets       'read-octets)
               (:bits         'read-bits)
-              (:octet-vector 'read-octet-vector))))
+              (:octet-vector 'read-octet-vector/new))))
        `(,function-name ,read-how-many ,reader
                         ,@(if endianness `(:endianness ,endianness)))))))
 
@@ -70,24 +73,25 @@ itself will be returned from reader function."
                   (if cond `(if ,cond ,read-form) read-form))))
        ,(if (or obj-sym-given make-form) obj-sym reader))))
 
-(defmacro defreader* ((name ctor (&rest args)) &rest entries)
+(defmacro defreader* ((name ctor (&rest args)) &body entries)
   "Like a DEFREADER but does not expand into SETFs. Can be used to
 read into read-only structures."
   (let ((reader (gensym)) ignored)
     `(defun ,name (,reader ,@args)
-       (let ,(loop for entry in entries collect
-                   (destructuring-bind (variable (read-how &optional read-how-many)
-                                                 &key endianness function cond ignore)
-                       entry
-                     (when ignore (push variable ignored))
-                     (let* ((function-call (make-reader-call
-                                            reader read-how read-how-many endianness))
-                            (binding-form
-                             (if function `(,function ,function-call) function-call))
-                            (final-form
-                             (if cond `(if ,cond ,binding-form) binding-form)))
-                       `(,variable ,final-form))))
-         ,@(if ignored `((declare (ignore ,ignored))))
+       (declare (optimize (speed 3)))
+       (let* ,(loop for entry in entries collect
+                    (destructuring-bind (variable (read-how &optional read-how-many)
+                                                  &key endianness function cond ignore)
+                        entry
+                      (when ignore (push variable ignored))
+                      (let* ((function-call (make-reader-call
+                                             reader read-how read-how-many endianness))
+                             (binding-form
+                              (if function `(,function ,function-call) function-call))
+                             (final-form
+                              (if cond `(if ,cond ,binding-form) binding-form)))
+                        `(,variable ,final-form))))
+         ,@(if ignored `((declare (ignore ,@ignored))))
          (,ctor ,@args ,@(mapcar
                           #'first (remove-if
                                    (lambda (var) (member var ignored))

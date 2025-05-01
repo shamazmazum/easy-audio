@@ -123,7 +123,7 @@
 (defreader (read-extended-format) (t)
   (format-valid-bps (:octets 2) :endianness :little)
   (format-channel-mask (:octets 4) :endianness :little)
-  (format-subformat (:octet-vector (make-array 16 :element-type '(unsigned-byte 8)))))
+  (format-subformat (:octet-vector 16)))
 
 (defun check-extensible-audio-format (format)
   "Check extensible audio format magick"

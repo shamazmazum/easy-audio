@@ -51,8 +51,7 @@
   (flags       0 :type (ub 32)))
 
 (defreader (read-header/footer) ((make-header/footer))
-  (h/f-preamble (:octet-vector (make-array (length *apev2-preamble*)
-                                           :element-type '(ub 8)))
+  (h/f-preamble (:octet-vector (length *apev2-preamble*))
                 :function check-preamble)
   (h/f-version  (:octets 4)
                 :endianness :little)

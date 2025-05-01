@@ -47,10 +47,8 @@
                                  :endianness :little)
     (metadata-wavtail-len        (:octets 4)
                                  :endianness :little)
-    (metadata-header-md5         (:octet-vector (make-array 16
-                                                            :element-type '(ub 8))))
-    (nil                         (:octet-vector (make-array (- (metadata-desc-len metadata) 52)
-                                                            :element-type '(ub 8))))
+    (metadata-header-md5         (:octet-vector 16))
+    (nil                         (:octet-vector (- (metadata-desc-len metadata) 52)))
     ;; Header data
     (metadata-compression-type   (:octets 2)
                                  :endianness :little)
