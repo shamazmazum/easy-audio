@@ -208,6 +208,7 @@ metadata type"))
 
 ;; Frame
 (sera:defconstructor frame
+  "Atomic element of audio data in the FLAC stream"
   (%blocking-strategy (member :fixed :variable))
   (%block-size         blocksize)
   (%sample-rate        positive-fixnum)

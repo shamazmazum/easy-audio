@@ -48,6 +48,7 @@
    @cl:with-package[name="easy-audio.flac"](
       @cl:doc(function read-frame)
       @cl:doc(function decode-frame)
+      @cl:doc(defconstructor frame)
       @cl:doc(function frame-blocking-strategy)
       @cl:doc(function frame-block-size)
       @cl:doc(function frame-sample-rate)
