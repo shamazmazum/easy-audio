@@ -42,12 +42,15 @@
       @cl:doc(struct seekpoint)
       @cl:doc(class vorbis-comment)
       @cl:doc(class cuesheet)
+      @cl:doc(defconstructor cuesheet-track)
+      @cl:doc(defconstructor cuesheet-index)
       @cl:doc(class picture)
    )
    @u(Working with audio frames).
    @cl:with-package[name="easy-audio.flac"](
       @cl:doc(function read-frame)
       @cl:doc(function decode-frame)
+      @cl:doc(type blocksize)
       @cl:doc(defconstructor frame)
       @cl:doc(function frame-blocking-strategy)
       @cl:doc(function frame-block-size)

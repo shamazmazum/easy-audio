@@ -57,6 +57,7 @@
 
            ;; And so on with metadata classes
            ;; Frame and its slots
+           #:blocksize
            #:frame
            #:frame-streaminfo
            #:frame-blocking-strategy

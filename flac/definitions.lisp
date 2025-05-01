@@ -116,6 +116,7 @@ metadata type"))
   (:documentation "CUESHEET metadata block"))
 
 (sera:defconstructor cuesheet-track
+  "Represents a track in a cuesheet metadata"
   (offset       (unsigned-byte 64))
   (number       (unsigned-byte 8))
   (isrc         string)
@@ -124,6 +125,7 @@ metadata type"))
   (indices      list))
 
 (sera:defconstructor cuesheet-index
+  "Represents an index into a track in a cuesheet metadata"
   (offset (unsigned-byte 64))
   (number (unsigned-byte 8)))
 
@@ -169,6 +171,7 @@ metadata type"))
 
 ;; Subframes
 (deftype blocksize ()
+  "Possible size of a frame in samples."
   '(and (unsigned-byte 16) (not (eql 0))))
 
 (deftype subframe ()
