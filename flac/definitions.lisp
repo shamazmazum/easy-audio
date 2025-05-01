@@ -204,9 +204,15 @@ metadata type"))
   (residual (sa-sb 32)))
 
 ;; Add 1 to values described in FLAC specs
-(defconstant +left-side+ #b1001)  ; 1000 in spec
-(defconstant +right-side+ #b1010) ; 1001 in spec
-(defconstant +mid-side+ #b1011)   ; 1010 in spec
+(defconstant +left-side+ #b1001  ; 1000 in spec
+  "The encoded frame contains data for the left channel + the
+difference with the right channel.")
+(defconstant +right-side+ #b1010 ; 1001 in spec
+  "The encoded frame contains data for the right channel + the
+difference with the left channel.")
+(defconstant +mid-side+ #b1011   ; 1010 in spec
+  "The encoded frame contains data for the left/right average + the
+difference with the left/right channels.")
 (defconstant +max-channels+ 8)
 
 ;; Frame
