@@ -80,11 +80,11 @@ metadata type"))
 (defclass padding (metadata-header) ()
   (:documentation "Represents PADDING metadata block"))
 
-(defstruct seekpoint
-  "A seekpoint (entry in seektable)"
-  (samplenum 0        :type (ub 64))
-  (offset 0           :type (ub 64))
-  (samples-in-frame 0 :type (ub 16)))
+(sera:defconstructor seekpoint
+  "A seekpoint (entry in a seektable)"
+  (samplenum        (ub 64))
+  (offset           (ub 64))
+  (samples-in-frame (ub 16)))
 
 (defclass seektable (metadata-header)
   ((seekpoints :accessor seektable-seekpoints

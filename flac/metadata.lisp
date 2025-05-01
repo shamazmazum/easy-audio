@@ -66,9 +66,7 @@
              (if (/= samplenum +seekpoint-placeholder+)
                  (let ((offset (read-eight-octets stream))
                        (samples-in-frame (read-bits 16 stream)))
-                   (make-seekpoint :samplenum samplenum
-                                   :offset offset
-                                   :samples-in-frame samples-in-frame))))))
+                   (seekpoint samplenum offset samples-in-frame))))))
     (multiple-value-bind (seekpoints-num remainder)
         (floor (metadata-length data) 18)
       (check-reserved-field remainder data "Bad seektable")
