@@ -67,8 +67,8 @@ file."
 
 (sera:defconstructor vorbis-comment
   "VORBIS_COMMENT metadata block"
-  (vendor-comment string)
-  (user-comments  list))
+  (vendor string)
+  (user   list))
 
 (sera:defconstructor seekpoint
   "A seekpoint (entry in a seektable)"

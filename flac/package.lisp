@@ -24,8 +24,8 @@
            #:seektable-seekpoints
 
            #:vorbis-comment
-           #:vorbis-vendor-comment
-           #:vorbis-user-comments
+           #:vorbis-comment-vendor
+           #:vorbis-comment-user
 
            #:cuesheet
            #:cuesheet-catalog-id
