@@ -43,8 +43,10 @@
     (metadata-header-length header)
     reader)))
 
-(declaim (inline %read-body-streaminfo))
-(defreader* (%read-body-streaminfo streaminfo () ())
+(sera:-> read-body-streaminfo (reader metadata-header)
+         (values streaminfo &optional))
+(defreader* (read-body-streaminfo streaminfo () (header))
+  (declare (ignore header))
   (streaminfo-minblocksize  (:octets 2))
   (streaminfo-maxblocksize  (:octets 2))
   (streaminfo-minframesize  (:octets 3))
@@ -55,19 +57,136 @@
   (streaminfo-totalsamples  (:bits 36))
   (streaminfo-md5           (:octet-vector 16)))
 
-(sera:-> read-body-streaminfo (reader metadata-header)
-         (values streaminfo &optional))
-(defun read-body-streaminfo (stream header)
+(sera:-> read-body-padding (reader metadata-header)
+         (values padding &optional))
+(defreader* (read-body-padding padding () (header))
+  (padding (:octet-vector (metadata-header-length header))
+           :lambda ((x) (check-reserved-field
+                         x header
+                         "Padding bytes are not zero"))
+           :ignore t))
+
+(sera:-> read-body-vorbis-comment (reader metadata-header)
+         (values vorbis-comment &optional))
+(defun read-body-vorbis-comment (stream header)
   (declare (ignore header))
-  (%read-body-streaminfo stream))
+  (flet ((read-comment-string (stream)
+          (let ((buffer (read-octet-vector/new
+                         (read-bits 32 stream :endianness :little)
+                         stream)))
+            (flexi-streams:octets-to-string
+             buffer :external-format :utf-8))))
+    (vorbis-comment
+     (read-comment-string stream)
+     (let ((comments-num (read-bits 32 stream :endianness :little)))
+       (loop for i below comments-num collect
+             (read-comment-string stream))))))
+
+(sera:-> read-body-seektable (reader metadata-header)
+         (values seektable &optional))
+(defun read-body-seektable (stream header)
+  (flet ((read-seekpoint (stream)
+           (let ((samplenum (read-eight-octets stream)))
+             (if (/= samplenum +seekpoint-placeholder+)
+                 (let ((offset (read-eight-octets stream))
+                       (samples-in-frame (read-bits 16 stream)))
+                   (seekpoint samplenum offset samples-in-frame))))))
+    (multiple-value-bind (seekpoints-num remainder)
+        (floor (metadata-header-length header) 18)
+      (check-reserved-field remainder header "Bad seektable")
+      (seektable
+       (loop for i below seekpoints-num collect
+             (read-seekpoint stream))))))
+
+(sera:-> read-cuesheet-string ((sa-ub 8))
+         (values string &optional))
+(defun read-cuesheet-string (vector)
+  (let ((pos (position 0 vector)))
+    (flexi-streams:octets-to-string
+     (subseq vector 0 pos))))
+
+(defreader* (read-cuesheet-index cuesheet-index () (data))
+  (offset   (:custom read-eight-octets))
+  (number   (:octet))
+  (reserved (:bits 24)
+            :lambda ((x) (check-reserved-field x data "Bad cuesheet index"))
+            :ignore t))
+
+(defreader* (read-cuesheet-track cuesheet-track () (data))
+  (offset       (:custom read-eight-octets))
+  (number       (:octet))
+  (isrc         (:octet-vector 12)
+                :function read-cuesheet-string)
+  (type         (:bit) :lambda ((x) (if (zerop x) :audio :non-audio)))
+  (pre-emphasis (:bit) :lambda ((x) (not (zerop x))))
+  (reserved1    (:bits 6)
+                :lambda ((x) (check-reserved-field x data "Bad cuesheet track"))
+                :ignore t)
+  (reserved2    (:octet-vector 13)
+                :lambda ((x) (check-reserved-field x data "Bad cuesheet track"))
+                :ignore t)
+  (indices      (:custom (lambda (r) (loop repeat (read-octet r) collect
+                                           (read-cuesheet-index r data))))))
+
+(sera:-> read-body-cuesheet (reader metadata-header)
+         (values cuesheet &optional))
+(defreader* (read-body-cuesheet cuesheet () (data))
+  (catalog-id (:octet-vector 128)
+              :function read-cuesheet-string)
+  (lead-in    (:custom read-eight-octets))
+  (cdp        (:bit)
+              :lambda ((x) (not (zerop x))))
+  (reserved1  (:bits 7)
+              :lambda ((x) (check-reserved-field x data "Bad cuesheet"))
+              :ignore t)
+  (reserved2  (:octet-vector 258)
+              :lambda ((x) (check-reserved-field x data "Bad cuesheet"))
+              :ignore t)
+  (tracks     (:custom (lambda (r) (loop repeat (read-octet r) collect
+                                         (read-cuesheet-track r data))))))
+
+(sera:-> read-body-picture (reader metadata-header)
+         (values picture &optional))
+(defreader* (read-body-picture picture () (header))
+  (type            (:octets 4)
+                   :lambda
+                   ((x)
+                    (unless (<= x 20)
+                      (error 'flac-bad-metadata
+                             :format-control "Bad picture type"
+                             :metadata header))
+                    x))
+  (mime-type-len   (:octets 4) :skip t)
+  (mime-type       (:octet-vector mime-type-len)
+                   :lambda
+                   ((xs)
+                    (unless (every
+                             #'(lambda (char)
+                                 (and (>= char #x20)
+                                      (<= char #x7e)))
+                             xs)
+                      (error 'flac-bad-metadata
+                             :format-control "MIME type must be an ASCII string"
+                             :metadata header))
+                    (flexi-streams:octets-to-string xs)))
+  (description-len (:octets 4) :skip t)
+  (description     (:octet-vector description-len)
+                   :lambda ((xs) (flexi-streams:octets-to-string
+                                  xs :external-format :utf-8)))
+  (width           (:octets 4))
+  (height          (:octets 4))
+  (depth           (:octets 4))
+  (color-num       (:octets 4))
+  (picture-len     (:octets 4) :skip t)
+  (picture         (:octet-vector picture-len)))
 
 (defparameter *block-readers*
-  `((0 . ,#'read-body-streaminfo)  ; streaminfo
-    (1 . ,#'read-body-dummy)  ; padding
-    (3 . ,#'read-body-dummy)  ; seektable
-    (4 . ,#'read-body-dummy)  ; vorbis-comment
-    (5 . ,#'read-body-dummy)  ; cuesheet
-    (6 . ,#'read-body-dummy))) ; picture
+  `((0 . ,#'read-body-streaminfo)
+    (1 . ,#'read-body-padding)
+    (3 . ,#'read-body-seektable)
+    (4 . ,#'read-body-vorbis-comment)
+    (5 . ,#'read-body-cuesheet)
+    (6 . ,#'read-body-picture)))
 
 (sera:-> get-metadata-reader (integer)
          (values (sera:-> (reader metadata-header) (values metadata &optional)) &optional))
@@ -86,181 +205,8 @@
      (funcall reader stream header)
      (metadata-header-last-block-p header))))
 
-#|
-(defun read-metadata-header (stream)
-  "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
-  (values (reader-position stream)
-          (/= 0 (read-bit stream))
-          (read-bits 7 stream)
-          (read-bits 24 stream)))
-
-(defun read-metadata-block (stream)
-  "Read one metadata block from STREAM"
-  (multiple-value-bind (start-position last-block-p type length)
-      (read-metadata-header stream)
-
-    (let* ((mtype (get-metadata-type type))
-           (data (make-instance mtype
-                                :last-block-p last-block-p
-                                :length length
-                                :start-position start-position)))
-      (read-metadata-body stream data))))
-
-(defmethod read-metadata-body (stream (data padding))
-  ;; Read zero padding bytes
-  (let ((chunk (make-array (list (metadata-length data))
-                           :element-type '(ub 8))))
-    (read-octet-vector chunk stream)
-    ;; Do sanity checks
-    (check-reserved-field chunk data "Padding bytes is not zero"))
-  data)
-
-(defmethod read-metadata-body (stream (data vorbis-comment))
-  (flet ((read-comment-string (stream)
-          (let ((buffer (make-array (list (read-bits 32 stream :endianness :little))
-                                           :element-type '(unsigned-byte 8))))
-            (flexi-streams:octets-to-string
-             (read-octet-vector buffer stream)
-             :external-format :utf-8))))
-    (setf (vorbis-vendor-comment data)
-          (read-comment-string stream))
-    (let ((comments-num (read-bits 32 stream :endianness :little)))
-      (setf (vorbis-user-comments data)
-            (loop for i below comments-num collect
-                  (read-comment-string stream)))))
-  data)
-
-(defmethod read-metadata-body (stream (data seektable))
-  (flet ((read-seekpoint (stream)
-           (let ((samplenum (read-eight-octets stream)))
-             (if (/= samplenum +seekpoint-placeholder+)
-                 (let ((offset (read-eight-octets stream))
-                       (samples-in-frame (read-bits 16 stream)))
-                   (seekpoint samplenum offset samples-in-frame))))))
-    (multiple-value-bind (seekpoints-num remainder)
-        (floor (metadata-length data) 18)
-      (check-reserved-field remainder data "Bad seektable")
-      (setf (seektable-seekpoints data)
-            (loop for i below seekpoints-num collect
-                  (read-seekpoint stream)))))
-  data)
-
-(declaim (inline read-streaminfo-body))
-(defreader (read-streaminfo-body) (t)
-  (streaminfo-minblocksize  (:octets 2))
-  (streaminfo-maxblocksize  (:octets 2))
-  (streaminfo-minframesize  (:octets 3))
-  (streaminfo-maxframesize  (:octets 3))
-  (streaminfo-samplerate    (:bits 20))
-  (streaminfo-channels      (:bits 3) :function 1+)
-  (streaminfo-bitspersample (:bits 5) :function 1+)
-  (streaminfo-totalsamples  (:bits 36))
-  (streaminfo-md5           (:octet-vector 16)))
-
-(defmethod read-metadata-body (stream (data streaminfo))
-  (read-streaminfo-body stream data)
-  data)
-
-(defun read-cuesheet-string (stream length)
-  (let ((buffer (make-array (list length) :element-type '(ub 8))))
-    (read-octet-vector buffer stream)
-    (let ((pos (position 0 buffer)))
-      (setq buffer
-            (if pos (subseq buffer 0 pos) buffer)))
-    (flexi-streams:octets-to-string buffer)))
-
-(defreader* (read-cuesheet-index cuesheet-index () (data))
-  (offset   (:custom read-eight-octets))
-  (number   (:octet))
-  (reserved (:bits 24)
-            :lambda ((x) (check-reserved-field x data "Bad cuesheet index"))
-            :ignore t))
-
-(defreader* (read-cuesheet-track cuesheet-track () (data))
-  (offset       (:custom read-eight-octets))
-  (number       (:octet))
-  (isrc         (:custom (lambda (r) (read-cuesheet-string r 12))))
-  (type         (:bit) :lambda ((x) (if (zerop x) :audio :non-audio)))
-  (pre-emphasis (:bit) :lambda ((x) (not (zerop x))))
-  (reserved1    (:bits 6)
-                :lambda ((x) (check-reserved-field x data "Bad cuesheet track"))
-                :ignore t)
-  (reserved2    (:octet-vector 13)
-                :lambda ((x) (check-reserved-field x data "Bad cuesheet track"))
-                :ignore t)
-  (indices      (:custom (lambda (r) (loop for track below (read-octet r) collect
-                                           (read-cuesheet-index r data))))))
-
-(defmethod read-metadata-body (stream (data cuesheet))
-  (setf (cuesheet-catalog-id data)
-        (read-cuesheet-string stream 128)
-        (cuesheet-lead-in data)
-        (read-eight-octets stream)
-        (cuesheet-cdp data)
-        (not (zerop (read-bit stream))))
-  (check-reserved-field (read-bits 7 stream)
-                        data "Bad cuesheet")
-  (check-reserved-field (read-octet-vector/new 258 stream)
-                        data "Bad cuesheet")
-  (let ((number-of-tracks (read-octet stream)))
-    (setf (cuesheet-tracks data)
-          (loop for track below number-of-tracks collect
-                (read-cuesheet-track stream data))))
-  data)
-
-(defmethod read-metadata-body (stream (data picture))
-  (let ((picture-type (nth (read-bits 32 stream) +picture-types+)))
-    (unless (typep picture-type 'picture-type-id)
-      (error 'flac-bad-metadata
-             :format-control "Bad picture type"
-             :metadata data))
-    (setf (picture-type data) picture-type))
-
-  (let* ((mime-type-len (read-bits 32 stream))
-         (mime-type-seq (make-array (list mime-type-len)
-                                    :element-type '(unsigned-byte 8))))
-    (read-octet-vector mime-type-seq stream)
-    (when (notevery
-           #'(lambda (char)
-               (and (>= char #x20)
-                    (<= char #x7e)))
-           mime-type-seq)
-      (error 'flac-bad-metadata
-             :format-control "MIME type must be an ASCII string"
-             :metadata data))
-    (setf (picture-mime-type data)
-          (flexi-streams:octets-to-string mime-type-seq)))
-
-  (let* ((description-len (read-bits 32 stream))
-         (description-seq (make-array (list description-len)
-                                      :element-type '(unsigned-byte 8))))
-    (setf (picture-description data)
-          (flexi-streams:octets-to-string (read-octet-vector description-seq stream))))
-
-  (setf (picture-width data) (read-bits 32 stream)
-        (picture-height data) (read-bits 32 stream)
-        (picture-depth data) (read-bits 32 stream)
-        (picture-color-num data) (read-bits 32 stream))
-
-  (let* ((picture-len (read-bits 32 stream))
-         (picture-seq (make-array (list picture-len)
-                                  :element-type '(unsigned-byte 8))))
-    ;; FIXME: artifical sanity check: Picture can be less than 10 MiB
-    (when (> picture-len #.(ash 10 20))
-      (error 'flac-bad-metadata
-             :format-control "It's strange, but picture size is too long (~D bytes)"
-             :format-arguments (list picture-len)
-             :metadata data))
-    (setf (picture-picture data) (read-octet-vector picture-seq stream)))
-  data)
-
-(defmethod read-metadata-body (stream (data metadata-header))
-  (error 'flac-bad-metadata
-         :format-control "Unknown metadata block"
-         :metadata data))
-
+(serapeum:-> metadata-find-seektable (list)
+             (values (or null seektable) &optional))
 (defun metadata-find-seektable (metadata)
   "Return a seektable from metadata list if any"
-  (find 'seektable metadata
-        :key #'type-of))
-|#
+  (find 'seektable metadata :key #'type-of))

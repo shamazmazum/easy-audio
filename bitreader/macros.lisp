@@ -76,14 +76,20 @@ itself will be returned from reader function."
 (defmacro defreader* ((name ctor (&rest pass-args) (&rest args)) &body entries)
   "Like a DEFREADER but does not expand into SETFs. Can be used to
 read into read-only structures."
-  (let ((reader (gensym)) ignored)
+  (let* ((reader (gensym))
+         (decls (if (eq (caar entries) 'declare)
+                    (car entries)))
+         (entries (if decls (cdr entries) entries))
+         ignored skipped)
     `(defun ,name (,reader ,@pass-args ,@args)
-       (declare (optimize (speed 3)))
+       ,@(if decls (list decls))
        (let* ,(loop for entry in entries collect
-                    (destructuring-bind (variable (read-how &optional read-how-many)
-                                                  &key endianness function lambda cond ignore)
+                    (destructuring-bind (variable
+                                         (read-how &optional read-how-many)
+                                         &key endianness function lambda cond ignore skip)
                         entry
                       (when ignore (push variable ignored))
+                      (when skip (push variable skipped))
                       (when (and function lambda)
                         (error "Specify at most only one of FUNCTION or LAMBDA"))
                       (let* ((function-form
@@ -101,5 +107,7 @@ read into read-only structures."
          (,ctor ,@pass-args
                 ,@(mapcar
                    #'first (remove-if
-                            (lambda (var) (member var ignored))
+                            (lambda (var)
+                              (or (member var ignored)
+                                  (member var skipped)))
                             entries :key #'first)))))))

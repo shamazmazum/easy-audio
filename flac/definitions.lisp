@@ -63,12 +63,12 @@ file."
   (totalsamples  "Total number of samples in a stream. May be 0 if unknown.")
   (md5           "MD5 checksum of the whole unencoded data."))
 
-(deftype metadata ()
-  '(or unknown-metadata streaminfo))
+(sera:defconstructor padding "Zero padding")
 
-#|
-(defclass padding (metadata-header) ()
-  (:documentation "Represents PADDING metadata block"))
+(sera:defconstructor vorbis-comment
+  "VORBIS_COMMENT metadata block"
+  (vendor-comment string)
+  (user-comments  list))
 
 (sera:defconstructor seekpoint
   "A seekpoint (entry in a seektable)"
@@ -76,34 +76,9 @@ file."
   (offset           (ub 64))
   (samples-in-frame (ub 16)))
 
-(defclass seektable (metadata-header)
-  ((seekpoints :accessor seektable-seekpoints
-               :type list
-               :documentation "List of seekpoints"))
-  (:documentation "SEEKTABLE metadata block"))
-
-(defclass vorbis-comment (metadata-header)
-  ((vendor-comment :type string
-                   :accessor vorbis-vendor-comment
-                   :documentation "Vendor comment")
-   (user-comments  :type list
-                   :accessor vorbis-user-comments
-                   :documentation "List of user comments"))
-  (:documentation "VORBIS_COMMENT metadata block"))
-
-(defclass cuesheet (metadata-header)
-  ((catalog-id     :type string
-                   :accessor cuesheet-catalog-id
-                   :documentation "Media catalog number")
-   (lead-in        :accessor cuesheet-lead-in
-                   :documentation "For CD-DA cuesheets, number of lead-in samples; 0 otherwise")
-   (cdp            :accessor cuesheet-cdp
-                   :type boolean
-                   :documentation "t if cueshhet corresponds to Compact Disk")
-   (tracks         :accessor cuesheet-tracks
-                   :type list
-                   :documentation "List of tracks"))
-  (:documentation "CUESHEET metadata block"))
+(sera:defconstructor seektable
+  "SEEKTABLE metadata block"
+  (seekpoints list))
 
 (sera:defconstructor cuesheet-track
   "Represents a track in a cuesheet metadata"
@@ -119,46 +94,42 @@ file."
   (offset (unsigned-byte 64))
   (number (unsigned-byte 8)))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (define-constant +picture-types+
-      '(:other :file-icon :other-file-icon
-        :cover-front :cover-back) ; Etc
-    :documentation "Meaning of picture type codes"
-    :test #'equalp))
-(deftype picture-type-id () `(or (integer 0 20) (member ,@+picture-types+)))
+(sera:defconstructor cuesheet
+  "CUESHEET metadata block"
+  (%catalog-id string)
+  (%lead-in    (unsigned-byte 64))
+  (%cdp        boolean)
+  (%tracks     list))
 
-(defclass picture (metadata-header)
-  ((picture-type   :type picture-type-id
-                   :accessor picture-type
-                   :documentation "One of 21 picture types (see flac format description)")
-   (mime-type      :type string
-                   :accessor picture-mime-type
-                   :documentation "String with MIME type")
-   (description    :type string
-                   :accessor picture-description
-                   :documentation "Picture description (UTF-8 coded string)")
-   (width          :type positive-integer
-                   :accessor picture-width
-                   :documentation "Picture width")
-   (height         :type positive-integer
-                   :accessor picture-height
-                   :documentation "Picture height")
-   (depth          :type positive-integer
-                   :accessor picture-depth
-                   :documentation "Picture color depth")
-   (color-num      :type non-negative-integer
-                   :accessor picture-color-num
-                   :documentation "Number of colors in indexed picture, 0 for non-indexed")
-   (picture        :type (sa-ub 8)
-                   :accessor picture-picture
-                   :documentation "The picture itself as array of octets"))
-  (:documentation "PICTURE metadata block"))
+(define-documented-accessors cuesheet
+  (catalog-id  "Media catalog number.")
+  (lead-in     "For CD-DA cuesheets, the number of lead-in samples, 0 otherwise.")
+  (cdp         "@c(t) if cuesheet corresponds to a Compact Disk.")
+  (tracks      "A list of tracks."))
 
+(sera:defconstructor picture
+  "PICTURE metadata block"
+  (%type         (integer 0 20))
+  (%mime-type    string)
+  (%description  string)
+  (%width        (unsigned-byte 32))
+  (%height       (unsigned-byte 32))
+  (%depth        (unsigned-byte 32))
+  (%color-num    (unsigned-byte 32))
+  (%picture      (sa-ub 8)))
 
-(defgeneric read-metadata-body (stream data)
-  (:documentation "Reads a body of the metadata block DATA from STREAM. Can depend on slots
-  common to all metadata blocks (which are in the header)."))
-|#
+(define-documented-accessors picture
+  (type         "One of 21 picture types (see the flac format description).")
+  (mime-type    "A string with the MIME type.")
+  (description  "Picture description (an UTF-8 coded string).")
+  (width        "Width of the picture.")
+  (height       "Height of the picture.")
+  (depth        "Color depth of the picture.")
+  (color-num    "Number of colors in an indexed picture, 0 if the picture is non-indexed.")
+  (picture      "The picture itself as an array of octets."))
+
+(deftype metadata ()
+  '(or unknown-metadata streaminfo padding vorbis-comment seektable cuesheet picture))
 
 ;; Subframes
 (deftype blocksize ()

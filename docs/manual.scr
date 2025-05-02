@@ -34,8 +34,6 @@
       @cl:doc(condition flac-bad-frame)
    )
    @u(Metadata blocks).
-   Please note, that slot accessors are not documented here, but usually available
-   by scheme @c(CLASSNAME-SLOTNAME).
    @cl:with-package[name="easy-audio.flac"](
       @cl:doc(defconstructor streaminfo)
       @cl:doc(function streaminfo-minblocksize)
@@ -47,13 +45,26 @@
       @cl:doc(function streaminfo-bitspersample)
       @cl:doc(function streaminfo-totalsamples)
       @cl:doc(function streaminfo-md5)
-      @cl:doc(class seektable)
+      @cl:doc(defconstructor padding)
+      @cl:doc(defconstructor vorbis-comment)
+      @cl:doc(defconstructor seektable)
       @cl:doc(defconstructor seekpoint)
-      @cl:doc(class vorbis-comment)
-      @cl:doc(class cuesheet)
+      @cl:doc(defconstructor cuesheet)
+      @cl:doc(function cuesheet-catalog-id)
+      @cl:doc(function cuesheet-lead-in)
+      @cl:doc(function cuesheet-cdp)
+      @cl:doc(function cuesheet-tracks)
       @cl:doc(defconstructor cuesheet-track)
       @cl:doc(defconstructor cuesheet-index)
-      @cl:doc(class picture)
+      @cl:doc(defconstructor picture)
+      @cl:doc(function picture-type)
+      @cl:doc(function picture-mime-type)
+      @cl:doc(function picture-description)
+      @cl:doc(function picture-width)
+      @cl:doc(function picture-height)
+      @cl:doc(function picture-depth)
+      @cl:doc(function picture-color-num)
+      @cl:doc(function picture-picture)
    )
    @u(Working with audio frames).
    @cl:with-package[name="easy-audio.flac"](
