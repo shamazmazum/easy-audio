@@ -4,19 +4,20 @@
   "`FLAC' signature")
 
 (defun open-ogg-flac (stream)
-  "Return BITREADER handler of ogg-encapsulated flac stream"
+  "Return a @c(bitreader) handler of an ogg-encapsulated flac stream."
   (ogg:open-ogg stream))
 
 (defmacro with-open-ogg-flac ((reader name &rest options) &body body)
-  "A helper macro like WITH-OPEN-FILE. READER can be used as an
-   argument to READ-OGG-METADATA or READ-OGG-FRAME inside this macro."
+  "A helper macro like @c(with-open-file). @c(reader) can be used as
+an argument to @c(read-ogg-metadata) or @c(read-ogg-frame) inside this
+macro."
   (let ((stream (gensym)))
     `(let* ((,stream (apply #'open ,name :element-type '(ub 8) ,options))
             (,reader (open-ogg-flac ,stream)))
        (unwind-protect (progn ,@body) (close ,stream)))))
 
 (defun read-ogg-metadata (reader)
-  "Return list of metadata in ogg-encapsulated stream"
+  "Return a list of metadata in an ogg-encapsulated stream."
   (let ((non-audio-packets 0)
         metadata)
     (let* ((packet (ogg:read-packet reader))
@@ -47,7 +48,7 @@
     metadata))
 
 (defun read-ogg-frame (reader &optional streaminfo)
-  "Read flac frame from ogg container"
+  "Read a flac frame from an ogg container."
   (let* ((packet (ogg:read-packet reader))
          (packet-reader (make-reader-from-buffer packet
                                                  #+easy-audio-check-crc
