@@ -18,41 +18,36 @@ macro."
 
 (defun read-ogg-metadata (reader)
   "Return a list of metadata in an ogg-encapsulated stream."
-  (let ((non-audio-packets 0)
-        metadata)
-    (let* ((packet (ogg:read-packet reader))
-           (packet-reader (make-reader-from-buffer packet)))
-      (when (or (not (ogg:ogg-bos reader))
-                (/= #x7f (read-octet packet-reader))
-                (/= +flac-ogg-id+ (read-octets 4 packet-reader)))
-        (error 'flac-error :format-control "The first page of stream is invalid"))
-      (read-octets 2 packet-reader) ; Major and minor versions of the mapping
-      (setq non-audio-packets (read-octets 2 packet-reader))
-      (when (/= +flac-id+ (read-octets 4 packet-reader))
-        (error 'flac-error :format-control "The stream is not a flac stream"))
-      (setq metadata (read-metadata-block packet-reader)))
-
-    (unless (ogg:fresh-page reader)
-      (error 'flac-error :format-control "There are other packets on the first page"))
-
-    (setq metadata
-          (cons metadata
-                (loop repeat non-audio-packets collect
-                     (let* ((packet (ogg:read-packet reader))
-                            (packet-reader (make-reader-from-buffer packet)))
-                       (read-metadata-block packet-reader)))))
-
-    (unless (ogg:fresh-page reader)
-      (error 'flac-error :format-control "Audio data must begin with a fresh page"))
-
-    metadata))
+  (let* ((packet (ogg:read-packet reader))
+         (packet-reader (make-reader-from-buffer packet)))
+    (unless (and (ogg:ogg-bos reader)
+                 (= #x7f (read-octet packet-reader))
+                 (= +flac-ogg-id+ (read-octets 4 packet-reader)))
+      (error 'flac-error :format-control "The first page of stream is invalid"))
+    ;; Major and minor versions of the mapping
+    (read-octets 2 packet-reader)
+      (let ((non-audio-packets (read-octets 2 packet-reader)))
+        (unless (= +flac-id+ (read-octets 4 packet-reader))
+          (error 'flac-error :format-control "The stream is not a flac stream"))
+        (let ((first-metadata (read-metadata-block packet-reader)))
+          (unless (ogg:fresh-page reader)
+            (error 'flac-error :format-control "There are other packets on the first page"))
+          (let ((rest-metadata
+                 (loop repeat non-audio-packets
+                       for packet = (ogg:read-packet reader)
+                       for packet-reader = (make-reader-from-buffer packet)
+                       collect (read-metadata-block packet-reader))))
+            (unless (ogg:fresh-page reader)
+              (error 'flac-error :format-control "Audio data must begin with a fresh page"))
+            (cons first-metadata rest-metadata))))))
 
 (defun read-ogg-frame (reader &optional streaminfo)
   "Read a flac frame from an ogg container."
   (let* ((packet (ogg:read-packet reader))
-         (packet-reader (make-reader-from-buffer packet
-                                                 #+easy-audio-check-crc
-                                                 :crc-fun
-                                                 #+easy-audio-check-crc
-                                                 #'crc-0-8005)))
+         (packet-reader (make-reader-from-buffer
+                         packet
+                         #+easy-audio-check-crc
+                         :crc-fun
+                         #+easy-audio-check-crc
+                         #'crc-0-8005)))
     (read-frame packet-reader streaminfo)))
