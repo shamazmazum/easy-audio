@@ -37,7 +37,16 @@
    Please note, that slot accessors are not documented here, but usually available
    by scheme @c(CLASSNAME-SLOTNAME).
    @cl:with-package[name="easy-audio.flac"](
-      @cl:doc(class streaminfo)
+      @cl:doc(defconstructor streaminfo)
+      @cl:doc(function streaminfo-minblocksize)
+      @cl:doc(function streaminfo-maxblocksize)
+      @cl:doc(function streaminfo-minframesize)
+      @cl:doc(function streaminfo-maxframesize)
+      @cl:doc(function streaminfo-samplerate)
+      @cl:doc(function streaminfo-channels)
+      @cl:doc(function streaminfo-bitspersample)
+      @cl:doc(function streaminfo-totalsamples)
+      @cl:doc(function streaminfo-md5)
       @cl:doc(class seektable)
       @cl:doc(defconstructor seekpoint)
       @cl:doc(class vorbis-comment)

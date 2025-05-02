@@ -28,55 +28,45 @@
   (:documentation "Bad flac frame"))
 
 ;; Metadata
-(defclass metadata-header ()
-  ((last-block-p    :initarg :last-block-p
-                    :accessor metadata-last-block-p
-                    :type boolean
-                    :documentation "T if this metadata block is the last in file")
-   (length          :initarg :length
-                    :accessor metadata-length
-                    :type positive-integer
-                    :documentation "Length of this metadata block in bytes (with exclusion of
-header)")
-   (rawdata         :initarg :rawdata
-                    :type (sa-ub 8))
-   (start-position  :initarg :start-position
-                    :documentation "Strart position of metadata block"
-                    :type non-negative-integer
-                    :accessor metadata-start-position))
-  (:documentation "Class for storing flac metadata. Instance of this class means unknown
-metadata type"))
+(sera:defconstructor metadata-header
+  "Metadata block header"
+  (start-position non-negative-integer)
+  (last-block-p   boolean)
+  (type           (unsigned-byte 7))
+  (length         (unsigned-byte 24)))
 
-(defclass streaminfo (metadata-header)
-  ((minblocksize  :accessor streaminfo-minblocksize
-                  :type non-negative-fixnum
-                  :documentation "The minimum block size (in samples) used in the stream")
-   (maxblocksize  :accessor streaminfo-maxblocksize
-                  :type non-negative-fixnum
-                  :documentation "The maximum block size (in samples) used in the stream")
-   (minframesize  :accessor streaminfo-minframesize
-                  :type non-negative-fixnum
-                  :documentation "The minimum frame size (in bytes) used in the stream")
-   (maxframesize  :accessor streaminfo-maxframesize
-                  :type non-negative-fixnum
-                  :documentation "The maximum frame size (in bytes) used in the stream. May be
-0 to imply the value is not known.")
-   (samplerate    :accessor streaminfo-samplerate
-                  :type non-negative-fixnum
-                  :documentation "Sample rate in Hz")
-   (channels      :accessor streaminfo-channels
-                  :type (integer 1 8)
-                  :documentation "Number of channels in stream. May be from 1 to 8.")
-   (bitspersample :accessor streaminfo-bitspersample
-                  :type non-negative-fixnum
-                  :documentation "Bits per sample (from 4 to 32)")
-   (totalsamples  :accessor streaminfo-totalsamples
-                  :type positive-integer
-                  :documentation "Total samples in stream. May be 0 if unknown.")
-   (md5           :accessor streaminfo-md5
-                  :documentation "MD5 checksum of the whole unencoded data"))
-  (:documentation "Class for storing STREAMINFO metadata block"))
+(sera:defconstructor unknown-metadata
+  "Unknown metadata block"
+  (rawdata (sa-ub 8)))
 
+(sera:defconstructor streaminfo
+  "STREAMINFO metadata block. The most important metadata block in the
+file."
+  (%minblocksize  (unsigned-byte 16))
+  (%maxblocksize  (unsigned-byte 16))
+  (%minframesize  (unsigned-byte 24))
+  (%maxframesize  (unsigned-byte 24))
+  (%samplerate    positive-fixnum)
+  (%channels      (integer 1 8))
+  (%bitspersample (integer 4 32))
+  (%totalsamples  (unsigned-byte 36))
+  (%md5           (sa-ub 8)))
+
+(define-documented-accessors streaminfo
+  (minblocksize  "The minimum block size (in samples) used in the stream.")
+  (maxblocksize  "The maximum block size (in samples) used in the stream.")
+  (minframesize  "The minimum frame size (in bytes) used in the stream.")
+  (maxframesize  "The maximum frame size (in bytes) used in the stream.")
+  (samplerate    "Sample rate in Hz.")
+  (channels      "The number of channels in a stream. May be from 1 to 8.")
+  (bitspersample "Bits per sample (from 4 to 32).")
+  (totalsamples  "Total number of samples in a stream. May be 0 if unknown.")
+  (md5           "MD5 checksum of the whole unencoded data."))
+
+(deftype metadata ()
+  '(or unknown-metadata streaminfo))
+
+#|
 (defclass padding (metadata-header) ()
   (:documentation "Represents PADDING metadata block"))
 
@@ -168,6 +158,7 @@ metadata type"))
 (defgeneric read-metadata-body (stream data)
   (:documentation "Reads a body of the metadata block DATA from STREAM. Can depend on slots
   common to all metadata blocks (which are in the header)."))
+|#
 
 ;; Subframes
 (deftype blocksize ()
@@ -251,14 +242,6 @@ number) or :VARIABLE (frame header contains the sample number)?")
   (crc-16
    "CRC16 of the frame (back to and including the sync code)."))
 
-(define-constant +block-name+
-    '((0 . streaminfo)
-      (1 . padding)
-      (3 . seektable)
-      (4 . vorbis-comment)
-      (5 . cuesheet)
-      (6 . picture))
-  :test #'equalp)
 (defconstant +frame-sync-code+ 16382) ; 11111111111110
 (defconstant +seekpoint-placeholder+ #xFFFFFFFFFFFFFFFF)
 (define-constant +coded-sample-rates+
@@ -282,9 +265,3 @@ number) or :VARIABLE (frame header contains the sample number)?")
       (#b101 . 20)
       (#b110 . 24))
   :test #'equalp)
-
-;; Other stuff
-(defun get-metadata-type (code)
-  "Get metadata type by code"
-  (let ((mtype (assoc code +block-name+)))
-    (if mtype (cdr mtype) 'metadata-header)))

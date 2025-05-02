@@ -17,6 +17,76 @@
            :metadata metadata))
   x)
 
+(sera:-> read-metadata-header (reader)
+         (values metadata-header &optional))
+(defun read-metadata-header (stream)
+  "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
+  (metadata-header (reader-position stream)
+                   (not (zerop (read-bit stream)))
+                   (read-bits 7 stream)
+                   (read-bits 24 stream)))
+
+(sera:-> read-body-dummy (reader metadata-header)
+         (values &optional))
+(defun read-body-dummy (reader header)
+  (declare (ignore reader))
+  (error 'flac-bad-metadata
+         :format-control "Unknown metadata block"
+         :metadata header)
+  (values))
+
+(sera:-> read-body-unknown (reader metadata-header)
+         (values unknown-metadata &optional))
+(defun read-body-unknown (reader header)
+  (unknown-metadata
+   (read-octet-vector/new
+    (metadata-header-length header)
+    reader)))
+
+(declaim (inline %read-body-streaminfo))
+(defreader* (%read-body-streaminfo streaminfo () ())
+  (streaminfo-minblocksize  (:octets 2))
+  (streaminfo-maxblocksize  (:octets 2))
+  (streaminfo-minframesize  (:octets 3))
+  (streaminfo-maxframesize  (:octets 3))
+  (streaminfo-samplerate    (:bits 20))
+  (streaminfo-channels      (:bits 3) :function 1+)
+  (streaminfo-bitspersample (:bits 5) :function 1+)
+  (streaminfo-totalsamples  (:bits 36))
+  (streaminfo-md5           (:octet-vector 16)))
+
+(sera:-> read-body-streaminfo (reader metadata-header)
+         (values streaminfo &optional))
+(defun read-body-streaminfo (stream header)
+  (declare (ignore header))
+  (%read-body-streaminfo stream))
+
+(defparameter *block-readers*
+  `((0 . ,#'read-body-streaminfo)  ; streaminfo
+    (1 . ,#'read-body-dummy)  ; padding
+    (3 . ,#'read-body-dummy)  ; seektable
+    (4 . ,#'read-body-dummy)  ; vorbis-comment
+    (5 . ,#'read-body-dummy)  ; cuesheet
+    (6 . ,#'read-body-dummy))) ; picture
+
+(sera:-> get-metadata-reader (integer)
+         (values (sera:-> (reader metadata-header) (values metadata &optional)) &optional))
+(defun get-metadata-reader (code)
+  "Get metadata reader by its type code"
+  (let ((reader (assoc code *block-readers*)))
+    (if reader (cdr reader) #'read-body-dummy)))
+
+(sera:-> read-metadata-block (reader)
+         (values metadata boolean &optional))
+(defun read-metadata-block (stream)
+  "Read one metadata block from STREAM"
+  (let* ((header (read-metadata-header stream))
+         (reader (get-metadata-reader (metadata-header-type header))))
+    (values
+     (funcall reader stream header)
+     (metadata-header-last-block-p header))))
+
+#|
 (defun read-metadata-header (stream)
   "Returns (values START-POSITION LAST-BLOCK-P TYPE LENGTH)"
   (values (reader-position stream)
@@ -193,3 +263,4 @@
   "Return a seektable from metadata list if any"
   (find 'seektable metadata
         :key #'type-of))
+|#

@@ -2,22 +2,19 @@
 
 (defconstant +flac-id+ #x664C6143) ; "fLaC"
 
-(defun read-block-and-fix (bitreader metadata)
-  "Read malformed metadata block in RAWDATA slot (for debugging)"
-  (reader-position bitreader
-                   (+ (metadata-start-position metadata)
-                      4))
-  (let ((chunk (make-array (list (metadata-length metadata))
-                           :element-type '(ub 8))))
-    (setf (slot-value metadata 'rawdata)
-          (read-octet-vector chunk bitreader))))
-
-(defun fix-stream-position (bitreader metadata)
+(defun fix-stream-position/start (bitreader header)
   "Set stream position to end of the malformed metadata block"
-  (reader-position bitreader
-                   (+ (metadata-start-position metadata)
-                      (metadata-length metadata)
-                      4)))
+  (reader-position
+   bitreader
+   (+ (metadata-header-start-position header) 4)))
+
+(defun fix-stream-position/end (bitreader header)
+  "Set stream position to end of the malformed metadata block"
+  (reader-position
+   bitreader
+   (+ (metadata-header-start-position header)
+      (metadata-header-length         header)
+      4)))
 
 (defun open-flac (stream)
   "Return @c(bitreader) handler of flac stream"
@@ -38,7 +35,7 @@
 (defun read-metadata (bitreader)
   "Return list of metadata blocks in the stream"
   ;; Checking if stream is a flac stream
-  (when (/= +flac-id+ (read-octets 4 bitreader))
+  (unless (= +flac-id+ (read-octets 4 bitreader))
     (error 'flac-error :format-control "This stream is not a flac stream"))
 
   (do (last-block metadata-list)
@@ -46,21 +43,22 @@
     (setq last-block
           (with-interactive-debug
             (restart-case
-                (let ((metadata (read-metadata-block bitreader)))
+                (multiple-value-bind (metadata last-block-p)
+                    (read-metadata-block bitreader)
                   (push metadata metadata-list)
-                  (metadata-last-block-p metadata))
+                  last-block-p)
 
               (skip-malformed-metadata (c)
                 :interactive (lambda () (list *current-condition*))
                 :report "Skip malformed metadata"
-                (let ((metadata (flac-metadata c)))
-                  (fix-stream-position bitreader metadata)
-                  (metadata-last-block-p metadata)))
+                (let ((header (flac-metadata c)))
+                  (fix-stream-position/end bitreader header)
+                  (metadata-header-last-block-p header)))
 
               (read-raw-block (c)
                 :interactive (lambda () (list *current-condition*))
                 :report "Interprete as unknown metadata block"
-                (let ((metadata (flac-metadata c)))
-                  (read-block-and-fix bitreader metadata)
-                  (push metadata metadata-list)
-                  (metadata-last-block-p metadata))))))))
+                (let ((header (flac-metadata c)))
+                  (fix-stream-position/start bitreader header)
+                  (push (read-body-unknown bitreader header) metadata-list)
+                  (metadata-header-last-block-p header))))))))
