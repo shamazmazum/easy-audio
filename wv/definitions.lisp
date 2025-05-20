@@ -180,7 +180,6 @@
 (defconstant +flags-2-byte/sample+     #x00000001)
 (defconstant +flags-3-byte/sample+     #x00000002)
 (defconstant +flags-4-byte/sample+     #x00000003)
-(defconstant +flags-byte/sample-mask+  #x00000003)
 
 (defconstant +flags-mono-output+       #x00000004)
 (defconstant +flags-hybrid-mode+       #x00000008)
@@ -193,6 +192,7 @@
 (defconstant +flags-hybrid-noise-balanced+ #x00000400)
 (defconstant +flags-initial-block+     #x00000800)
 (defconstant +flags-final-block+       #x00001000)
+(defconstant +flags-pseudo-stereo+     #x40000000)
 
 (defconstant +flags-left-shift-amount-mask+ #x0003e000)
 (defconstant +flags-left-shift-amount-shift+ -13)
@@ -274,3 +274,9 @@
 (defun block-channels (wv-block)
   "Return a number of channels (a block can have 1 or 2 channels)."
   (if (flag-set-p wv-block +flags-mono-output+) 1 2))
+
+(sera:-> block-data-channels (wv-block)
+         (values (integer 1 2) &optional))
+(defun block-data-channels (wv-block)
+  "Return a number of channels (a block can have 1 or 2 channels)."
+  (if (flag-set-p wv-block (logior +flags-pseudo-stereo+ +flags-mono-output+)) 1 2))

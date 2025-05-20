@@ -47,11 +47,14 @@
   metadata)
 
 (defmethod read-metadata-body ((metadata metadata-decorr-weights) reader)
+  (declare (optimize (speed 3)))
   (let* ((data-size (metadata-actual-size metadata))
-         (channels (block-channels *current-block*))
-         (term-number (ash data-size (- 1 channels))))
-    (when (> term-number
-             (length (metadata-decorr-passes metadata)))
+         (channels (block-data-channels *current-block*))
+         (term-number (floor data-size channels))
+         (decorr-passes (metadata-decorr-passes metadata)))
+    (declare (type (ub 24) data-size)
+             (type list decorr-passes))
+    (when (> term-number (length decorr-passes))
       (error 'block-error
              :format-control "Size of metadata sub-block ~a is too big"
              :format-arguments (list metadata)))
@@ -60,7 +63,7 @@
                  (let ((val (ash weight 3)))
                    (+ val (ash (+ val 64) -7)))
                  (- (ash (- #x100 weight) 3)))))
-      (loop for decorr-pass in (metadata-decorr-passes metadata)
+      (loop for decorr-pass in decorr-passes
             repeat term-number do
             (loop for channel below channels do
                   (setf (aref (decorr-pass-weight decorr-pass) channel)
@@ -74,7 +77,7 @@
 
   (let ((first-pass (first (metadata-decorr-passes metadata))))
     (when first-pass
-      (let ((channels (block-channels *current-block*))
+      (let ((channels (block-data-channels *current-block*))
             (first-term (decorr-pass-term first-pass))
             (bytes-read 0))
         (when (and (< first-term 0)
@@ -117,7 +120,7 @@
 
 (defmethod read-metadata-body ((metadata metadata-entropy) reader)
   (let ((data-size (metadata-actual-size metadata))
-        (channels (block-channels *current-block*)))
+        (channels (block-data-channels *current-block*)))
     (unless (= data-size (* 6 channels))
       (error 'block-error
              :format-control "Size of metadata sub-block ~a is invalid"
@@ -147,11 +150,12 @@
   metadata)
 
 (defmethod read-metadata-body ((metadata metadata-wvx-bits) reader)
-  (let ((int32-info (find 'metadata-int32-info (block-metadata *current-block*) :key #'type-of)))
+  (let ((int32-info (find 'metadata-int32-info (block-metadata *current-block*)
+                          :key #'type-of)))
     (unless int32-info
       (error 'block-error :format-control "No int32-info prior to wvx-bitstream"))
     (let* ((block-samples (block-block-samples *current-block*))
-           (channels (block-channels *current-block*))
+           (channels (block-data-channels *current-block*))
            (sent-bits (metadata-sent-bits int32-info))
            (size (metadata-actual-size metadata))
            (bits-wasted (- (* 8 size) (* channels block-samples sent-bits))))
@@ -191,7 +195,7 @@
                                               +meta-id-large-block+)
                               3 1))
                  :endianness :little
-                 :function (lambda (x) (ash x 1))))
+                 :function (lambda (x) (* x 2))))
 
 (defun read-metadata (reader)
   (let ((metadata (%read-metadata reader)))

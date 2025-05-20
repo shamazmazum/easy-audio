@@ -306,4 +306,6 @@ channel."
     (when (flag-set-p wv-block +flags-stereo-joint+)
       (restore-joint-stereo (first residual) (second residual)))
 
-    residual))
+    (if (flag-set-p wv-block +flags-pseudo-stereo+)
+        (list (first residual) (first residual))
+        residual)))

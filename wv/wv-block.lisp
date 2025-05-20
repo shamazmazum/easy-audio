@@ -18,7 +18,7 @@
     (error 'block-error :format-control "Cannot work with hybrid mode"))
   (let ((metadata-residual (find 'metadata-wv-residual (the list (block-metadata wv-block))
                                  :key #'type-of))
-        (channels (block-channels wv-block))
+        (channels (block-data-channels wv-block))
         (samples (block-block-samples wv-block)))
     (when metadata-residual
       (let ((residual (loop repeat channels collect
