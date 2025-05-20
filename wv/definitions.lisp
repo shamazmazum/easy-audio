@@ -229,17 +229,21 @@
 (define-get-value/shift+mask max-magnitude)
 (define-get-value/shift+mask (%block-samplerate samplerate))
 
-(declaim (inline flag-set-p bit-set-p))
-(defun flag-set-p (wv-block mask)
-  "Predicate for checking if wv-block has a flag set"
-  (declare (optimize (speed 3))
-           (type fixnum mask))
-  (= (logand (block-flags wv-block) mask) mask))
+(declaim (inline all-bits-set-p))
+(defun all-bits-set-p (value bits)
+  (= (logand value bits) bits))
 
-(defun bit-set-p (value mask)
-  (declare (optimize (speed 3))
-           (type fixnum mask value))
-  (= (logand value mask) mask))
+(declaim (inline flag-mask-set-p))
+(defun flag-mask-set-p (wv-block mask)
+  (all-bits-set-p (block-flags wv-block) mask))
+
+(declaim (inline some-bits-set-p))
+(defun some-bits-set-p (value bits)
+  (not (zerop (logand value bits))))
+
+(declaim (inline flag-set-p))
+(defun flag-set-p (wv-block mask)
+  (some-bits-set-p (block-flags wv-block) mask))
 
 ;; Place these here too
 (define-constant +samplerate-list+
@@ -260,9 +264,9 @@
 (defun block-bps (wv-block)
   "Return bits per second of a block."
   (cond
-    ((flag-set-p wv-block +flags-4-byte/sample+) 32)
-    ((flag-set-p wv-block +flags-3-byte/sample+) 24)
-    ((flag-set-p wv-block +flags-2-byte/sample+) 16)
+    ((flag-mask-set-p wv-block +flags-4-byte/sample+) 32)
+    ((flag-mask-set-p wv-block +flags-3-byte/sample+) 24)
+    ((flag-mask-set-p wv-block +flags-2-byte/sample+) 16)
     (t 8)))
 
 (sera:-> block-channels (wv-block)

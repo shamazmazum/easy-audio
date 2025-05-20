@@ -187,8 +187,8 @@
 ;; Metadata reader
 (defreader (%read-metadata) ((make-instance 'metadata) metadata)
   (metadata-id (:octets 1))
-  (metadata-size (:octets (if (bit-set-p (metadata-id metadata)
-                                         +meta-id-large-block+)
+  (metadata-size (:octets (if (all-bits-set-p (metadata-id metadata)
+                                              +meta-id-large-block+)
                               3 1))
                  :endianness :little
                  :function (lambda (x) (ash x 1))))
@@ -197,10 +197,10 @@
   (let ((metadata (%read-metadata reader)))
     (setf (metadata-actual-size metadata)
           (let ((size (metadata-size metadata)))
-            (if (bit-set-p (metadata-id metadata) +meta-id-data-length--1+)
+            (if (all-bits-set-p (metadata-id metadata) +meta-id-data-length--1+)
                 (1- size) size)))
     (let* ((id (metadata-id metadata))
-           (useless (bit-set-p id +meta-id-useless-for-decoder+))
+           (useless (all-bits-set-p id +meta-id-useless-for-decoder+))
            (useful (not useless))
            (function (logand id (logior +meta-id-useless-for-decoder+
                                         +meta-id-function+))))

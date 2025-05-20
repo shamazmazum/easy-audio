@@ -117,7 +117,7 @@
 
 ;; Coding guide to myself:
 
-;; 1) When I need to check if flag (bit) is set, use bit-set-p function
+;; 1) When I need to check if flag (bit) is set, use all-bits-set-p function
 ;; 2) When I need to choose which flag in the set is set, use cond
 ;;    macro with (logand x mask)
 ;; 3) When I need to get a value from flags using masks and shifts, use
@@ -157,8 +157,8 @@
       (loop with bytes-read fixnum = 0
             while (< bytes-read sub-blocks-size)
             for metadata = (read-metadata reader)
-            do (incf bytes-read (+ 1 (if (bit-set-p (metadata-id metadata)
-                                                    +meta-id-large-block+)
+            do (incf bytes-read (+ 1 (if (all-bits-set-p (metadata-id metadata)
+                                                         +meta-id-large-block+)
                                          3 1)
                                    (the (ub 24) (metadata-size metadata))))
             (push metadata (block-metadata wv-block))
