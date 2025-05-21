@@ -16,4 +16,4 @@
    ;; Utility functions
    #:define-documented-accessor
    #:define-documented-accessors
-   #:mixchannels))
+   #:interleave-channels))

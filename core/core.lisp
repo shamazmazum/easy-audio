@@ -28,46 +28,45 @@ signaled."
            ,@body)))))
 
 ;; Utility functions
-(sera:-> mixchannels-n ((sa-sb 32) list)
+(sera:-> interleave-channels-n (list)
          (values (sa-sb 32) &optional))
-(defun mixchannels-n (out buffers)
+(defun interleave-channels-n (buffers)
   (declare (optimize (speed 3)))
   (let* ((channels (length buffers))
          (first-buffer (first buffers))
-         (samples (length first-buffer)))
+         (samples (length first-buffer))
+         (output (make-array (* samples channels) :element-type '(sb 32))))
     (declare (type (sa-sb 32) first-buffer))
     (loop for s fixnum below samples
           for idx fixnum from 0 by channels do
           (loop for buffer of-type (sa-sb 32) in buffers
                 for c fixnum from 0 by 1 do
-	        (setf (aref out (+ idx c))
-	              (aref buffer s)))))
-  out)
+	        (setf (aref output (+ idx c))
+	              (aref buffer s))))
+    output))
 
-(sera:-> mixchannels-2 ((sa-sb 32) (sa-sb 32) (sa-sb 32))
+(sera:-> interleave-channels-2 ((sa-sb 32) (sa-sb 32))
          (values (sa-sb 32) &optional))
-(defun mixchannels-2 (output channel1 channel2)
+(defun interleave-channels-2 (channel1 channel2)
   (declare (optimize (speed 3)))
-  (loop for i below (length channel1)
+  (loop with samples = (length channel1)
+        with output = (make-array (* samples 2) :element-type '(sb 32))
+        for i below samples
         for j from 0 by 2 do
         (setf (aref output j)
               (aref channel1 i)
               (aref output (1+ j))
-              (aref channel2 i)))
-  output)
+              (aref channel2 i))
+        finally (return output)))
 
-(sera:-> mixchannels ((sa-sb 32) list)
+(sera:-> interleave-channels (list)
          (values (sa-sb 32) &optional))
-(defun mixchannels (out buffers)
-  "Maps a list of @c(buffers) (each one for each channel) into one
-buffer @c(out) writing sequentially the first sample of the first
-channel then the first sample of second channel and so on until final
-channel is reached. When process repeats for second sample of each
-channel until all data is written."
+(defun interleave-channels (channels)
+  "Interleave samples from separate channels into one buffer."
   (declare (optimize (speed 3)))
-  (case (length buffers)
-    (2 (mixchannels-2 out (first buffers) (second buffers)))
-    (t (mixchannels-n out buffers))))
+  (case (length channels)
+    (2 (interleave-channels-2 (first channels) (second channels)))
+    (t (interleave-channels-n channels))))
 
 (defmacro define-documented-accessor (structure slot docstring)
   (let ((accessor (intern (format nil "~a-%~a" structure slot)

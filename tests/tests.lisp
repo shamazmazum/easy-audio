@@ -2,7 +2,7 @@
 
 (def-suite bitreader :description "Bitreader tests")
 (def-suite flac      :description "Flac decoder tests")
-(def-suite ogg       :description "ogg container tests")
+(def-suite ogg       :description "OGG container tests")
 (def-suite decoders  :description "General decoders tests")
 (def-suite wavpack   :description "Wavpack tests")
 (def-suite ape       :description "Ape tests")
@@ -287,33 +287,11 @@
                       (aref a2 i))))))
 
 (test mixchannels-2
-      "Test MIXCHANNELS-2 special case"
-      (let ((data1 (loop repeat 522 collect (- (random 1000) 2000)))
-            (data2 (loop repeat 522 collect (- (random 1000) 2000))))
-
-        (let ((array1 (make-array 512
-                                  :element-type '(signed-byte 32)
-                                  :initial-contents (subseq data1 0 512)))
-              (array2 (make-array 512
-                                  :element-type '(signed-byte 32)
-                                  :initial-contents (subseq data2 0 512)))
-              (out (make-array 1024 :element-type '(signed-byte 32))))
-        (is (mixed-correctly-p (core:mixchannels out (list array1 array2)) array1 array2)))
-
-        (let ((array1 (make-array 522
-                                  :element-type '(signed-byte 32)
-                                  :initial-contents data1))
-              (array2 (make-array 522
-                                  :element-type '(signed-byte 32)
-                                  :initial-contents data2))
-              (out (make-array #.(expt 522 2) :element-type '(signed-byte 32))))
-        (is (mixed-correctly-p (core:mixchannels out (list array1 array2)) array1 array2)))
-
-        (let ((array1 (make-array 522
-                                  :element-type '(signed-byte 32)
-                                  :initial-contents data1))
-              (array2 (make-array 522
-                                  :element-type '(signed-byte 32)
-                                  :initial-contents data2))
-              (out (make-array #.(1+ (expt 522 2)) :element-type '(signed-byte 32))))
-          (is (mixed-correctly-p (core:mixchannels out (list array1 array2)) array1 array2)))))
+  "Test MIXCHANNELS-2 special case"
+  (let ((data1 (make-array 522 :element-type '(signed-byte 32)
+                           :initial-contents
+                           (loop repeat 522 collect (- (random 1000) 2000))))
+        (data2 (make-array 522 :element-type '(signed-byte 32)
+                           :initial-contents
+                           (loop repeat 522 collect (- (random 1000) 2000)))))
+    (is-true (mixed-correctly-p (core:interleave-channels (list data1 data2)) data1 data2))))

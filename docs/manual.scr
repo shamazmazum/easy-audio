@@ -283,6 +283,6 @@
    @title(Utility functions)
    Package @c(easy-audio.core) contains some useful functions. Here they are.
    @cl:with-package[name="easy-audio.core"](
-      @cl:doc(function mixchannels)
+      @cl:doc(function interleave-channels)
    )
 @end(section)

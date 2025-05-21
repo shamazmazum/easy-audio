@@ -16,8 +16,5 @@
                            :bps bps
                            :totalsamples total-samples)
         (loop for i below total-frames
-              for frame = (read-frame in-reader meta i)
-              for buf = (make-array (* channels (frame-samples frame))
-                                    :element-type '(signed-byte 32))
-              do
-                 (write-sequence (mixchannels buf (decode-frame frame)) out-stream))))))
+              for frame = (read-frame in-reader meta i) do
+              (write-sequence (interleave-channels (decode-frame frame)) out-stream))))))
