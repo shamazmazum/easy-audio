@@ -5,7 +5,7 @@
 
 (defsystem :easy-audio/core
   :name :easy-audio/core
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
@@ -16,7 +16,7 @@
 
 (defsystem :easy-audio/general-decoders
   :name :easy-audio/general-decoders
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
@@ -27,7 +27,7 @@
 
 (defsystem :easy-audio/bitreader
   :name :easy-audio/bitreader
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
@@ -43,7 +43,7 @@
 
 (defsystem :easy-audio/ogg
   :name :easy-audio/ogg
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
@@ -56,7 +56,7 @@
 
 (defsystem :easy-audio/flac
   :name :easy-audio/flac
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
@@ -77,7 +77,7 @@
 
 (defsystem :easy-audio/wav
   :name :easy-audio/wav
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
@@ -94,7 +94,7 @@
 
 (defsystem :easy-audio/ape
   :name :easy-audio/ape
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
@@ -112,7 +112,7 @@
 
 (defsystem :easy-audio/wv
   :name :easy-audio/wv
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :licence "2-clause BSD"
   :serial t
@@ -131,7 +131,7 @@
 
 (defsystem :easy-audio
   :name :easy-audio
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :description "A pack of audio decoders for FLAC, WavPack and other formats"
   :licence "2-clause BSD"
@@ -148,7 +148,7 @@
 
 (defsystem :easy-audio/examples
   :name :easy-audio/examples
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :components ((:file "flac/examples/package")
                (:file "flac/examples/flac2wav" :depends-on ("flac/examples/package"))
@@ -166,7 +166,7 @@
 
 (defsystem :easy-audio/tests
   :name :easy-audio/tests
-  :version "1.1"
+  :version "1.2"
   :author "Vasily Postnicov <shamaz.mazum@gmail.com>"
   :pathname "tests"
   :serial t
