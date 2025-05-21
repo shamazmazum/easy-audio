@@ -298,3 +298,11 @@ footer .info {
 .codex-class {
     border-left-color: rgba(224, 153, 82, 0.7);
 }
+
+.codex-defconstructor {
+    border-left-color: rgba(255, 93, 64, 0.7);
+}
+
+.codex-type {
+    border-left-color: rgba(102, 234, 135, 0.7);
+}

@@ -53,10 +53,7 @@
       
    Package <code>easy-audio.core</code> contains some useful functions. Here they are.
    
-      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">mixchannels</code><code class="codex-lambda-list">(out buffers)</code><div class="codex-docstring">Maps a list of <code>buffers</code>(each one for each channel) into one buffer <code>out</code>
-writing sequentially the first sample of the first channel then the first sample of
-second channel and so on until final channel is reached. When process repeats for
-second sample of each channel until all data is written</div></div>
+      <div class="codex-doc-node codex-operator codex-function"><code class="codex-name">interleave-channels</code><code class="codex-lambda-list">(channels)</code><div class="codex-docstring">Interleave samples from separate channels into one buffer.</div></div>
    
 
     </main>
