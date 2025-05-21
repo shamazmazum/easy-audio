@@ -79,7 +79,9 @@ This class is not instantiated"))
 (defclass metadata-wv-residual (metadata-residual) ())
 
 (defclass metadata-wvx-bits (metadata)
-  ((bits :accessor metadata-bits))
+  ((crc32 :accessor metadata-crc32
+          :type (ub 32))
+   (bits  :accessor metadata-bits))
   (:documentation "This block may be present when sample size is > 24"))
 
 (defclass metadata-riff-header (metadata-ignorable) ()

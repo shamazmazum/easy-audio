@@ -158,20 +158,20 @@
            (channels (block-data-channels *current-block*))
            (sent-bits (metadata-sent-bits int32-info))
            (size (metadata-actual-size metadata))
-           (bits-wasted (- (* 8 size) (* channels block-samples sent-bits))))
-      (when (< bits-wasted 0)
-        (error 'block-error :format-control "wvx-bitstream is too small"))
+           (expected-size (+ (* channels block-samples sent-bits) 32)))
+      (unless (= expected-size (* size 8))
+        (error 'block-error :format-control "This wvx-bitstream has unexpected size"))
+      (setf (metadata-crc32 metadata)
+            (read-octets 4 reader :endianness :little))
       (let ((bits (loop repeat channels collect
                         (make-array (list block-samples) :element-type '(sb 32)))))
         (loop for i below block-samples do
               (loop for j below channels do
                     (setf (aref (nth j bits) i)
-                          (read-bits (metadata-sent-bits int32-info) reader
-                                     :endianness :little))))
+                          (read-bits-bw sent-bits reader))))
         (setf (metadata-bits metadata) bits
               ;; Make a copy for easy access
-              (block-wvx-bits *current-block*) bits))
-      (read-bits bits-wasted reader))) ;; Why there are wasted bits anyway?
+              (block-wvx-bits *current-block*) bits))))
   metadata)
 
 (defmethod read-metadata-body :around ((metadata metadata-ignorable) reader)
