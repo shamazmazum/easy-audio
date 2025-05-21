@@ -22,10 +22,9 @@
 
 (define-condition lost-sync (block-error) ()
   (:documentation "Error signaled when sync is obviously lost
-                   (e.g. first 4 bytes in block are not Wavpack ID).
-                   Errors signalled when reading a block which cause
-                   loss of sync are not of this type, but of @c(block-error).
-                   Useful for skipping garbage in audio files"))
+(e.g. first 4 bytes in block are not Wavpack ID).  Errors signalled
+when reading a block which cause loss of sync are not of this type,
+but of @c(block-error).  Useful for skipping garbage in audio files"))
 
 (define-condition unknown-metadata (wavpack-warning)
   ((metadata :reader unknown-metadata
@@ -50,17 +49,18 @@
                 :documentation "Actual size of metadata. Can be size or size-1")
    (data        :accessor metadata-data
                 :documentation "Raw metadata. Usually this slot is not bound"))
-  (:documentation "General class for storing metadata. If instantiated, the metadata reader
-                   will only read raw metadata to data slot"))
+  (:documentation "General class for storing metadata. If
+instantiated, the metadata reader will only read raw metadata to data
+slot"))
 
 (defclass metadata-ignorable (metadata) ()
-  (:documentation "Known metadata block for which we have no special primary reader method.
-                   Not to be instantiated"))
+  (:documentation "Known metadata block for which we have no special
+primary reader method.  Not to be instantiated."))
 
 (defclass metadata-decorr (metadata)
   ((decorr-passes :accessor metadata-decorr-passes))
   (:documentation "General class for everything (de)correlation-related.
-                   This class is not instantiated"))
+This class is not instantiated"))
 
 (defclass metadata-decorr-terms (metadata-decorr) ())
 (defclass metadata-decorr-weights (metadata-decorr) ())
@@ -211,13 +211,13 @@
 
 (defmacro define-get-value/shift+mask (name-spec)
   "Define value-getting function. This function will accept an integer
-   number and extract a value using defined mask and shift values like
-   so: (ash (logand number mask) shift).
+number and extract a value using defined mask and shift values like
+so: (ash (logand number mask) shift).
 
-   NAME-SPEC can be a list (NAME SYM) or just a symbol NAME. NAME is the
-   name of the function to be defined. Mask and shift values used must
-   have names +FLAGS-NAME-MASK+ and +FLAGS-NAME-SHIFT+ or
-   +FLAGS-SYM-MASK+ and +FLAGS-SYM-SHIFT+ if SYM is supplied."
+NAME-SPEC can be a list (NAME SYM) or just a symbol NAME. NAME is the
+name of the function to be defined. Mask and shift values used must
+have names +FLAGS-NAME-MASK+ and +FLAGS-NAME-SHIFT+ or
++FLAGS-SYM-MASK+ and +FLAGS-SYM-SHIFT+ if SYM is supplied."
   (let* ((name (if (atom name-spec) name-spec (first name-spec)))
          (sym  (if (atom name-spec) name-spec (second name-spec)))
          (mask  (intern (concatenate 'string "+FLAGS-" (symbol-name sym) "-MASK+")))
