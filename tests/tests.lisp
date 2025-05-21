@@ -214,7 +214,7 @@
                 (md5:md5sum-file tmp-name)))))
 
 (test wv-decode-stereo
-  "Decode mono sample file"
+  "Decode stereo sample file"
   (let ((tmp-name (asdf:system-relative-pathname
                    :easy-audio/tests "tests/tmp.wav"))
         (wav-name (asdf:system-relative-pathname
@@ -222,6 +222,34 @@
         (wv-name (asdf:system-relative-pathname
                     :easy-audio/tests "tests/sample-stereo.wv")))
     (wv-examples:wv2wav wv-name tmp-name)
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
+
+(test wv-decode-mono-32
+  "Decode mono sample file (32 bits/sample)"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample32-mono.wav"))
+        (wv-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample32-mono.wv")))
+    (handler-bind
+        ((warning #'muffle-warning))
+      (wv-examples:wv2wav wv-name tmp-name))
+    (is (equalp (md5:md5sum-file wav-name)
+                (md5:md5sum-file tmp-name)))))
+
+(test wv-decode-stereo-32
+  "Decode stereo sample file (32 bits/sample)"
+  (let ((tmp-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/tmp.wav"))
+        (wav-name (asdf:system-relative-pathname
+                   :easy-audio/tests "tests/sample32-stereo.wav"))
+        (wv-name (asdf:system-relative-pathname
+                    :easy-audio/tests "tests/sample32-stereo.wv")))
+    (handler-bind
+        ((warning #'muffle-warning))
+      (wv-examples:wv2wav wv-name tmp-name))
     (is (equalp (md5:md5sum-file wav-name)
                 (md5:md5sum-file tmp-name)))))
 
