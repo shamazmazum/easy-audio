@@ -238,16 +238,16 @@
                       (declare (type (sa-sb 32) channel wvx-bits))
                       (map-into channel #'fixup-sample-wvx channel wvx-bits)))
              (mapc #'fixup-channel (block-residual wv-block) wvx-bits)))
-           ((and (= sent-bits 0)
-                 (or (/= zeros 0)
-                     (/= ones 0)
-                     (/= dups 0)))
+          ((and (= sent-bits 0)
+                (or (/= zeros 0)
+                    (/= ones 0)
+                    (/= dups 0)))
            (labels ((fixup-channel (channel)
                       (declare (type (sa-sb 32) channel))
                       (map-into channel #'fixup-sample channel)))
              (mapc #'fixup-channel (block-residual wv-block))))
           (t (setq shift-add (+ zeros sent-bits ones dups)))))
-        shift-add)))
+      shift-add)))
 
 (defun decode-wv-block (wv-block)
   "Decode a wavpack block, destructively modifying it. This function
@@ -291,6 +291,9 @@ channel."
           (mapc #'correlation-pass (reverse first))
           (correlation-pass last decorr-samples))))
 
+    (when (flag-set-p wv-block +flags-stereo-joint+)
+      (restore-joint-stereo (first residual) (second residual)))
+
     (let ((shift (left-shift-amount wv-block)))
       (declare (type (ub 8) shift))
       (when (flag-set-p wv-block +flags-shifted-int+)
@@ -302,9 +305,6 @@ channel."
                  (map-into channel-out #'shift-sample channel-out)))
         (unless (zerop shift)
           (mapc #'shift-channel residual))))
-
-    (when (flag-set-p wv-block +flags-stereo-joint+)
-      (restore-joint-stereo (first residual) (second residual)))
 
     (if (flag-set-p wv-block +flags-pseudo-stereo+)
         (list (first residual) (first residual))
