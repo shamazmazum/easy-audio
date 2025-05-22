@@ -1,27 +1,38 @@
 (in-package :easy-audio.ape)
 
-(defparameter *apev2-preamble* #.(map 'vector #'char-code "APETAGEX"))
-(defparameter *apev2-external-format* '(:utf-8 :eol-style :crlf)
-  "External format used in human-readable APEv2 items")
+(define-constant +apev2-preamble+
+    (map 'vector #'char-code "APETAGEX")
+  :test #'equalp)
+(define-constant +apev2-external-format+
+    '(:utf-8 :eol-style :crlf)
+  :test #'equalp
+  :documentation "External format used in human-readable APEv2 items")
 
-(defun has-header (flags)
-  (declare (type fixnum flags))
+(sera:-> has-header-p ((ub 32))
+         (values boolean &optional))
+(defun has-header-p (flags)
   (not (zerop (logand flags (ash 1 31)))))
 
-(defun has-footer (flags)
-  (declare (type fixnum flags))
+(sera:-> has-footer-p ((ub 32))
+         (values boolean &optional))
+(defun has-footer-p (flags)
   (zerop (logand flags (ash 1 30))))
 
+(sera:-> h/f-type ((ub 32))
+         (values (member :footer :header) &optional))
 (defun h/f-type (flags)
-  (declare (type fixnum flags))
   (if (zerop (logand (ash 1 29) flags))
       :footer :header))
 
+(sera:-> check-bits-3...28 ((ub 32))
+         (values (ub 32) &optional))
 (defun check-bits-3...28 (flags)
   (unless (zerop (logand #x1ffffff8 flags))
     (error 'apev2-tag-error :format-control "Invalid tag/item flags"))
   flags)
 
+(sera:-> content-type ((ub 32))
+         (values (member :utf-8 :binary :external) &optional))
 (defun content-type (flags)
   (case (ldb (byte 2 1) flags)
     (0 :utf-8)
@@ -29,11 +40,13 @@
     (2 :external)
     (3 (error 'apev2-tag-error :format-control "Invalid tag item content type"))))
 
+(sera:-> content-r/w-p ((ub 32))
+         (values boolean &optional))
 (defun content-r/w-p (flags)
   (zerop (logand 1 flags)))
 
 (defun check-preamble (preamble)
-  (unless (equalp preamble *apev2-preamble*)
+  (unless (equalp preamble +apev2-preamble+)
     (error 'apev2-tag-error :format-control "Not an APEv2 tag"))
   preamble)
 
@@ -51,7 +64,7 @@
   (flags       0 :type (ub 32)))
 
 (defreader (read-header/footer) ((make-header/footer))
-  (h/f-preamble (:octet-vector (length *apev2-preamble*))
+  (h/f-preamble (:octet-vector (length +apev2-preamble+))
                 :function check-preamble)
   (h/f-version  (:octets 4)
                 :endianness :little)
@@ -116,7 +129,7 @@
             (read-octet-vector array reader)
             (case (content-type (item-flags item))
               (:utf-8 (flexi-streams:octets-to-string
-                       array :external-format *apev2-external-format*))
+                       array :external-format +apev2-external-format+))
               (:binary array)
               (t (error 'apev2-tag-error :format-control "Unknown content type")))))
     item))
@@ -126,7 +139,7 @@
   (let* ((header (read-header/footer reader))
          (items (loop repeat (h/f-items-count header) collect
                      (item-as-list (read-item reader)))))
-    (if (has-footer (h/f-flags header))
+    (if (has-footer-p (h/f-flags header))
         (read-header/footer reader))
     items))
 
@@ -139,8 +152,8 @@ Changes reader's position. Needs APEv2 tag to contain a footer."
     (reader-position reader (- length 32))
     (let* ((footer (read-header/footer reader))
            (flags (h/f-flags footer)))
-      (unless (and (has-header flags)
-                   (has-footer flags) ; Sanity check
+      (unless (and (has-header-p flags)
+                   (has-footer-p flags) ; Sanity check
                    (eq (h/f-type flags) :footer))
         (error 'apev2-tag-error :format-control "Cannot read APEv2 tag from the end of stream"))
       (when (< length (+ 32 (h/f-size footer)))
