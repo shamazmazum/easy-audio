@@ -8,24 +8,21 @@
   :test #'equalp
   :documentation "External format used in human-readable APEv2 items")
 
-(sera:-> has-header-p ((ub 32))
-         (values boolean &optional))
-(defun has-header-p (flags)
-  (not (zerop (logand flags (ash 1 31)))))
-
-(sera:-> has-footer-p ((ub 32))
-         (values boolean &optional))
-(defun has-footer-p (flags)
-  (zerop (logand flags (ash 1 30))))
+(defconstant +flag-has-header+ (ash 1 31))
+(defconstant +flag-has-footer+ (ash 1 30))
+(defconstant +flag-h/f-type+   (ash 1 29))
+(defconstant +flag-ro+         (ash 1  0))
 
 (sera:-> h/f-type ((ub 32))
          (values (member :footer :header) &optional))
+(declaim (inline h/f-type))
 (defun h/f-type (flags)
-  (if (zerop (logand (ash 1 29) flags))
+  (if (some-bits-set-p flags +flag-h/f-type+)
       :footer :header))
 
 (sera:-> check-bits-3...28 ((ub 32))
          (values (ub 32) &optional))
+(declaim (inline check-bits-3...28))
 (defun check-bits-3...28 (flags)
   (unless (zerop (logand #x1ffffff8 flags))
     (error 'apev2-tag-error :format-control "Invalid tag/item flags"))
@@ -33,6 +30,7 @@
 
 (sera:-> content-type ((ub 32))
          (values (member :utf-8 :binary :external) &optional))
+(declaim (inline content-type))
 (defun content-type (flags)
   (case (ldb (byte 2 1) flags)
     (0 :utf-8)
@@ -40,16 +38,13 @@
     (2 :external)
     (3 (error 'apev2-tag-error :format-control "Invalid tag item content type"))))
 
-(sera:-> content-r/w-p ((ub 32))
-         (values boolean &optional))
-(defun content-r/w-p (flags)
-  (zerop (logand 1 flags)))
-
+(declaim (inline check-preamble))
 (defun check-preamble (preamble)
   (unless (equalp preamble +apev2-preamble+)
     (error 'apev2-tag-error :format-control "Not an APEv2 tag"))
   preamble)
 
+(declaim (inline check-h/f-reserved))
 (defun check-h/f-reserved (reserved)
   (unless (zerop reserved)
     (error 'apev2-tag-error :format-control "Header/footer reserved slot is not zero"))
@@ -104,8 +99,8 @@
      (item-value item)
      :type
      (content-type flags)
-     :r/w
-     (content-r/w-p flags))))
+     :ro
+     (some-bits-set-p flags +flag-ro+))))
 
 (defun read-item (reader)
   "Read APEv2 item from reader as an ITEM structure"
@@ -139,7 +134,7 @@
   (let* ((header (read-header/footer reader))
          (items (loop repeat (h/f-items-count header) collect
                      (item-as-list (read-item reader)))))
-    (if (has-footer-p (h/f-flags header))
+    (if (some-bits-set-p (h/f-flags header) +flag-has-footer+)
         (read-header/footer reader))
     items))
 
@@ -152,8 +147,8 @@ Changes reader's position. Needs APEv2 tag to contain a footer."
     (reader-position reader (- length 32))
     (let* ((footer (read-header/footer reader))
            (flags (h/f-flags footer)))
-      (unless (and (has-header-p flags)
-                   (has-footer-p flags) ; Sanity check
+      (unless (and (some-bits-set-p flags +flag-has-header+)
+                   (some-bits-set-p flags +flag-has-footer+) ; Sanity check
                    (eq (h/f-type flags) :footer))
         (error 'apev2-tag-error :format-control "Cannot read APEv2 tag from the end of stream"))
       (when (< length (+ 32 (h/f-size footer)))
