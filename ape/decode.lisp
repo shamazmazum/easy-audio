@@ -102,9 +102,7 @@ channel is a simple array with elements of type @c((signed-byte 32))."
   (declare (type (sa-sb 32) entropy)
            (type (integer 1 15) fracbits)
            (type non-negative-fixnum order)
-           (optimize (speed 3)
-                     #+easy-audio-unsafe-code
-                     (safety 0)))
+           (optimize (speed 3)))
   (let ((coeffs (zeros order :type '(sb 32)))
         (buffer (zeros (+ +history-size+ (ash order 1))
                        :type '(sb 32)))
@@ -165,9 +163,7 @@ channel is a simple array with elements of type @c((signed-byte 32))."
 (defun make-predictor-updater (history delay-a delay-b adapt-a adapt-b)
   (declare (type (sa-sb 32) history)
            (type (sb 32) delay-a delay-b adapt-a adapt-b)
-           (optimize (speed 3)
-                     #+easy-audio-unsafe-code
-                     (safety 0)))
+           (optimize (speed 3)))
   (let ((last-a   0)
         (filter-a 0)
         (filter-b 0)
