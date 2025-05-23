@@ -193,7 +193,7 @@
        (read-subframe-constant stream header))
       ((= type-num 1)
        ;; 000001
-       (read-subframe-constant stream header))
+       (read-subframe-verbatim stream header))
       ;; 001000-001100
       ((and
         (>= type-num 8)
