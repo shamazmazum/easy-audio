@@ -10,14 +10,24 @@
 (defconstant +flag-has-header+ (ash 1 31))
 (defconstant +flag-has-footer+ (ash 1 30))
 (defconstant +flag-h/f-type+   (ash 1 29))
-(defconstant +flag-ro+         (ash 1  0))
+(defconstant +flag-read-only+  (ash 1  0))
+
+(sera:-> has-footer-p ((ub 32))
+         (values boolean &optional))
+(defun has-footer-p (flags)
+  (not (some-bits-set-p flags +flag-has-footer+)))
+
+(sera:-> has-header-p ((ub 32))
+         (values boolean &optional))
+(defun has-header-p (flags)
+  (some-bits-set-p flags +flag-has-header+))
 
 (sera:-> h/f-type ((ub 32))
          (values (member :footer :header) &optional))
 (declaim (inline h/f-type))
 (defun h/f-type (flags)
   (if (some-bits-set-p flags +flag-h/f-type+)
-      :footer :header))
+      :header :footer))
 
 (sera:-> check-bits-3...28 ((ub 32))
          (values (ub 32) &optional))
@@ -69,9 +79,9 @@ special format) and :BINARY is a vector of octets."
 
 (sera:defconstructor apev2-tag-item
   "An item (key/value pair) in apev2 tag block"
-  (key   string)
-  (value t)
-  (flags (ub 32)))
+  (key       string)
+  (value     t)
+  (read-only boolean))
 
 (sera:-> read-item (reader)
          (values apev2-tag-item &optional))
@@ -97,7 +107,7 @@ special format) and :BINARY is a vector of octets."
                          array :external-format *apev2-external-format*))
                 (:binary array)
                 (t (error 'apev2-tag-error :format-control "Unknown content type"))))))
-      (apev2-tag-item key value flags))))
+      (apev2-tag-item key value (some-bits-set-p flags +flag-read-only+)))))
 
 (sera:-> read-apev2-tag (reader)
          (values list &optional))
@@ -106,7 +116,7 @@ special format) and :BINARY is a vector of octets."
   (let* ((header (read-tag-block reader))
          (items (loop repeat (apev2-tag-block-items header)
                       collect (read-item reader))))
-    (when (some-bits-set-p (apev2-tag-block-flags header) +flag-has-footer+)
+    (when (has-footer-p (apev2-tag-block-flags header))
       (read-tag-block reader))
     items))
 
@@ -120,8 +130,8 @@ stream.  Needs APEv2 tag with a footer."
     (let* ((footer (read-tag-block reader))
            (flags (apev2-tag-block-flags footer))
            (size  (apev2-tag-block-size  footer)))
-      (unless (and (some-bits-set-p flags +flag-has-header+)
-                   (some-bits-set-p flags +flag-has-footer+) ; Sanity check
+      (unless (and (has-header-p flags)
+                   (has-footer-p flags) ; Sanity check
                    (eq (h/f-type flags) :footer))
         (error 'apev2-tag-error :format-control "Cannot read APEv2 tag from the end of stream"))
       (when (< length (+ size 32))
