@@ -260,19 +260,16 @@
 
 @begin(section)
    @title(APE tags)
-   @c(easy-audio) also has support for APEv2 tags. You can read a tag by
-   @c(ape:read-tag) passing a bitreader to it. It will return a list of tag
-   items in this format:
-@code(((KEY-1 VALUE-1 :UTF-8 utf-8-p :r/w r/w-p)
- (KEY-2 VALUE-2 :UTF-8 utf-8-p :r/w r/w-p)))
-   @c(:utf-8-p) is @c(t) when value is a text, not a binary, @c(r/w-p) is @c(t)
-   when readonly flag is not set on that item.
+   @c(easy-audio) also has support for APEv2 tags. You can read a tag
+   from a current file position by @c(ape:read-apev2-tag) or from an
+   end of a file with @c(ape:read-apev2-tag-from-end). Both of these
+   functions accept a bitreader as their only argument.
 @begin(section)
    @title(API)
    @cl:with-package[name="easy-audio.ape"](
-      @cl:doc(function read-tag)
-      @cl:doc(function read-tag-from-end)
-      @cl:doc(condition ape-error)
+      @cl:doc(function read-apev2-tag)
+      @cl:doc(function read-apev2-tag-from-end)
+      @cl:doc(defconstructor apev2-tag-item)
       @cl:doc(condition apev2-tag-error)
       @cl:doc(variable *apev2-external-format*)
    )

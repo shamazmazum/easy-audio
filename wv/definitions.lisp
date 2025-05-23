@@ -231,17 +231,9 @@ have names +FLAGS-NAME-MASK+ and +FLAGS-NAME-SHIFT+ or
 (define-get-value/shift+mask max-magnitude)
 (define-get-value/shift+mask (%block-samplerate samplerate))
 
-(declaim (inline all-bits-set-p))
-(defun all-bits-set-p (value bits)
-  (= (logand value bits) bits))
-
 (declaim (inline flag-mask-set-p))
 (defun flag-mask-set-p (wv-block mask)
   (all-bits-set-p (block-flags wv-block) mask))
-
-(declaim (inline some-bits-set-p))
-(defun some-bits-set-p (value bits)
-  (not (zerop (logand value bits))))
 
 (declaim (inline flag-set-p))
 (defun flag-set-p (wv-block mask)

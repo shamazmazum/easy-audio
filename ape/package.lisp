@@ -3,6 +3,7 @@
         #:alexandria
         #:easy-audio.bitreader
         #:easy-audio.core)
+  (:local-nicknames (#:sera #:serapeum))
   (:export
    ;; Conditions
    #:ape-error
@@ -10,8 +11,13 @@
    ;; Macros
    #:with-open-ape
    ;; APE tags
-   #:read-tag
-   #:read-tag-from-end
+   #:apev2-tag-item
+   #:apev2-tag-item-key
+   #:apev2-tag-item-value
+   #:apev2-tag-item-flags
+   #:apev2-item-content-type
+   #:read-apev2-tag
+   #:read-apev2-tag-from-end
    #:*apev2-external-format*
    ;; APE audio format
    #:open-ape

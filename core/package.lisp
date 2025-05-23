@@ -16,4 +16,6 @@
    ;; Utility functions
    #:define-documented-accessor
    #:define-documented-accessors
-   #:interleave-channels))
+   #:interleave-channels
+   #:all-bits-set-p
+   #:some-bits-set-p))

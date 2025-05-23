@@ -83,3 +83,11 @@ signaled."
   `(progn
      ,@(loop for (slot docstring) in slots collect
              `(define-documented-accessor ,structure ,slot ,docstring))))
+
+(declaim (inline all-bits-set-p))
+(defun all-bits-set-p (value bits)
+  (= (logand value bits) bits))
+
+(declaim (inline some-bits-set-p))
+(defun some-bits-set-p (value bits)
+  (not (zerop (logand value bits))))
