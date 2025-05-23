@@ -1,6 +1,6 @@
 (in-package :easy-audio.ape)
 
-(defparameter *apev2-preamble* #.(map 'vector #'char-code "APETAGEX"))
+(defparameter *apev2-preamble* (map 'vector #'char-code "APETAGEX"))
 (defparameter *apev2-external-format* '(:utf-8 :eol-style :crlf)
   "External format used in human-readable APEv2 items")
 

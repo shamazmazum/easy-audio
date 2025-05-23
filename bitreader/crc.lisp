@@ -7,17 +7,17 @@
     (make-array 256
                 :element-type '(ub 16)
                 :initial-contents
-                '#.(flet ((crc-for-byte (byte)
-                            (labels ((%go (crc n)
-                                       (if (zerop n) crc
-                                           (%go
-                                            (logand (if (zerop (logand #x8000 crc))
-                                                        (ash crc 1)
-                                                        (logxor #x8005 (ash crc 1)))
-                                                    #xffff)
-                                            (1- n)))))
-                              (%go (ash byte 8) 8))))
-                     (loop for i below 256 collect (crc-for-byte i))))
+                (flet ((crc-for-byte (byte)
+                         (labels ((%go (crc n)
+                                    (if (zerop n) crc
+                                        (%go
+                                         (logand (if (zerop (logand #x8000 crc))
+                                                     (ash crc 1)
+                                                     (logxor #x8005 (ash crc 1)))
+                                                 #xffff)
+                                         (1- n)))))
+                           (%go (ash byte 8) 8))))
+                  (loop for i below 256 collect (crc-for-byte i))))
   :documentation "Precalculated CRC-16 table, starting with 0,
 polynomial generator #x8005.  Used for FLAC."
   :test #'equalp)
@@ -43,17 +43,17 @@ polynomial generator #x8005.  Used for FLAC."
     (make-array 256
                 :element-type '(ub 32)
                 :initial-contents
-                '#.(flet ((crc-for-byte (byte)
-                            (labels ((%go (crc n)
-                                       (if (zerop n) crc
-                                           (%go
-                                            (logand (if (zerop (logand #x80000000 crc))
-                                                        (ash crc 1)
-                                                        (logxor #x04c11db7 (ash crc 1)))
-                                                    #xffffffff)
-                                            (1- n)))))
-                              (%go (ash byte 24) 8))))
-                     (loop for i below 256 collect (crc-for-byte i))))
+                (flet ((crc-for-byte (byte)
+                         (labels ((%go (crc n)
+                                    (if (zerop n) crc
+                                        (%go
+                                         (logand (if (zerop (logand #x80000000 crc))
+                                                     (ash crc 1)
+                                                     (logxor #x04c11db7 (ash crc 1)))
+                                                 #xffffffff)
+                                         (1- n)))))
+                           (%go (ash byte 24) 8))))
+                  (loop for i below 256 collect (crc-for-byte i))))
   :documentation "Precalculated CRC-32 table, starting with 0,
 polynomial generator #x04c11db7. Used for OGG container."
   :test #'equalp)

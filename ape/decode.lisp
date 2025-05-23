@@ -15,7 +15,7 @@
 (defconstant +xadaptcoeffsb+  5)
 
 (defparameter *predictor-versions*
-  '#.(reverse '(0 3930 3950)))
+  (reverse '(0 3930 3950)))
 
 (defparameter *filter-orders*
   '(()

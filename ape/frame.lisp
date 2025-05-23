@@ -8,10 +8,10 @@
   '(function (&optional) (ub 8)))
 
 (defparameter *stereo-entropy-versions*
-  '#.(reverse '(0 3860 3900 3930 3990)))
+  (reverse '(0 3860 3900 3930 3990)))
 
 (defparameter *mono-entropy-versions*
-  '#.(reverse '(0 3860 3900 3990)))
+  (reverse '(0 3860 3900 3990)))
 
 (defparameter *counts-3980*
   (make-array 22
@@ -61,7 +61,7 @@ little-endian values)."
       (setf crc (read-32 reader))
       (when (and (> version 3820)
                  (not (zerop (ldb (byte 1 31) crc))))
-        (setf crc (logand crc #.(1- #x80000000))
+        (setf crc (logand crc (1- #x80000000))
               flags (read-32 reader))))))
 
 (defun entropy-promote-version (version &key channels)
@@ -194,7 +194,7 @@ metadata structure for this audio file."
     (cond
       ((> cf 65492)
        (range-decode-update range-coder 1 cf)
-       (- cf #.(- 65535 63)))
+       (- cf (- 65535 63)))
       (t
        ;; Position never returns NIL here because cf is less than 65493
        (let ((symbol (max 0 (1- (position cf counts :test #'<)))))

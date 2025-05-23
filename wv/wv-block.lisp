@@ -60,7 +60,7 @@
                (cond
                  (holding-zero (setq holding-zero nil))
                  (t
-                  (setq ones-count (read-unary-coded-integer coded-residual-reader #.(1+ 16)))
+                  (setq ones-count (read-unary-coded-integer coded-residual-reader (1+ 16)))
                   (when (>= ones-count 16)
                     (when (= ones-count 17)
                       (error 'block-error :format-control "Invalid residual code"))
