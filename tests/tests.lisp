@@ -276,6 +276,18 @@
     (is (equalp (md5:md5sum-file wav-name)
                 (md5:md5sum-file tmp-name)))))
 
+(test apev2-tags
+  "Test apev2 tags reader"
+  (with-open-file (input (asdf:system-relative-pathname
+                          :easy-audio/tests "tests/sample-stereo.wv")
+                         :element-type '(unsigned-byte 8))
+    (let* ((reader (wv:open-wv input))
+           (items (ape:read-apev2-tag-from-end reader))
+           (item1 (find "Key1" items :key #'ape:apev2-tag-item-key :test #'string=))
+           (item2 (find "Key2" items :key #'ape:apev2-tag-item-key :test #'string=)))
+      (is-true (and item1 (string= (ape:apev2-tag-item-value item1) "Value1")))
+      (is-true (and item2 (string= (ape:apev2-tag-item-value item2) "Value2"))))))
+
 (in-suite core)
 (defun mixed-correctly-p (output a1 a2)
   (every #'identity
