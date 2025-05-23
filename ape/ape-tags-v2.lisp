@@ -14,11 +14,13 @@
 
 (sera:-> has-footer-p ((ub 32))
          (values boolean &optional))
+(declaim (inline has-footer-p))
 (defun has-footer-p (flags)
   (not (some-bits-set-p flags +flag-has-footer+)))
 
 (sera:-> has-header-p ((ub 32))
          (values boolean &optional))
+(declaim (inline has-header-p))
 (defun has-header-p (flags)
   (some-bits-set-p flags +flag-has-header+))
 
