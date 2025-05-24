@@ -201,7 +201,8 @@
     (check-file "tests/sample-mono.wav" "tests/sample-mono.wv")
     (check-file "tests/sample32-mono.wav" "tests/sample32-mono.wv")
     (check-file "tests/sample-stereo.wav" "tests/sample-stereo.wv")
-    (check-file "tests/sample32-stereo.wav" "tests/sample32-stereo.wv")))
+    (check-file "tests/sample32-stereo.wav" "tests/sample32-stereo.wv")
+    (check-file "tests/sample32-upsample.wav" "tests/sample32-upsample.wv")))
 
 (test wv-seek
   "Test frame seek"
