@@ -108,29 +108,21 @@
              (is (= crc (bitreader:get-crc reader))))))))
 
 (in-suite flac)
-(test flac-decode-mono
-  "Decode mono sample file"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample-mono.wav"))
-        (flac-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample-mono.flac")))
-    (flac-examples:flac2wav flac-name tmp-name)
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
-
-(test flac-decode-stereo
-  "Decode mono sample file"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample-stereo.wav"))
-        (flac-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample-stereo.flac")))
-    (flac-examples:flac2wav flac-name tmp-name)
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
+(test flac-decode
+  "Decode flac audio"
+  (flet ((check-file (wav flac)
+           (let ((tmp-name  (asdf:system-relative-pathname
+                             :easy-audio/tests "tests/tmp.wav"))
+                 (wav-name  (asdf:system-relative-pathname
+                             :easy-audio/tests wav))
+                 (flac-name (asdf:system-relative-pathname
+                             :easy-audio/tests flac)))
+             (flac-examples:flac2wav flac-name tmp-name)
+             (is (equalp (md5:md5sum-file wav-name)
+                         (md5:md5sum-file tmp-name))))))
+    (check-file "tests/sample-mono.wav" "tests/sample-mono.flac")
+    (check-file "tests/sample-stereo.wav" "tests/sample-stereo.flac")
+    (check-file "tests/sample-stereo.wav" "tests/sample-stereo-low.flac")))
 
 (test flac-seek
   "Test frame seek"
@@ -161,29 +153,20 @@
       (is (= (ogg:restore-sync reader) 3))
       (is (equalp #(#x03) (ogg:read-packet reader))))))
 
-(test ogg-decode-mono
-  "Decode mono sample file"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample-mono.wav"))
-        (flac-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample-mono.oga")))
-    (flac-examples:ogg2wav flac-name tmp-name)
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
-
-(test ogg-decode-stereo
-  "Decode mono sample file"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample-stereo.wav"))
-        (flac-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample-stereo.oga")))
-    (flac-examples:ogg2wav flac-name tmp-name)
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
+(test ogg-decode
+  "Decode ogg audio file"
+  (flet ((check-file (wav flac)
+           (let ((tmp-name  (asdf:system-relative-pathname
+                             :easy-audio/tests "tests/tmp.wav"))
+                 (wav-name  (asdf:system-relative-pathname
+                             :easy-audio/tests wav))
+                 (flac-name (asdf:system-relative-pathname
+                             :easy-audio/tests flac)))
+             (flac-examples:ogg2wav flac-name tmp-name)
+             (is (equalp (md5:md5sum-file wav-name)
+                         (md5:md5sum-file tmp-name))))))
+    (check-file "tests/sample-mono.wav" "tests/sample-mono.oga")
+    (check-file "tests/sample-stereo.wav" "tests/sample-stereo.oga")))
 
 (in-suite decoders)
 (test g.711-ulaw
@@ -201,57 +184,24 @@
   (is (= (general:g.711-alaw-decode #x70) #x-2b0)))
 
 (in-suite wavpack)
-(test wv-decode-mono
-  "Decode mono sample file"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample-mono.wav"))
-        (wv-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample-mono.wv")))
-    (wv-examples:wv2wav wv-name tmp-name)
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
-
-(test wv-decode-stereo
-  "Decode stereo sample file"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample-stereo.wav"))
-        (wv-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample-stereo.wv")))
-    (wv-examples:wv2wav wv-name tmp-name)
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
-
-(test wv-decode-mono-32
-  "Decode mono sample file (32 bits/sample)"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample32-mono.wav"))
-        (wv-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample32-mono.wv")))
-    (handler-bind
-        ((warning #'muffle-warning))
-      (wv-examples:wv2wav wv-name tmp-name))
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
-
-(test wv-decode-stereo-32
-  "Decode stereo sample file (32 bits/sample)"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample32-stereo.wav"))
-        (wv-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample32-stereo.wv")))
-    (handler-bind
-        ((warning #'muffle-warning))
-      (wv-examples:wv2wav wv-name tmp-name))
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
+(test wv-decode
+  "Decode audio file"
+  (flet ((check-file (wav wv)
+           (let ((tmp-name (asdf:system-relative-pathname
+                            :easy-audio/tests "tests/tmp.wav"))
+                 (wav-name (asdf:system-relative-pathname
+                            :easy-audio/tests wav))
+                 (wv-name  (asdf:system-relative-pathname
+                            :easy-audio/tests wv)))
+             (handler-bind
+                 ((warning #'muffle-warning))
+               (wv-examples:wv2wav wv-name tmp-name))
+             (is (equalp (md5:md5sum-file wav-name)
+                         (md5:md5sum-file tmp-name))))))
+    (check-file "tests/sample-mono.wav" "tests/sample-mono.wv")
+    (check-file "tests/sample32-mono.wav" "tests/sample32-mono.wv")
+    (check-file "tests/sample-stereo.wav" "tests/sample-stereo.wv")
+    (check-file "tests/sample32-stereo.wav" "tests/sample32-stereo.wv")))
 
 (test wv-seek
   "Test frame seek"
@@ -259,9 +209,11 @@
                        :easy-audio/tests "tests/sample-stereo.wv")
                       :element-type '(unsigned-byte 8))
     (let ((reader (wv:open-wv in)))
-      (map nil
-           (lambda (n) (finishes (wv:seek-sample reader n)))
-           '(10000 20000 30000 40000 50000)))))
+      (loop for n in '(10000 20000 30000 40000 50000) do
+            (finishes
+              (handler-bind
+                  ((warning #'muffle-warning))
+                (wv:seek-sample reader n)))))))
 
 (in-suite ape)
 (test ape-decode-stereo
