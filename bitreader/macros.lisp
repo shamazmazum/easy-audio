@@ -12,6 +12,10 @@
     ((eq read-how :octet)
      (assert (not (or endianness read-how-many)))
      `(read-octet ,reader))
+    ((eq read-how :expr)
+     (assert (not endianness))
+     ;; READ-HOW-MANY contains an expression
+     read-how-many)
     (t
      (let ((function-name
             (ecase read-how
