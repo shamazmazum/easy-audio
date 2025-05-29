@@ -72,25 +72,29 @@ channel is a simple array with elements of type @c((signed-byte 32))."
           (symbol-macrolet ((x (aref right i))
                             (y (aref left  i)))
             ;; Can I use psetf here without getting rounding problems?
-            (let* ((y% (- x (truncate y 2)))
-                   (x% (+ y% y)))
-              (setf x x% y y%))))))
+            (let* ((%y (- x (truncate y 2)))
+                   (%x (+ %y y)))
+              (setf x %x y %y))))))
     ;; Scale output
-    (mapcar
-     (lambda (channel)
-       (declare (type (sa-sb 32) channel))
-       (map-into
-        channel
-        (case (frame-bps frame)
-          (8 (lambda (x)
-               (declare (type (sb 32) x))
-               (logand #xff (+ #x80 x))))
-          (24 (lambda (x)
-                (declare (type (sb 32) x))
-                (ash x 8)))
-          (t #'identity))
-        channel))
-     (frame-output frame))))
+    (let ((output (mapcar
+                   (lambda (channel)
+                     (declare (type (sa-sb 32) channel))
+                     (map-into
+                      channel
+                      (case (frame-bps frame)
+                        (8 (lambda (x)
+                             (declare (type (sb 32) x))
+                             (logand #xff (+ #x80 x))))
+                        (24 (lambda (x)
+                              (declare (type (sb 32) x))
+                              (ash x 8)))
+                        (t #'identity))
+                      channel))
+                   (frame-output frame))))
+      (if (some-bits-set-p (frame-flags frame) +pseudo-stereo+)
+          (let ((channel (first output)))
+            (list channel channel))
+          output))))
 
 (declaim (inline zeros))
 (defun zeros (n &key (type '(sb 32)))
@@ -160,7 +164,8 @@ channel is a simple array with elements of type @c((signed-byte 32))."
                 x-8 (ash x-8 -1)))))))
   entropy)
 
-(defun make-predictor-updater (history delay-a delay-b adapt-a adapt-b)
+;; TODO: Maybe refactor this shit
+(defun make-predictor-updater-stereo (history delay-a delay-b adapt-a adapt-b)
   (declare (type (sa-sb 32) history)
            (type (sb 32) delay-a delay-b adapt-a adapt-b)
            (optimize (speed 3)))
@@ -171,7 +176,7 @@ channel is a simple array with elements of type @c((signed-byte 32))."
         (coeffs-b (zeros 5)))
     (declare (type (sb 32) last-a filter-a filter-b)
              (type (sa-sb 32) coeffs-a coeffs-b))
-    (flet ((do-update% (x other-x idx)
+    (flet ((%go (x other-x idx)
              (declare (type (sb 32) x other-x)
                       (type non-negative-fixnum idx))
              (let ((history-idx (rem idx +history-size+)))
@@ -220,7 +225,48 @@ channel is a simple array with elements of type @c((signed-byte 32))."
                      (decf (aref coeffs-b (- 4 i))
                            (* sign (aref history (+ history-idx adapt-b (- i)))))))))
              filter-a))
-      #'do-update%)))
+      #'%go)))
+
+(defun make-predictor-updater-mono (history delay-a adapt-a)
+  (declare (type (sa-sb 32) history)
+           (type (sb 32) delay-a adapt-a)
+           (optimize (speed 3)))
+  (let ((last-a   0)
+        (filter-a 0)
+        (coeffs-a (copy-seq *coeffs-3930*)))
+    (declare (type (sb 32) last-a filter-a)
+             (type (sa-sb 32) coeffs-a))
+    (flet ((%go (x idx)
+             (declare (type (sb 32) x)
+                      (type non-negative-fixnum idx))
+             (let ((history-idx (rem idx +history-size+)))
+               (symbol-macrolet
+                   ;; Oh shit, this is almost C stuff translated as is
+                   ;; Can this be rewritten in more lispy way?
+                   ((hist-delay-a   (aref history (+ history-idx delay-a)))
+                    (hist-delay-a-1 (aref history (+ history-idx delay-a -1)))
+
+                    (hist-adapt-a   (aref history (+ history-idx adapt-a)))
+                    (hist-adapt-a-1 (aref history (+ history-idx adapt-a -1))))
+                 (setf hist-delay-a last-a
+                       hist-delay-a-1 (- last-a hist-delay-a-1)
+                       hist-adapt-a (* -1 (signum last-a))
+                       hist-adapt-a-1 (* -1 (signum hist-delay-a-1)))
+                 (let ((prediction-a (dot-product history coeffs-a
+                                                  :start1 (+ history-idx delay-a -3))))
+                   (declare (type (sb 32) prediction-a))
+                   (setf last-a
+                         (+ x (ash prediction-a -10))
+                         filter-a
+                         (+ last-a (ash (* 31 filter-a) -5)))))
+
+               (let ((sign (signum x)))
+                 (dotimes (i 4)
+                   (declare (type fixnum i))
+                   (decf (aref coeffs-a (- 3 i))
+                         (* sign (aref history (+ history-idx adapt-a (- i))))))))
+             filter-a))
+      #'%go)))
 
 (defmethod predictor-update (frame
                              (version (eql 3950))
@@ -230,24 +276,43 @@ channel is a simple array with elements of type @c((signed-byte 32))."
   ;; Seems like this function cannot be applyed to all channels
   ;; independently (like APPLY-FILTER)
   (let* ((history (zeros (+ +history-size+ +predictor-size+)))
-         (update-y (make-predictor-updater
+         (update-y (make-predictor-updater-stereo
                     history +ydelaya+ +ydelayb+ +yadaptcoeffsa+ +yadaptcoeffsb+))
-         (update-x (make-predictor-updater
+         (update-x (make-predictor-updater-stereo
                     history +xdelaya+ +xdelayb+ +xadaptcoeffsa+ +xadaptcoeffsb+))
          (y (first  (frame-output frame)))
          (x (second (frame-output frame))))
     (declare (type (sa-sb 32) history x y)
              (type function update-x update-y))
-    (loop with channels = (frame-output frame)
-          for i below (frame-samples frame) do
-            (when (zerop (rem i +history-size+))
-              (loop for j below +predictor-size+ do
-                (setf (aref history j)
-                      (aref history (+ j +history-size+)))))
-            (setf (aref y i)
-                  (funcall update-y (aref y i) (if (zerop i) 0 (aref x (1- i))) i)
-                  (aref x i)
-                  (funcall update-x (aref x i) (aref y i) i))))
+    (loop for i below (frame-samples frame) do
+          (when (zerop (rem i +history-size+))
+            (loop for j below +predictor-size+ do
+                  (setf (aref history j)
+                        (aref history (+ j +history-size+)))))
+          (setf (aref y i)
+                (funcall update-y (aref y i) (if (zerop i) 0 (aref x (1- i))) i)
+                (aref x i)
+                (funcall update-x (aref x i) (aref y i) i))))
+  frame)
+
+(defmethod predictor-update (frame
+                             (version (eql 3950))
+                             (channels (eql :mono)))
+  (declare (ignore version channels)
+           (optimize (speed 3)))
+  (let* ((history (zeros (+ +history-size+ +predictor-size+)))
+         (update-y (make-predictor-updater-mono
+                    history +ydelaya+ +yadaptcoeffsa+))
+         (y (first  (frame-output frame))))
+    (declare (type (sa-sb 32) history y)
+             (type function update-y))
+    (loop for i below (frame-samples frame) do
+          (when (zerop (rem i +history-size+))
+            (loop for j below +predictor-size+ do
+                  (setf (aref history j)
+                        (aref history (+ j +history-size+)))))
+          (setf (aref y i)
+                (funcall update-y (aref y i) i))))
   frame)
 
 (defmethod predictor-decode (frame (version (eql 3950)) channels)

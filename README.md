@@ -24,7 +24,7 @@ It has:
    Can read FLAC compressed data inside OGG container.
  * APEv2 tags support (currently only in wavpack files).
  * Partial APE support. Only the most recent version (3.99) is supported, also
-   mono audio is not supported. Also there is no integrity checks.
+   there is no integrity checks.
 
 Documentation
 ------------

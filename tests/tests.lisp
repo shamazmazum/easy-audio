@@ -217,17 +217,20 @@
                 (wv:seek-sample reader n)))))))
 
 (in-suite ape)
-(test ape-decode-stereo
-  "Decode stereo sample file"
-  (let ((tmp-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/tmp.wav"))
-        (wav-name (asdf:system-relative-pathname
-                   :easy-audio/tests "tests/sample-stereo.wav"))
-        (ape-name (asdf:system-relative-pathname
-                    :easy-audio/tests "tests/sample-stereo.ape")))
-    (ape-examples:ape2wav ape-name tmp-name)
-    (is (equalp (md5:md5sum-file wav-name)
-                (md5:md5sum-file tmp-name)))))
+(test ape-decode
+  "Decode ape sample file"
+  (flet ((check-file (wav ape)
+           (let ((tmp-name  (asdf:system-relative-pathname
+                             :easy-audio/tests "tests/tmp.wav"))
+                 (wav-name  (asdf:system-relative-pathname
+                             :easy-audio/tests wav))
+                 (ape-name (asdf:system-relative-pathname
+                            :easy-audio/tests ape)))
+             (ape-examples:ape2wav ape-name tmp-name)
+             (is (equalp (md5:md5sum-file wav-name)
+                         (md5:md5sum-file tmp-name))))))
+    (check-file "tests/sample-stereo.wav" "tests/sample-stereo.ape")
+    (check-file "tests/sample-mono.wav" "tests/sample-mono.ape")))
 
 (test apev2-tags
   "Test apev2 tags reader"
