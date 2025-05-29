@@ -9,6 +9,8 @@
 (defconstant +ape-max-version+ 3990
   "Maximal supported APE version")
 
+(sera:-> open-ape (stream)
+         (values reader &optional))
 (defun open-ape (stream)
   "Open ape audio file and return bitreader for further operations"
   (let ((reader (make-reader :stream stream)))
@@ -16,12 +18,14 @@
       (error 'ape-error :format-control "Not an APE stream"))
     reader))
 
+(declaim (inline metadata-promote-version))
 (defun metadata-promote-version (version)
   "Promote version to one suitable for call to READ-METADATA-HEADER"
   (cond
     ((< version 3980) 0)
     (t 3980)))
 
+(declaim (inline bittable-promote-version))
 (defun bittable-promote-version (version)
   "Promote version to one suitable for call to READ-BITTABLE"
   (cond
@@ -75,6 +79,8 @@
   ;; No bittable in versions >= 3810
   nil)
 
+(sera:-> read-metadata (reader)
+         (values metadata &optional))
 (defun read-metadata (reader)
   "Read ape metadata using @c(reader) returned by @c(open-ape)"
   (let ((version (read-octets 2 reader :endianness :little)))
@@ -114,13 +120,6 @@
             (read-bittable reader (bittable-promote-version version)))
       metadata)))
 
-(defun frame-start (metadata n)
-  (let* ((seektable (metadata-seektable metadata))
-         (start (aref seektable n))
-         (skip (logand (- start (aref seektable 0)) 3)))
-    (values (- start skip)
-            skip)))
-
 (defmacro with-open-ape ((reader name) &body body)
   "Open ape file with the pathname @c(name) and creates @c(reader)
 for that file. The file is closed when the control leaves body of this
@@ -130,6 +129,8 @@ macro."
        (let ((,reader (open-ape ,stream)))
          ,@body))))
 
+(sera:-> seconds=>frame-number (metadata non-negative-fixnum)
+         (values non-negative-fixnum non-negative-fixnum &optional))
 (defun seconds=>frame-number (metadata seconds)
   "Return the number of a frame whose play time is @c(seconds) from
 the beginning of file."

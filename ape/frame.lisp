@@ -5,51 +5,65 @@
 (defconstant +pseudo-stereo+ 4)
 
 (deftype octet-reader ()
-  '(function (&optional) (ub 8)))
+  '(function () (values (ub 8) &optional)))
 
-(defparameter *stereo-entropy-versions*
-  (reverse '(0 3860 3900 3930 3990)))
+(define-constant +stereo-entropy-versions+
+    '(3990 3930 3900 3860 0)
+  :test #'equalp)
 
-(defparameter *mono-entropy-versions*
-  (reverse '(0 3860 3900 3990)))
+(define-constant +mono-entropy-versions+
+    '(3990 3900 3860 0)
+  :test #'equalp)
 
-(defparameter *counts-3980*
-  (make-array 22
-              :element-type '(ub 16)
-              :initial-contents '(0 19578 36160 48417 56323 60899 63265 64435
-                                  64971 65232 65351 65416 65447 65466 65476 65482
-                                  65485 65488 65490 65491 65492 65493)))
+(define-constant +counts-3980+
+    (make-array 22
+                :element-type '(ub 16)
+                :initial-contents '(0 19578 36160 48417 56323 60899 63265 64435
+                                    64971 65232 65351 65416 65447 65466 65476 65482
+                                    65485 65488 65490 65491 65492 65493))
+  :test #'equalp)
 
 ;; TODO: calculate this from *counts*
-(defparameter *counts-diff-3980*
-  (make-array 21
-              :element-type '(ub 16)
-              :initial-contents (map 'list #'-
-                                     (subseq *counts-3980* 1)
-                                     *counts-3980*)))
+(define-constant +counts-diff-3980+
+    (make-array 21
+                :element-type '(ub 16)
+                :initial-contents (map 'list #'-
+                                       (subseq +counts-3980+ 1) +counts-3980+))
+  :test #'equalp)
 
+(sera:-> make-swapped-reader (reader)
+         (values octet-reader &optional))
 (defun make-swapped-reader (reader)
   "This function generates a closure that read octets in strange
 reversed order observed in ffmpeg (as if they are part of
 little-endian values)."
   (declare (optimize (speed 3)))
   (let (octets)
-    (declare (type list octets))
     (lambda ()
       (when (null octets)
         (setq octets
               (reverse (loop repeat 4 collect (read-octet reader)))))
-      (destructuring-bind (car . cdr)
-          octets
-        (setq octets cdr)
-        car))))
+      (prog1
+          (car octets)
+        (setq octets (cdr octets))))))
 
+(sera:-> read-32 (octet-reader)
+         (values (ub 32) &optional))
 (defun read-32 (reader)
+  (declare (optimize (speed 3)))
   (logior
    (ash (funcall reader) 24)
    (ash (funcall reader) 16)
    (ash (funcall reader)  8)
    (ash (funcall reader)  0)))
+
+(declaim (inline frame-start))
+(defun frame-start (metadata n)
+  (let* ((seektable (metadata-seektable metadata))
+         (start (aref seektable n))
+         (skip (logand (- start (aref seektable 0)) 3)))
+    (values (- start skip)
+            skip)))
 
 (defun read-crc-and-flags (reader frame)
   ;; What's the difference between bytestream_get_[b|l]e32() and
@@ -64,12 +78,14 @@ little-endian values)."
         (setf crc (logand crc (1- #x80000000))
               flags (read-32 reader))))))
 
-(defun entropy-promote-version (version &key channels)
-  (declare (type (member :mono :stereo) channels))
+(sera:-> entropy-promote-version ((integer 0) (member :mono :stereo))
+         (values (integer 0) &optional))
+(declaim (inline entropy-promote-version))
+(defun entropy-promote-version (version channels)
   (find version
         (ecase channels
-          (:mono   *mono-entropy-versions*)
-          (:stereo *stereo-entropy-versions*))
+          (:mono   +mono-entropy-versions+)
+          (:stereo +stereo-entropy-versions+))
         :test #'>=))
 
 (defun read-stereo-frame (reader frame)
@@ -79,8 +95,7 @@ little-endian values)."
         (entropy-decode
          reader frame
          (entropy-promote-version
-          version
-          :channels :stereo)))))
+          version :stereo)))))
 
 (defun read-mono-frame (reader frame)
   (let ((version (frame-version frame))
@@ -90,10 +105,11 @@ little-endian values)."
       (entropy-decode
        reader frame
        (entropy-promote-version
-        version
-        :channels :mono)))))
+        version :mono)))))
 
-(defun read-frame% (reader metadata &key last-frame)
+(sera:-> %read-frame (octet-reader metadata &key (:last-frame-p boolean))
+         (values frame &optional))
+(defun %read-frame (reader metadata &key last-frame-p)
   (let* ((version (metadata-version metadata))
          ;; Copy version and calculate compression level
          (frame (make-frame :version version
@@ -109,7 +125,7 @@ little-endian values)."
       (setf (frame-buffer frame)
             (funcall reader)))
     ;; Initialize output buffer
-    (let ((samples (if last-frame
+    (let ((samples (if last-frame-p
                        (metadata-final-frame-blocks metadata)
                        (metadata-blocks-per-frame metadata)))
           (pseudo-stereo-p (some-bits-set-p (frame-flags frame) +pseudo-stereo+)))
@@ -125,6 +141,8 @@ little-endian values)."
           (read-mono-frame reader frame)
           (read-stereo-frame reader frame)))))
 
+(sera:-> read-frame (reader metadata non-negative-fixnum)
+         (values frame &optional))
 (defun read-frame (reader metadata n)
   "Read the @c(n)-th audio frame from @c(reader). @c(metadata) is the
 metadata structure for this audio file."
@@ -137,9 +155,9 @@ metadata structure for this audio file."
       ;; Skip some bytes from the beginning
       (loop repeat skip do (funcall swapped-reader))
       ;; Read a frame
-      (read-frame%
+      (%read-frame
        swapped-reader metadata
-       :last-frame (= n (1- (metadata-total-frames metadata)))))))
+       :last-frame-p (= n (1- (metadata-total-frames metadata)))))))
 
 (defun range-dec-normalize (reader range-coder)
   (declare (optimize (speed 3))
@@ -243,14 +261,14 @@ metadata structure for this audio file."
                       :low (ash (frame-buffer frame)
                                 (- +extra-bits+ 8)))))
     (flet ((read-value (rice-state)
-             (let* ((overflow% (range-get-symbol
+             (let* ((%overflow (range-get-symbol
                                 reader range-coder
-                                *counts-3980* *counts-diff-3980*))
-                    (overflow (if (= overflow% 63)
+                                +counts-3980+ +counts-diff-3980+))
+                    (overflow (if (= %overflow 63)
                                   (let ((high (range-decode-bits reader range-coder 16))
                                         (low (range-decode-bits reader range-coder 16)))
                                     (logior (ash high 16) low))
-                                  overflow%))
+                                  %overflow))
                     (pivot (max 1 (ash (rice-state-ksum rice-state) -5)))
                     (base (cond
                             ((< pivot #x10000)
