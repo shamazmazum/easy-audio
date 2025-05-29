@@ -75,17 +75,23 @@ little-endian values)."
 (defun read-stereo-frame (reader frame)
   (let ((version (frame-version frame))
         (flags (frame-flags frame)))
-    (when (not (zerop (logand flags +stereo-silence+)))
-      (return-from read-stereo-frame frame))
-    (entropy-decode
-     reader frame
-     (entropy-promote-version
-      version
-      :channels :stereo))))
+    (if (all-bits-set-p flags +stereo-silence+) frame
+        (entropy-decode
+         reader frame
+         (entropy-promote-version
+          version
+          :channels :stereo)))))
 
 (defun read-mono-frame (reader frame)
-  (declare (ignore reader))
-  frame)
+  (let ((version (frame-version frame))
+        (flags (frame-flags frame)))
+    ;; ffmpeg checks stereo silence here. Can 0x02 be set here?
+    (if (some-bits-set-p flags +stereo-silence+) frame
+      (entropy-decode
+       reader frame
+       (entropy-promote-version
+        version
+        :channels :mono)))))
 
 (defun read-frame% (reader metadata &key last-frame)
   (let* ((version (metadata-version metadata))
@@ -105,20 +111,19 @@ little-endian values)."
     ;; Initialize output buffer
     (let ((samples (if last-frame
                        (metadata-final-frame-blocks metadata)
-                       (metadata-blocks-per-frame metadata))))
+                       (metadata-blocks-per-frame metadata)))
+          (pseudo-stereo-p (some-bits-set-p (frame-flags frame) +pseudo-stereo+)))
       (setf (frame-samples frame) samples
             (frame-output frame)
-            (loop repeat (metadata-channels metadata)
+            (loop repeat (if pseudo-stereo-p 1 (metadata-channels metadata))
                   collect
                   (make-array samples
                               :element-type '(signed-byte 32)
-                              :initial-element 0))))
-    ;; Read entropy
-    (if (and (> (metadata-channels metadata) 1)
-             (zerop (logand +pseudo-stereo+
-                            (frame-flags frame))))
-        (read-stereo-frame reader frame)
-        (read-mono-frame reader frame))))
+                              :initial-element 0)))
+      ;; Read entropy
+      (if (or pseudo-stereo-p (= (metadata-channels metadata) 1))
+          (read-mono-frame reader frame)
+          (read-stereo-frame reader frame)))))
 
 (defun read-frame (reader metadata n)
   "Read the @c(n)-th audio frame from @c(reader). @c(metadata) is the
