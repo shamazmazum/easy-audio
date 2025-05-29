@@ -1,12 +1,14 @@
 (in-package :easy-audio.ape)
 
 ;; Conditions
-(define-condition ape-error (error simple-condition) ()
-  (:report (lambda (c s)
-             (apply #'format s
-                    (concatenate 'string "Ape error: "
-                                 (simple-condition-format-control c))
-                    (simple-condition-format-arguments c))))
+(define-condition ape-error (error simple-condition)
+  ()
+  (:report
+   (lambda (c s)
+     (apply #'format s
+            (concatenate 'string "Ape error: "
+                         (simple-condition-format-control c))
+            (simple-condition-format-arguments c))))
   (:documentation "General APE error"))
 
 (define-condition apev2-tag-error (ape-error) ()

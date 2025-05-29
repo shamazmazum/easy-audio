@@ -159,9 +159,10 @@ metadata structure for this audio file."
        swapped-reader metadata
        :last-frame-p (= n (1- (metadata-total-frames metadata)))))))
 
+(sera:-> range-dec-normalize (octet-reader range-coder)
+         (values &optional))
 (defun range-dec-normalize (reader range-coder)
-  (declare (optimize (speed 3))
-           (type octet-reader reader))
+  (declare (optimize (speed 3)))
   (with-accessors ((buffer range-coder-buffer)
                    (low    range-coder-low)
                    (range  range-coder-range))
@@ -176,44 +177,49 @@ metadata structure for this audio file."
                                 #xffffffff)
                         (logand (ash buffer -1) #xff))
             range (logand (ash range 8)
-                          #xffffffff)))))
+                          #xffffffff))))
+  (values))
 
+(sera:-> range-decode-culshift (octet-reader range-coder (integer 0 32))
+         (values (ub 16) &optional))
 (defun range-decode-culshift (reader range-coder shift)
-  (declare (optimize (speed 3))
-           (type (integer 0 32) shift))
+  (declare (optimize (speed 3)))
   (range-dec-normalize reader range-coder)
   (with-accessors ((help  range-coder-help)
                    (low   range-coder-low)
                    (range range-coder-range))
       range-coder
     (setf help (ash range (- shift)))
-    (floor low help)))
+    (nth-value 0 (floor low help))))
 
+(sera:-> range-decode-culfreq (octet-reader range-coder (ub 16))
+         (values (ub 16) &optional))
 (defun range-decode-culfreq (reader range-coder tot-f)
-  (declare (optimize (speed 3))
-           (type (ub 16) tot-f))
+  (declare (optimize (speed 3)))
   (range-dec-normalize reader range-coder)
   (with-accessors ((help  range-coder-help)
                    (low   range-coder-low)
                    (range range-coder-range))
       range-coder
     (setf help (floor range tot-f))
-    (floor low help)))
+    (nth-value 0 (floor low help))))
 
+(sera:-> range-decode-update (range-coder (ub 16) (ub 16))
+         (values &optional))
 (defun range-decode-update (range-coder sy-f lt-f)
-  (declare (optimize (speed 3))
-           (type (ub 16) sy-f lt-f))
+  (declare (optimize (speed 3)))
   (let ((help (range-coder-help range-coder)))
     (decf (range-coder-low range-coder)
           (* help lt-f))
     (setf (range-coder-range range-coder)
-          (* help sy-f))))
+          (* help sy-f)))
+  (values))
 
+(sera:-> range-get-symbol (octet-reader range-coder (sa-ub 16) (sa-ub 16))
+         (values (ub 16) &optional))
 (defun range-get-symbol (reader range-coder counts counts-diff)
-  (declare (optimize (speed 3))
-           (type (sa-ub 16) counts counts-diff))
+  (declare (optimize (speed 3)))
   (let ((cf (range-decode-culshift reader range-coder 16)))
-    (declare (type (ub 16) cf))
     (cond
       ((> cf 65492)
        (range-decode-update range-coder 1 cf)
@@ -221,7 +227,6 @@ metadata structure for this audio file."
       (t
        ;; Position never returns NIL here because cf is less than 65493
        (let ((symbol (max 0 (1- (position cf counts :test #'<)))))
-         (declare (type (integer 0 20) symbol))
          (range-decode-update
           range-coder
           (aref counts-diff symbol)
