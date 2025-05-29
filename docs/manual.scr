@@ -241,7 +241,7 @@
    )
    @u(Metadata structure).
    @cl:with-package[name="easy-audio.ape"](
-      @cl:doc(struct metadata)
+      @cl:doc(defconstructor metadata)
    )
    @u(Reading and decoding).
    @cl:with-package[name="easy-audio.ape"](

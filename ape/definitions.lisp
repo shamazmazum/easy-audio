@@ -22,29 +22,27 @@
 (defconstant +bottom-value+ (ash +top-value+ -8))
 
 ;; Structures
-(defstruct metadata
-  (version            0 :type (ub 16))
-  (padding1           0 :type (ub 16))
-  (desc-len           0 :type (ub 32))
-  (header-len         0 :type (ub 32))
-  (seektable-len      0 :type (ub 32))
-  (wavheader-len      0 :type (ub 32))
-  (audiodata-len      0 :type (ub 32))
-  (audiodata-len-high 0 :type (ub 32))
-  (wavtail-len        0 :type (ub 32))
-  header-md5
-  (compression-type   0 :type (ub 16))
-  (format-flags       0 :type (ub 16))
-  (blocks-per-frame   0 :type (ub 32))
-  (final-frame-blocks 0 :type (ub 32))
-  (total-frames       0 :type (ub 32))
-  (bps                0 :type (ub 16))
-  (channels           0 :type (ub 16))
-  (samplerate         0 :type (ub 32))
-  ;; Derived fields
-  (total-samples      0 :type (ub 32))
-  bittable
-  seektable)
+(sera:defconstructor metadata
+  (version            (ub 16))
+  (desc-len           (ub 32))
+  (header-len         (ub 32))
+  (seektable-len      (ub 32))
+  (wavheader-len      (ub 32))
+  (audiodata-len      (ub 32))
+  (audiodata-len-high (ub 32))
+  (wavtail-len        (ub 32))
+  (header-md5         (sa-ub 8))
+  (compression-type   (ub 16))
+  (format-flags       (ub 16))
+  (blocks-per-frame   (ub 32))
+  (final-frame-blocks (ub 32))
+  (total-frames       (ub 32))
+  (bps                (ub 16))
+  (channels           (ub 16))
+  (samplerate         (ub 32))
+  (total-samples      (ub 32))
+  (bittable           t)
+  (seektable          (sa-ub 32)))
 
 (defstruct rice-state
   (k    10    :type (integer 0 24))
@@ -68,10 +66,10 @@
   crc)
 
 ;; Generic functions
-(defgeneric read-metadata-header (reader ape-version)
+(defgeneric read-metadata-header (reader version promoted-version)
   (:documentation "Read and fill METADATA-HEADER structure"))
 
-(defgeneric read-bittable (reader ape-version)
+(defgeneric read-bittable (reader metadata ape-version)
   (:documentation "Read bittable from the beginning of APE file"))
 
 (defgeneric entropy-decode (reader frame ape-version)
