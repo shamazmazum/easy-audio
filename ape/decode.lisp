@@ -41,60 +41,12 @@
      :initial-contents '(98 -109 317 360))
   :test #'equalp)
 
-(defun predictor-promote-version (version)
-  (find version +predictor-versions+ :test #'>=))
-
 (declaim (inline dot-product))
 (defun dot-product (x y &key (start1 0) (start2 0))
   (loop
     for i from start1 below (length x)
     for j from start2 below (length y)
     sum (* (aref x i) (aref y j)) fixnum))
-
-(defun decode-frame (frame)
-  "Decode an audio frame. Return a list of decoded channels. Each
-channel is a simple array with elements of type @c((signed-byte 32))."
-  (declare (optimize (speed 3)))
-  (let ((mode (if (= (length (frame-output frame)) 2)
-                  :stereo :mono)))
-    ;; Apply predictor filters
-    (predictor-decode
-     frame
-     (predictor-promote-version
-      (frame-version frame))
-     mode)
-    ;; Decorrelate channels
-    (when (eq mode :stereo)
-      (let ((left  (first  (frame-output frame)))
-            (right (second (frame-output frame))))
-        (declare (type (sa-sb 32) left right))
-        (loop for i below (frame-samples frame) do
-          (symbol-macrolet ((x (aref right i))
-                            (y (aref left  i)))
-            ;; Can I use psetf here without getting rounding problems?
-            (let* ((%y (- x (truncate y 2)))
-                   (%x (+ %y y)))
-              (setf x %x y %y))))))
-    ;; Scale output
-    (let ((output (mapcar
-                   (lambda (channel)
-                     (declare (type (sa-sb 32) channel))
-                     (map-into
-                      channel
-                      (case (frame-bps frame)
-                        (8 (lambda (x)
-                             (declare (type (sb 32) x))
-                             (logand #xff (+ #x80 x))))
-                        (24 (lambda (x)
-                              (declare (type (sb 32) x))
-                              (ash x 8)))
-                        (t #'identity))
-                      channel))
-                   (frame-output frame))))
-      (if (some-bits-set-p (frame-flags frame) +pseudo-stereo+)
-          (let ((channel (first output)))
-            (list channel channel))
-          output))))
 
 (declaim (inline zeros))
 (defun zeros (n &key (type '(sb 32)))
@@ -268,11 +220,10 @@ channel is a simple array with elements of type @c((signed-byte 32))."
              filter-a))
       #'%go)))
 
-(defmethod predictor-update (frame
-                             (version (eql 3950))
-                             (channels (eql :stereo)))
-  (declare (ignore version channels)
-           (optimize (speed 3)))
+(sera:-> predictor-update/3950-stereo (frame)
+         (values frame &optional))
+(defun predictor-update/3950-stereo (frame)
+  (declare (optimize (speed 3)))
   ;; Seems like this function cannot be applyed to all channels
   ;; independently (like APPLY-FILTER)
   (let* ((history (zeros (+ +history-size+ +predictor-size+)))
@@ -295,11 +246,10 @@ channel is a simple array with elements of type @c((signed-byte 32))."
                 (funcall update-x (aref x i) (aref y i) i))))
   frame)
 
-(defmethod predictor-update (frame
-                             (version (eql 3950))
-                             (channels (eql :mono)))
-  (declare (ignore version channels)
-           (optimize (speed 3)))
+(sera:-> predictor-update/3950-mono (frame)
+         (values frame &optional))
+(defun predictor-update/3950-mono (frame)
+  (declare (optimize (speed 3)))
   (let* ((history (zeros (+ +history-size+ +predictor-size+)))
          (update-y (make-predictor-updater-mono
                     history +ydelaya+ +yadaptcoeffsa+))
@@ -315,7 +265,17 @@ channel is a simple array with elements of type @c((signed-byte 32))."
                 (funcall update-y (aref y i) i))))
   frame)
 
-(defmethod predictor-decode (frame (version (eql 3950)) channels)
+(sera:-> predictor-update/3950 (frame (member :mono :stereo))
+         (values frame &optional))
+(declaim (inline predictor-update/3950))
+(defun predictor-update/3950 (frame channels)
+  (ecase channels
+    (:mono   (predictor-update/3950-mono   frame))
+    (:stereo (predictor-update/3950-stereo frame))))
+
+(sera:-> predictor-decode/3950 (frame (member :stereo :mono))
+         (values frame &optional))
+(defun predictor-decode/3950 (frame channels)
   (declare (optimize (speed 3)))
   (let ((orders   (nth (frame-fset frame) +filter-orders+))
         (fracbits (nth (frame-fset frame) +fracbits+)))
@@ -324,4 +284,57 @@ channel is a simple array with elements of type @c((signed-byte 32))."
                      (apply-filter channel order fracbits))
                    (frame-output frame))))
       (mapc #'apply-filter-channels orders fracbits)))
-  (predictor-update frame version channels))
+  (predictor-update/3950 frame channels))
+
+(sera:-> predictor-decode (frame (member :mono :stereo))
+         (values frame &optional))
+(declaim (inline predictor-decode))
+(defun predictor-decode (frame channels)
+  (let ((version (find (frame-version frame) +predictor-versions+
+                       :test #'>=)))
+    (case version
+      (3950 (predictor-decode/3950 frame channels))
+      (t (error 'ape-error
+                :format-control "Cannot decode frame, unsupported version ~d"
+                :format-arguments (list (frame-version frame)))))))
+
+(defun decode-frame (frame)
+  "Decode an audio frame. Return a list of decoded channels. Each
+channel is a simple array with elements of type @c((signed-byte 32))."
+  (declare (optimize (speed 3)))
+  (let ((mode (if (= (length (frame-output frame)) 2)
+                  :stereo :mono)))
+    ;; Apply predictor filters
+    (predictor-decode frame mode)
+    ;; Decorrelate channels
+    (when (eq mode :stereo)
+      (let ((left  (first  (frame-output frame)))
+            (right (second (frame-output frame))))
+        (declare (type (sa-sb 32) left right))
+        (loop for i below (frame-samples frame) do
+          (symbol-macrolet ((x (aref right i))
+                            (y (aref left  i)))
+            ;; Can I use psetf here without getting rounding problems?
+            (let* ((%y (- x (truncate y 2)))
+                   (%x (+ %y y)))
+              (setf x %x y %y))))))
+    ;; Scale output
+    (let ((output (mapcar
+                   (lambda (channel)
+                     (declare (type (sa-sb 32) channel))
+                     (map-into
+                      channel
+                      (case (frame-bps frame)
+                        (8 (lambda (x)
+                             (declare (type (sb 32) x))
+                             (logand #xff (+ #x80 x))))
+                        (24 (lambda (x)
+                              (declare (type (sb 32) x))
+                              (ash x 8)))
+                        (t #'identity))
+                      channel))
+                   (frame-output frame))))
+      (if (some-bits-set-p (frame-flags frame) +pseudo-stereo+)
+          (let ((channel (first output)))
+            (list channel channel))
+          output))))

@@ -66,10 +66,3 @@
   (crc     (ub 32))
   ;; TODO: rename to entropy
   (output  list))
-
-;; Generic functions
-(defgeneric predictor-decode (frame ape-version channels)
-  (:documentation "Apply filters to entropy"))
-
-(defgeneric predictor-update (frame ape-version channels)
-  (:documentation "Apply/Update predictor filters"))
