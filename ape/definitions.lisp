@@ -55,23 +55,19 @@
   (help   0 :type (ub 32))
   (buffer 0 :type (ub 32)))
 
-(defstruct frame
-  (version 0   :type (ub 16))
-  (fset    0   :type (integer 0 4)) ; Compression level
-  (samples 0   :type (ub 32))
-  (bps     0   :type (ub 16))
-  (flags   0   :type (ub 32))
-  (buffer  0   :type (ub 8)) ; From rc structure. Why it is called buffer?!
-  (output  nil :type list)
-  crc)
+(sera:defconstructor frame
+  (version (ub 16))
+  ;; Compression level
+  (fset    (integer 0 4))
+  (samples (ub 32))
+  (bps     (ub 16))
+  (flags   (ub 32))
+  (buffer  (ub 8))
+  (crc     (ub 32))
+  ;; TODO: rename to entropy
+  (output  list))
 
 ;; Generic functions
-(defgeneric read-metadata-header (reader version promoted-version)
-  (:documentation "Read and fill METADATA-HEADER structure"))
-
-(defgeneric read-bittable (reader metadata ape-version)
-  (:documentation "Read bittable from the beginning of APE file"))
-
 (defgeneric entropy-decode (reader frame ape-version)
   (:documentation "Read entropy buffer in a frame"))
 

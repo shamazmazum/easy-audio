@@ -65,19 +65,6 @@ little-endian values)."
     (values (- start skip)
             skip)))
 
-(defun read-crc-and-flags (reader frame)
-  ;; What's the difference between bytestream_get_[b|l]e32() and
-  ;; get_bits_long()?
-  (let ((version (frame-version frame)))
-    (with-accessors ((crc frame-crc)
-                     (flags frame-flags))
-        frame
-      (setf crc (read-32 reader))
-      (when (and (> version 3820)
-                 (not (zerop (ldb (byte 1 31) crc))))
-        (setf crc (logand crc (1- #x80000000))
-              flags (read-32 reader))))))
-
 (sera:-> entropy-promote-version ((integer 0) (member :mono :stereo))
          (values (integer 0) &optional))
 (declaim (inline entropy-promote-version))
@@ -107,39 +94,54 @@ little-endian values)."
        (entropy-promote-version
         version :mono)))))
 
+(sera:-> read-crc-and-flags (octet-reader (ub 16))
+         (values (ub 32) (ub 32) &optional))
+(declaim (inline read-crc-and-flags))
+(defun read-crc-and-flags (reader version)
+  ;; What's the difference between bytestream_get_[b|l]e32() and
+  ;; get_bits_long()?
+  (let ((crc (read-32 reader)))
+    (if (and (> version 3820)
+             (not (zerop (ldb (byte 1 31) crc))))
+        (values (logand crc (1- #x80000000))
+                (read-32 reader))
+        (values crc 0))))
+
 (sera:-> %read-frame (octet-reader metadata &key (:last-frame-p boolean))
          (values frame &optional))
 (defun %read-frame (reader metadata &key last-frame-p)
-  (let* ((version (metadata-version metadata))
-         ;; Copy version and calculate compression level
-         (frame (make-frame :version version
-                            :bps (metadata-bps metadata)
-                            :fset (1- (floor
-                                       (metadata-compression-type metadata)
-                                       1000)))))
+  (let ((version (metadata-version metadata))
+        (bps (metadata-bps metadata))
+        ;; Calculate compression level
+        (fset (1- (floor
+                   (metadata-compression-type metadata)
+                   1000))))
     ;; Read CRC and frame flags
-    (read-crc-and-flags reader frame)
-    (when (>= version 3900)
-      ;; Drop first 8 bits
-      (funcall reader)
-      (setf (frame-buffer frame)
-            (funcall reader)))
-    ;; Initialize output buffer
-    (let ((samples (if last-frame-p
-                       (metadata-final-frame-blocks metadata)
-                       (metadata-blocks-per-frame metadata)))
-          (pseudo-stereo-p (some-bits-set-p (frame-flags frame) +pseudo-stereo+)))
-      (setf (frame-samples frame) samples
-            (frame-output frame)
-            (loop repeat (if pseudo-stereo-p 1 (metadata-channels metadata))
-                  collect
-                  (make-array samples
-                              :element-type '(signed-byte 32)
-                              :initial-element 0)))
-      ;; Read entropy
-      (if (or pseudo-stereo-p (= (metadata-channels metadata) 1))
-          (read-mono-frame reader frame)
-          (read-stereo-frame reader frame)))))
+    (multiple-value-bind (crc flags)
+        (read-crc-and-flags reader version)
+      (let* ((buffer
+              (cond
+                ((>= version 3900)
+                 ;; Drop the first 8 bits
+                 (funcall reader)
+                 (funcall reader))
+                (t 0)))
+             ;; Initialize output buffer
+             (samples (if last-frame-p
+                          (metadata-final-frame-blocks metadata)
+                          (metadata-blocks-per-frame metadata)))
+             (pseudo-stereo-p (some-bits-set-p flags +pseudo-stereo+))
+             (entropy
+              (loop repeat (if pseudo-stereo-p 1 (metadata-channels metadata))
+                    collect
+                    (make-array samples
+                                :element-type '(signed-byte 32)
+                                :initial-element 0)))
+             (frame (frame version fset samples bps flags buffer crc entropy)))
+        ;; Read entropy
+        (if (or pseudo-stereo-p (= (metadata-channels metadata) 1))
+            (read-mono-frame reader frame)
+            (read-stereo-frame reader frame))))))
 
 (sera:-> read-frame (reader metadata non-negative-fixnum)
          (values frame &optional))

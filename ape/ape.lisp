@@ -18,21 +18,6 @@
       (error 'ape-error :format-control "Not an APE stream"))
     reader))
 
-(declaim (inline metadata-promote-version))
-(defun metadata-promote-version (version)
-  "Promote version to one suitable for call to READ-METADATA-HEADER"
-  (cond
-    ((< version 3980) 0)
-    (t 3980)))
-
-(declaim (inline bittable-promote-version))
-(defun bittable-promote-version (version)
-  "Promote version to one suitable for call to READ-BITTABLE"
-  (cond
-    ((< version 3810) 0)
-    (t 3810)))
-
-(declaim (inline read-metadata-header/3980))
 (defreader* (read-metadata-header/3980 metadata (version) ())
   (padding1           (:octets 2)
                       :endianness :little
@@ -76,13 +61,32 @@
   (seektable          (:expr (make-array total-frames
                                          :element-type '(ub 32)))))
 
-(defmethod read-metadata-header (reader version (promoted-version (eql 3980)))
-  (read-metadata-header/3980 reader version))
+(sera:-> read-metadata-header (reader (ub 16))
+         (values metadata &optional))
+(declaim (inline read-metadata-header))
+(defun read-metadata-header (reader version)
+  (cond
+    ((>= version 3980)
+     (read-metadata-header/3980 reader version))
+    (t
+     (error 'ape-error
+            :format-control "Unsupported version ~d"
+            :format-arguments (list version)))))
 
-(defmethod read-bittable (reader metadata (ape-version (eql 3810)))
-  ;; No bittable in versions >= 3810
+(sera:-> read-bittable (reader metadata)
+         (values metadata &optional))
+(declaim (inline read-bittable))
+(defun read-bittable (reader metadata)
   (declare (ignore reader))
-  metadata)
+  (let ((version (metadata-version metadata)))
+    (cond
+      ((>= version 3810)
+       ;; No bittable in versions >= 3810
+       metadata)
+      (t
+       (error 'ape-error
+              :format-control "Unsupported version ~d"
+              :format-arguments (list version))))))
 
 (sera:-> read-metadata (reader)
          (values metadata &optional))
@@ -94,8 +98,7 @@
       (error 'ape-error
              :format-control "Unsupported APE version ~d"
              :format-arguments (list version)))
-    (let ((metadata (read-metadata-header
-                     reader version (metadata-promote-version version))))
+    (let ((metadata (read-metadata-header reader version)))
       ;; A bit of sanity checks
       (let ((expected-len (* (metadata-total-frames metadata) 4)))
         (when (/= (metadata-seektable-len metadata) expected-len)
@@ -113,7 +116,7 @@
           (setf (aref seektable i)
                 (read-octets 4 reader :endianness :little))))
       ;; Read bittable (if any)
-      (read-bittable reader metadata (bittable-promote-version version)))))
+      (read-bittable reader metadata))))
 
 (defmacro with-open-ape ((reader name) &body body)
   "Open ape file with the pathname @c(name) and creates @c(reader)
