@@ -14,32 +14,35 @@
 (defconstant +yadaptcoeffsb+ 10)
 (defconstant +xadaptcoeffsb+  5)
 
-(defparameter *predictor-versions*
-  (reverse '(0 3930 3950)))
+(define-constant +predictor-versions+
+    '(3950 3930 0)
+  :test #'equalp)
 
-(defparameter *filter-orders*
-  '(()
-    (16)
-    (64)
-    (32 256)
-    (16 256 1280)))
+(define-constant +filter-orders+
+    '(()
+      (16)
+      (64)
+      (32 256)
+      (16 256 1280))
+  :test #'equalp)
 
-(defparameter *fracbits*
-  '(()
-    (11)
-    (11)
-    (10 13)
-    (11 13 15)))
+(define-constant +fracbits+
+    '(()
+      (11)
+      (11)
+      (10 13)
+      (11 13 15))
+  :test #'equalp)
 
-(declaim (type (sa-sb 32) *coeffs-3930*))
-(defparameter *coeffs-3930*
-  (make-array
-   4
-   :element-type '(sb 32)
-   :initial-contents '(98 -109 317 360)))
+(define-constant +coeffs-3930+
+    (make-array
+     4
+     :element-type '(sb 32)
+     :initial-contents '(98 -109 317 360))
+  :test #'equalp)
 
 (defun predictor-promote-version (version)
-  (find version *predictor-versions* :test #'>=))
+  (find version +predictor-versions+ :test #'>=))
 
 (declaim (inline dot-product))
 (defun dot-product (x y &key (start1 0) (start2 0))
@@ -172,7 +175,7 @@ channel is a simple array with elements of type @c((signed-byte 32))."
   (let ((last-a   0)
         (filter-a 0)
         (filter-b 0)
-        (coeffs-a (copy-seq *coeffs-3930*))
+        (coeffs-a (copy-seq +coeffs-3930+))
         (coeffs-b (zeros 5)))
     (declare (type (sb 32) last-a filter-a filter-b)
              (type (sa-sb 32) coeffs-a coeffs-b))
@@ -233,7 +236,7 @@ channel is a simple array with elements of type @c((signed-byte 32))."
            (optimize (speed 3)))
   (let ((last-a   0)
         (filter-a 0)
-        (coeffs-a (copy-seq *coeffs-3930*)))
+        (coeffs-a (copy-seq +coeffs-3930+)))
     (declare (type (sb 32) last-a filter-a)
              (type (sa-sb 32) coeffs-a))
     (flet ((%go (x idx)
@@ -317,8 +320,8 @@ channel is a simple array with elements of type @c((signed-byte 32))."
 
 (defmethod predictor-decode (frame (version (eql 3950)) channels)
   (declare (optimize (speed 3)))
-  (let ((orders   (nth (frame-fset frame) *filter-orders*))
-        (fracbits (nth (frame-fset frame) *fracbits*)))
+  (let ((orders   (nth (frame-fset frame) +filter-orders+))
+        (fracbits (nth (frame-fset frame) +fracbits+)))
     (flet ((apply-filter-channels (order fracbits)
              (mapc (lambda (channel)
                      (apply-filter channel order fracbits))
