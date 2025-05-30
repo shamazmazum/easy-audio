@@ -65,102 +65,6 @@ little-endian values)."
     (values (- start skip)
             skip)))
 
-(sera:-> entropy-promote-version ((integer 0) (member :mono :stereo))
-         (values (integer 0) &optional))
-(declaim (inline entropy-promote-version))
-(defun entropy-promote-version (version channels)
-  (find version
-        (ecase channels
-          (:mono   +mono-entropy-versions+)
-          (:stereo +stereo-entropy-versions+))
-        :test #'>=))
-
-(defun read-stereo-frame (reader frame)
-  (let ((version (frame-version frame))
-        (flags (frame-flags frame)))
-    (if (all-bits-set-p flags +stereo-silence+) frame
-        (entropy-decode
-         reader frame
-         (entropy-promote-version
-          version :stereo)))))
-
-(defun read-mono-frame (reader frame)
-  (let ((version (frame-version frame))
-        (flags (frame-flags frame)))
-    ;; ffmpeg checks stereo silence here. Can 0x02 be set here?
-    (if (some-bits-set-p flags +stereo-silence+) frame
-      (entropy-decode
-       reader frame
-       (entropy-promote-version
-        version :mono)))))
-
-(sera:-> read-crc-and-flags (octet-reader (ub 16))
-         (values (ub 32) (ub 32) &optional))
-(declaim (inline read-crc-and-flags))
-(defun read-crc-and-flags (reader version)
-  ;; What's the difference between bytestream_get_[b|l]e32() and
-  ;; get_bits_long()?
-  (let ((crc (read-32 reader)))
-    (if (and (> version 3820)
-             (not (zerop (ldb (byte 1 31) crc))))
-        (values (logand crc (1- #x80000000))
-                (read-32 reader))
-        (values crc 0))))
-
-(sera:-> %read-frame (octet-reader metadata &key (:last-frame-p boolean))
-         (values frame &optional))
-(defun %read-frame (reader metadata &key last-frame-p)
-  (let ((version (metadata-version metadata))
-        (bps (metadata-bps metadata))
-        ;; Calculate compression level
-        (fset (1- (floor
-                   (metadata-compression-type metadata)
-                   1000))))
-    ;; Read CRC and frame flags
-    (multiple-value-bind (crc flags)
-        (read-crc-and-flags reader version)
-      (let* ((buffer
-              (cond
-                ((>= version 3900)
-                 ;; Drop the first 8 bits
-                 (funcall reader)
-                 (funcall reader))
-                (t 0)))
-             ;; Initialize output buffer
-             (samples (if last-frame-p
-                          (metadata-final-frame-blocks metadata)
-                          (metadata-blocks-per-frame metadata)))
-             (pseudo-stereo-p (some-bits-set-p flags +pseudo-stereo+))
-             (entropy
-              (loop repeat (if pseudo-stereo-p 1 (metadata-channels metadata))
-                    collect
-                    (make-array samples
-                                :element-type '(signed-byte 32)
-                                :initial-element 0)))
-             (frame (frame version fset samples bps flags buffer crc entropy)))
-        ;; Read entropy
-        (if (or pseudo-stereo-p (= (metadata-channels metadata) 1))
-            (read-mono-frame reader frame)
-            (read-stereo-frame reader frame))))))
-
-(sera:-> read-frame (reader metadata non-negative-fixnum)
-         (values frame &optional))
-(defun read-frame (reader metadata n)
-  "Read the @c(n)-th audio frame from @c(reader). @c(metadata) is the
-metadata structure for this audio file."
-  (multiple-value-bind (start skip)
-      (frame-start metadata n)
-    ;; Seek to the start of a frame
-    (reader-position reader start)
-    ;; Make that peculiar swapped-bytes reader needed to read a frame
-    (let ((swapped-reader (make-swapped-reader reader)))
-      ;; Skip some bytes from the beginning
-      (loop repeat skip do (funcall swapped-reader))
-      ;; Read a frame
-      (%read-frame
-       swapped-reader metadata
-       :last-frame-p (= n (1- (metadata-total-frames metadata)))))))
-
 (sera:-> range-dec-normalize (octet-reader range-coder)
          (values &optional))
 (defun range-dec-normalize (reader range-coder)
@@ -258,9 +162,10 @@ metadata structure for this audio file."
               (>= ksum (ash 1 (+ k 5))))
          (incf k))))))
 
-(defmethod entropy-decode (reader frame (version (eql 3990)))
-  (declare (ignore version)
-           (optimize (speed 3)))
+(sera:-> entropy-decode/3990 (octet-reader frame)
+         (values frame &optional))
+(defun entropy-decode/3990 (reader frame)
+  (declare (optimize (speed 3)))
   (let ((outputs (frame-output frame))
         (samples (frame-samples frame))
         (range-coder (make-range-coder
@@ -313,3 +218,103 @@ metadata structure for this audio file."
                    (read-value rice-state)))
            outputs rice-states)))))
   frame)
+
+(sera:-> entropy-decode (octet-reader frame (member :mono :stereo))
+         (values frame &optional))
+(declaim (inline entropy-decode))
+(defun entropy-decode (reader frame channels)
+  (let ((version
+         (find (frame-version frame)
+               (ecase channels
+                 (:mono   +mono-entropy-versions+)
+                 (:stereo +stereo-entropy-versions+))
+               :test #'>=)))
+    (case version
+      (3990 (entropy-decode/3990 reader frame))
+      (t (error 'ape-error
+                :format-control "Unsupported frame version ~d"
+                :format-arguments (list (frame-version frame)))))))
+
+(sera:-> read-stereo-entropy (octet-reader frame)
+         (values frame &optional))
+(defun read-stereo-entropy (reader frame)
+  (let ((flags (frame-flags frame)))
+    (if (all-bits-set-p flags +stereo-silence+) frame
+        (entropy-decode
+         reader frame :stereo))))
+
+(sera:-> read-mono-entropy (octet-reader frame)
+         (values frame &optional))
+(defun read-mono-entropy (reader frame)
+  (let ((flags (frame-flags frame)))
+    ;; ffmpeg checks stereo silence here. Can 0x02 be set here?
+    (if (some-bits-set-p flags +stereo-silence+) frame
+      (entropy-decode
+       reader frame :mono))))
+
+(sera:-> read-crc-and-flags (octet-reader (ub 16))
+         (values (ub 32) (ub 32) &optional))
+(declaim (inline read-crc-and-flags))
+(defun read-crc-and-flags (reader version)
+  ;; What's the difference between bytestream_get_[b|l]e32() and
+  ;; get_bits_long()?
+  (let ((crc (read-32 reader)))
+    (if (and (> version 3820)
+             (not (zerop (ldb (byte 1 31) crc))))
+        (values (logand crc (1- #x80000000))
+                (read-32 reader))
+        (values crc 0))))
+
+(sera:-> %read-frame (octet-reader metadata &key (:last-frame-p boolean))
+         (values frame &optional))
+(defun %read-frame (reader metadata &key last-frame-p)
+  (let ((version (metadata-version metadata))
+        (bps (metadata-bps metadata))
+        ;; Calculate compression level
+        (fset (1- (floor
+                   (metadata-compression-type metadata)
+                   1000))))
+    ;; Read CRC and frame flags
+    (multiple-value-bind (crc flags)
+        (read-crc-and-flags reader version)
+      (let* ((buffer
+              (cond
+                ((>= version 3900)
+                 ;; Drop the first 8 bits
+                 (funcall reader)
+                 (funcall reader))
+                (t 0)))
+             ;; Initialize output buffer
+             (samples (if last-frame-p
+                          (metadata-final-frame-blocks metadata)
+                          (metadata-blocks-per-frame metadata)))
+             (pseudo-stereo-p (some-bits-set-p flags +pseudo-stereo+))
+             (entropy
+              (loop repeat (if pseudo-stereo-p 1 (metadata-channels metadata))
+                    collect
+                    (make-array samples
+                                :element-type '(signed-byte 32)
+                                :initial-element 0)))
+             (frame (frame version fset samples bps flags buffer crc entropy)))
+        ;; Read entropy
+        (if (or pseudo-stereo-p (= (metadata-channels metadata) 1))
+            (read-mono-entropy reader frame)
+            (read-stereo-entropy reader frame))))))
+
+(sera:-> read-frame (reader metadata non-negative-fixnum)
+         (values frame &optional))
+(defun read-frame (reader metadata n)
+  "Read the @c(n)-th audio frame from @c(reader). @c(metadata) is the
+metadata structure for this audio file."
+  (multiple-value-bind (start skip)
+      (frame-start metadata n)
+    ;; Seek to the start of a frame
+    (reader-position reader start)
+    ;; Make that peculiar swapped-bytes reader needed to read a frame
+    (let ((swapped-reader (make-swapped-reader reader)))
+      ;; Skip some bytes from the beginning
+      (loop repeat skip do (funcall swapped-reader))
+      ;; Read a frame
+      (%read-frame
+       swapped-reader metadata
+       :last-frame-p (= n (1- (metadata-total-frames metadata)))))))
