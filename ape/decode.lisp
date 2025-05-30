@@ -46,9 +46,6 @@
 
 (declaim (inline dot-product))
 (defun dot-product (x y &key (start1 0) (start2 0))
-  (declare (type (sa-sb 32) x y)
-           (type fixnum start1 start2)
-           (optimize (speed 3)))
   (loop
     for i from start1 below (length x)
     for j from start2 below (length y)
