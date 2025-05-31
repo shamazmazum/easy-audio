@@ -284,7 +284,7 @@
              (si:foldl
               (lambda (channels flt)
                 (apply-filter-channels channels (car flt) (cdr flt)))
-              (frame-output frame)
+              (frame-entropy frame)
               (si:zip
                (si:list->iterator orders)
                (si:list->iterator fracbits)))))
@@ -324,7 +324,7 @@
   "Decode an audio frame. Return a list of decoded channels. Each
 channel is a simple array with elements of type @c((signed-byte 32))."
   (declare (optimize (speed 3)))
-  (let* ((mode (if (= (length (frame-output frame)) 2)
+  (let* ((mode (if (= (length (frame-entropy frame)) 2)
                    :stereo :mono))
          ;; Apply predictor filters
          (output (predictor-decode frame mode)))

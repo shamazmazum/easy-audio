@@ -169,7 +169,7 @@ little-endian values)."
          (values frame &optional))
 (defun entropy-decode/3990 (reader frame)
   (declare (optimize (speed 3)))
-  (let ((outputs (frame-output frame))
+  (let ((entropy (frame-entropy frame))
         (samples (frame-samples frame))
         (range-coder (make-range-coder
                       :buffer (frame-buffer frame)
@@ -210,15 +210,15 @@ little-endian values)."
                (1+ (logxor (ash x -1)
                            (1- (logand x 1)))))))
 
-      (let ((rice-states (loop repeat (length outputs)
+      (let ((rice-states (loop repeat (length entropy)
                                collect (make-rice-state))))
         (dotimes (i samples)
           (mapc
-           (lambda (output rice-state)
-             (declare (type (sa-sb 32) output))
-             (setf (aref output i)
+           (lambda (entropy rice-state)
+             (declare (type (sa-sb 32) entropy))
+             (setf (aref entropy i)
                    (read-value rice-state)))
-           outputs rice-states)))))
+           entropy rice-states)))))
   frame)
 
 (sera:-> entropy-decode (octet-reader frame (member :mono :stereo))

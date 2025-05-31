@@ -64,5 +64,4 @@
   (flags   (ub 32))
   (buffer  (ub 8))
   (crc     (ub 32))
-  ;; TODO: rename to entropy
-  (output  list))
+  (entropy list))
