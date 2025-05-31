@@ -83,10 +83,9 @@
                         (- fracbits)))))
           ;; Update filter coeffs
           (loop for i below order do
-            (setf (aref coeffs i)
-                  (- (aref coeffs i)
-                     (* (aref buffer (+ buffer-idx i))
-                        (signum current-data)))))
+                (decf (aref coeffs i)
+                      (* (aref buffer (+ buffer-idx i))
+                         (signum current-data))))
           (setf (aref result i)
                 new-data
                 (aref buffer (+ buffer-idx (ash order 1)))
