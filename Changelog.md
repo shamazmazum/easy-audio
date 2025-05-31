@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 1.3
+
+* API change: APEv2 tags are now read with READ-AVEV2-TAG(-FROM-END) as a list
+  of APEV2-TAG-ITEM structures.
+* Improvement: APE decoder now supports mono audio.
+* Improvement: APE decoder no longer modifies frames in DECODE-FRAME.
+* Bug fix: Reading of verbatim subframes is fixed in the FLAC decoder.
+* Bug fix: APE decoder correctly handles pseudo-stereo frames.
+
 ## Version 1.2
 
 This version is a step towards removing CLOS and unsafe code.
