@@ -54,26 +54,25 @@
               :element-type type
               :initial-element 0))
 
+;; FIXME: Why order is NON-NEGATIVE-FIXNUM?
+(sera:-> apply-filter ((sa-sb 32) non-negative-fixnum (integer 1 15))
+         (values (sa-sb 32) &optional))
 (defun apply-filter (entropy order fracbits)
-  (declare (type (sa-sb 32) entropy)
-           (type (integer 1 15) fracbits)
-           (type non-negative-fixnum order)
-           (optimize (speed 3)))
+  (declare (optimize (speed 3)))
   (let ((coeffs (zeros order :type '(sb 32)))
         (buffer (zeros (+ +history-size+ (ash order 1))
                        :type '(sb 32)))
+        (result (make-array (length entropy) :element-type '(signed-byte 32)))
         (avg 0))
     (declare (type (sb 32) avg))
     (dotimes (i (length entropy))
       (let ((buffer-idx (rem i +history-size+))
             (current-data (aref entropy i)))
-
         ;; Copy data from back to start when... we need to
         (when (zerop buffer-idx)
           (loop for i below (ash order 1) do
             (setf (aref buffer i)
                   (aref buffer (+ i +history-size+)))))
-
         ;; Decoded output
         (let ((new-data
                 (+ current-data
@@ -82,15 +81,13 @@
                             coeffs buffer
                             :start2 (+ buffer-idx order)))
                         (- fracbits)))))
-
           ;; Update filter coeffs
           (loop for i below order do
             (setf (aref coeffs i)
                   (- (aref coeffs i)
                      (* (aref buffer (+ buffer-idx i))
                         (signum current-data)))))
-
-          (setf (aref entropy i)
+          (setf (aref result i)
                 new-data
                 (aref buffer (+ buffer-idx (ash order 1)))
                 (clamp new-data -32768 32767)
@@ -112,8 +109,8 @@
              (x-8 (aref buffer (+ buffer-idx order -8))))
           (setf x-1 (ash x-1 -1)
                 x-2 (ash x-2 -1)
-                x-8 (ash x-8 -1)))))))
-  entropy)
+                x-8 (ash x-8 -1))))))
+    result))
 
 ;; TODO: Maybe refactor this shit
 (defun make-predictor-updater-stereo (history delay-a delay-b adapt-a adapt-b)
@@ -219,9 +216,9 @@
              filter-a))
       #'%go)))
 
-(sera:-> predictor-update/3950-stereo (frame)
-         (values frame &optional))
-(defun predictor-update/3950-stereo (frame)
+(sera:-> predictor-update/3950-stereo (list (ub 32))
+         (values &optional))
+(defun predictor-update/3950-stereo (channels samples)
   (declare (optimize (speed 3)))
   ;; Seems like this function cannot be applyed to all channels
   ;; independently (like APPLY-FILTER)
@@ -230,11 +227,11 @@
                     history +ydelaya+ +ydelayb+ +yadaptcoeffsa+ +yadaptcoeffsb+))
          (update-x (make-predictor-updater-stereo
                     history +xdelaya+ +xdelayb+ +xadaptcoeffsa+ +xadaptcoeffsb+))
-         (y (first  (frame-output frame)))
-         (x (second (frame-output frame))))
+         (y (first  channels))
+         (x (second channels)))
     (declare (type (sa-sb 32) history x y)
              (type function update-x update-y))
-    (loop for i below (frame-samples frame) do
+    (loop for i below samples do
           (when (zerop (rem i +history-size+))
             (loop for j below +predictor-size+ do
                   (setf (aref history j)
@@ -243,72 +240,98 @@
                 (funcall update-y (aref y i) (if (zerop i) 0 (aref x (1- i))) i)
                 (aref x i)
                 (funcall update-x (aref x i) (aref y i) i))))
-  frame)
+  (values))
 
-(sera:-> predictor-update/3950-mono (frame)
-         (values frame &optional))
-(defun predictor-update/3950-mono (frame)
+(sera:-> predictor-update/3950-mono (list (ub 32))
+         (values &optional))
+(defun predictor-update/3950-mono (channels samples)
   (declare (optimize (speed 3)))
   (let* ((history (zeros (+ +history-size+ +predictor-size+)))
          (update-y (make-predictor-updater-mono
                     history +ydelaya+ +yadaptcoeffsa+))
-         (y (first  (frame-output frame))))
+         (y (first channels)))
     (declare (type (sa-sb 32) history y)
              (type function update-y))
-    (loop for i below (frame-samples frame) do
+    (loop for i below samples do
           (when (zerop (rem i +history-size+))
             (loop for j below +predictor-size+ do
                   (setf (aref history j)
                         (aref history (+ j +history-size+)))))
           (setf (aref y i)
                 (funcall update-y (aref y i) i))))
-  frame)
+  (values))
 
-(sera:-> predictor-update/3950 (frame (member :mono :stereo))
-         (values frame &optional))
+(sera:-> predictor-update/3950 (list (ub 32) (member :mono :stereo))
+         (values &optional))
 (declaim (inline predictor-update/3950))
-(defun predictor-update/3950 (frame channels)
-  (ecase channels
-    (:mono   (predictor-update/3950-mono   frame))
-    (:stereo (predictor-update/3950-stereo frame))))
+(defun predictor-update/3950 (channels samples mode)
+  (ecase mode
+    (:mono   (predictor-update/3950-mono   channels samples))
+    (:stereo (predictor-update/3950-stereo channels samples))))
 
 (sera:-> predictor-decode/3950 (frame (member :stereo :mono))
-         (values frame &optional))
-(defun predictor-decode/3950 (frame channels)
+         (values list &optional))
+(defun predictor-decode/3950 (frame mode)
   (declare (optimize (speed 3)))
   (let ((orders   (nth (frame-fset frame) +filter-orders+))
         (fracbits (nth (frame-fset frame) +fracbits+)))
-    (flet ((apply-filter-channels (order fracbits)
-             (mapc (lambda (channel)
-                     (apply-filter channel order fracbits))
-                   (frame-output frame))))
-      (mapc #'apply-filter-channels orders fracbits)))
-  (predictor-update/3950 frame channels))
+    (flet ((apply-filter-channels (channels order fracbits)
+             (mapcar
+              (lambda (channel)
+                (apply-filter channel order fracbits))
+              channels)))
+      (let ((output
+             (si:foldl
+              (lambda (channels flt)
+                (apply-filter-channels channels (car flt) (cdr flt)))
+              (frame-output frame)
+              (si:zip
+               (si:list->iterator orders)
+               (si:list->iterator fracbits)))))
+        (predictor-update/3950 output (frame-samples frame) mode)
+        output))))
 
 (sera:-> predictor-decode (frame (member :mono :stereo))
-         (values frame &optional))
+         (values list &optional))
 (declaim (inline predictor-decode))
-(defun predictor-decode (frame channels)
+(defun predictor-decode (frame mode)
   (let ((version (find (frame-version frame) +predictor-versions+
                        :test #'>=)))
     (case version
-      (3950 (predictor-decode/3950 frame channels))
+      (3950 (predictor-decode/3950 frame mode))
       (t (error 'ape-error
                 :format-control "Cannot decode frame, unsupported version ~d"
                 :format-arguments (list (frame-version frame)))))))
+
+(sera:-> scale-channel ((sa-sb 32) (ub 16))
+         (values (sa-sb 32) &optional))
+(defun scale-channel (channel bps)
+  (declare (optimize (speed 3)))
+  (cond
+    ((= bps 8)
+     (map-into
+      channel
+      (lambda (x) (logand #xff (+ #x80 x)))
+      channel))
+    ((= bps 24)
+     (map-into
+      channel
+      (lambda (x) (ash x 8))
+      channel))
+    (t channel)))
 
 (defun decode-frame (frame)
   "Decode an audio frame. Return a list of decoded channels. Each
 channel is a simple array with elements of type @c((signed-byte 32))."
   (declare (optimize (speed 3)))
-  (let ((mode (if (= (length (frame-output frame)) 2)
-                  :stereo :mono)))
-    ;; Apply predictor filters
-    (predictor-decode frame mode)
+  (let* ((mode (if (= (length (frame-output frame)) 2)
+                   :stereo :mono))
+         ;; Apply predictor filters
+         (output (predictor-decode frame mode)))
     ;; Decorrelate channels
     (when (eq mode :stereo)
-      (let ((left  (first  (frame-output frame)))
-            (right (second (frame-output frame))))
+      (let ((left  (first  output))
+            (right (second output)))
         (declare (type (sa-sb 32) left right))
         (loop for i below (frame-samples frame) do
           (symbol-macrolet ((x (aref right i))
@@ -318,22 +341,11 @@ channel is a simple array with elements of type @c((signed-byte 32))."
                    (%x (+ %y y)))
               (setf x %x y %y))))))
     ;; Scale output
-    (let ((output (mapcar
-                   (lambda (channel)
-                     (declare (type (sa-sb 32) channel))
-                     (map-into
-                      channel
-                      (case (frame-bps frame)
-                        (8 (lambda (x)
-                             (declare (type (sb 32) x))
-                             (logand #xff (+ #x80 x))))
-                        (24 (lambda (x)
-                              (declare (type (sb 32) x))
-                              (ash x 8)))
-                        (t #'identity))
-                      channel))
-                   (frame-output frame))))
-      (if (some-bits-set-p (frame-flags frame) +pseudo-stereo+)
-          (let ((channel (first output)))
-            (list channel channel))
-          output))))
+    (loop with bps = (frame-bps frame)
+          for channel in output do
+          (scale-channel channel bps))
+    ;; Restore pseudo stereo if needed
+    (if (some-bits-set-p (frame-flags frame) +pseudo-stereo+)
+        (let ((channel (first output)))
+          (list channel channel))
+        output)))

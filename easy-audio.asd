@@ -107,7 +107,8 @@
   :depends-on (:easy-audio/core
                :easy-audio/bitreader
                :alexandria
-               :flexi-streams))
+               :flexi-streams
+               :stateless-iterators))
 
 (defsystem :easy-audio/wv
   :name :easy-audio/wv

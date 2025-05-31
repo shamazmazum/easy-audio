@@ -3,7 +3,8 @@
         #:alexandria
         #:easy-audio.bitreader
         #:easy-audio.core)
-  (:local-nicknames (#:sera #:serapeum))
+  (:local-nicknames (#:sera #:serapeum)
+                    (#:si   #:stateless-iterators))
   (:export
    ;; Conditions
    #:ape-error
