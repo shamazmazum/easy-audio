@@ -70,9 +70,7 @@
             (current-data (aref entropy i)))
         ;; Copy data from back to start when... we need to
         (when (zerop buffer-idx)
-          (loop for i below (ash order 1) do
-            (setf (aref buffer i)
-                  (aref buffer (+ i +history-size+)))))
+          (replace buffer buffer :end1 (ash order 1) :start2 +history-size+))
         ;; Decoded output
         (let ((new-data
                 (+ current-data
