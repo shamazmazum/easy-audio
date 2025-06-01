@@ -18,13 +18,6 @@
              (logand type #xff)
            (setq type (ash type -8)))))))
 
-(declaim
- (type (ub 32)
-       +wav-id+ +wav-format+
-       +format-subchunk+ +data-subchunk+
-       +fact-subchunk+
-       +list-chunk+))
-
 ;; General constants
 (defconstant +wav-id+ (string=>code "RIFF")
   "Wav format identifier (`RIFF')")
@@ -71,11 +64,6 @@ Contants letters `LIST'")
 (defconstant +info-copyright+ (string=>code "ICOP")
   "ICOP (copyright) subchunk")
 
-(declaim
- (type (ub 16)
-       +wave-format-unknown+ +wave-format-pcm+
-       +wave-format-float+ +wave-format-alaw+
-       +wave-format-mulaw+ +wave-format-extensible+))
 ;; Audio formats
 (defconstant +wave-format-unknown+     #x0000)
 (defconstant +wave-format-pcm+         #x0001
