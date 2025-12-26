@@ -8,7 +8,7 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     env:
-      LISP: sbcl-bin
+      LISP: sbcl-bin/2.5.0
     steps:
       - name: Checkout
         uses: actions/checkout@v2
