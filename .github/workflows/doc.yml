@@ -1,8 +1,6 @@
 name: Documentation
 
-on:
-  push:
-    tags: [v*]
+on: [push]
 
 jobs:
   docs:
