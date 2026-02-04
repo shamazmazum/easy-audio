@@ -1,0 +1,40 @@
+("quicklisp" .
+ (:class qlot/source/dist:source-dist
+  :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
+  :version "2026-01-01"))
+("serapeum" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2026-01-01"))
+("alexandria" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2024-10-12"))
+("flexi-streams" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2024-10-12"))
+("nibbles-streams" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2025-06-22"))
+("stateless-iterators" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2025-06-22"))
+("fiveam" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2024-10-12"))
+("md5" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2021-06-30"))
+("codex" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/codex" :ref nil :branch nil :tag nil)
+  :version "github-67a554ffb78cc6f050ffc4d38a97777ed836db7e"))
+("docparser" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "shamazmazum/docparser" :ref nil :branch nil :tag nil)
+  :version "github-93a327d9e1c990fc6ec13251ffae119f3c168053"))

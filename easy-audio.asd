@@ -175,3 +175,7 @@
   :depends-on (:easy-audio/examples
                :fiveam
                :md5))
+
+;; For qlot
+(defsystem :easy-audio/docs
+  :depends-on (:easy-audio :codex))
