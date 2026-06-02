@@ -11,11 +11,10 @@
   :overwrite-fndb-silently t)
 
 (defun make-ub-type (bits)
-  (sb-kernel:make-numeric-type
-   :class    'integer
-   :complexp :real
-   :low      0
-   :high     (1- (expt 2 bits))))
+  ;; SBCL >= 2.6.5 can also do this
+  #+nil
+  (sb-kernel:make-numeric-type 'integer 0  (1- (expt 2 bits)))
+  (sb-kernel:specifier-type (list 'unsigned-byte bits)))
 
 (sb-c:defoptimizer (read-bits sb-c:derive-type) ((n reader &key endianness))
   (declare (ignore reader endianness))
