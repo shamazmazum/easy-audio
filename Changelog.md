@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 1.3.1
+
+* Improvement: Use qlot for dependency management.
+* Bug fix: Works on SBCL 2.6.5+.
+
 ## Version 1.3
 
 * API change: APEv2 tags are now read with READ-AVEV2-TAG(-FROM-END) as a list
